@@ -1,0 +1,77 @@
+#----------------------------------------------------------------------
+#                       ~~~My program~~~                           
+#                       Input Parameters                             
+#-----------------------------------------------------------------------
+#---------------------------------------------
+# Job Specification 
+#---------------------------------------------
+job = "VMC Simulation" 
+optimizing_run = "YES" 
+mode = "NEW" # ("NEW"/"APPEND")
+print_level = -2 #-2
+prefix=""
+
+#---------------------------------------------
+# Lattice:
+#---------------------------------------------
+lattice = "SQUARE" 
+lsize1 = 8
+lsize2 = 8
+bc1 = "periodic"
+bc2 = "antiperiodic"
+
+#---------------------------------------------
+# Model:
+#---------------------------------------------
+#model = "tJ"
+model = "HUBBARD"
+t = 1.0
+#J = 0.35
+U = 8.0
+
+#---------------------------------------------
+# Variational wavefunction
+#---------------------------------------------
+wavefunction = "DWAVE_SC"
+#wavefunction = "FERMISEA"
+gutzwiller_proj = "YES"
+hole_doping = 0.16
+gfactor = 0.5 # 0.3037000
+delta_sc = 0.5 # 0.08
+mu = 0.0 # -0.4263000
+mu_variational = "YES"
+as_func_of = "hole_doping"
+
+#---------------------------------------------
+# List of observable to calculate:
+#---------------------------------------------
+Energy = "YES"
+EnergyGradient = "NO"
+Magnetization = "NO"
+SC_Correlation = "NO"
+SiteOccupancy = "NO"
+
+
+#---------------------------------------------
+# Monte Carlo parameters
+#---------------------------------------------
+rng_seed = 0
+measure_steps = 10000
+warmup_steps = 5000
+min_interval = 3
+max_interval = 10
+
+#---------------------------------------------
+# Optimization parameters
+#---------------------------------------------
+sr_progress_stdout = "YES"
+sr_progress_log = "YES"
+sr_opt_samples = 6
+sr_max_iter = 100
+sr_flat_tail_len = 10
+sr_random_start = "YES"
+sr_ftol = 0.000050
+sr_gradtol = 0.005000
+
+
+
