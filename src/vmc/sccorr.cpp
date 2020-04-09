@@ -225,7 +225,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
     fs_ << std::endl;
   }*/
   std::vector<double> odlro;
-  for (int d=1; d<max_dist_; ++d) {
+  for (int d=2; d<max_dist_; ++d) {
     for (const auto& p : xvals) fs_ << std::setw(14) << p;
     fs_ << std::setw(6) << d; 
     int n = d;
@@ -250,7 +250,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
         ++n;
       }
     }*/
-    if (d>=1) {
+    if (d>=2) {
       fs_ << MC_Data::conv_str(d); 
       fs_ << std::endl; 
     }

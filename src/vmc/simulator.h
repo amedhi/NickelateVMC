@@ -31,7 +31,7 @@ public:
 private:
   VMC vmc;
   StochasticReconf sreconf;
-  //optimizer::Optimizer nlopt_;
+  //opt::Optimizer optimizer_;
   bool optimization_mode_{false};
 
   //static double enfunc(const std::vector<double>& x, std::vector<double>& grad, 

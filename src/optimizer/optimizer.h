@@ -8,38 +8,43 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include "./cppoptlib/boundedproblem.h"
-#include "./cppoptlib/solver/lbfgsbsolver.h"
-#include "../scheduler/task.h"
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <deque>
+//#include "./LBFGS/LBFGSB.h"
+//#include "./LBFGS/LBFGSpp/Param.h"
+#include "../vmc/vmc.h"
 
-namespace optimizer {
 
-class Problem : public cppoptlib::BoundedProblem<double> 
-{
-  public:
-  using super_type = BoundedProblem<double>;
-  using VectorXd = super_type::TVector;
-  using super_type::super_type;
-  Problem(int RunDim=Eigen::Dynamic) : super_type(RunDim) {} 
-  virtual ~Problem() {} 
-  virtual double operator()(const TVector &x, TVector &grad) = 0;
-  double operator()(const TVector &x) { return 0; }
-  double value(const TVector &x) { return 0; }
-};
+namespace opt {
 
 class Optimizer
 {
 public:
-  Optimizer() {}
+  Optimizer() {} 
+  Optimizer(const input::Parameters& parms); 
   ~Optimizer() {}
-  int init(const input::Parameters& parms, Problem& problem);
-  bool optimize(Problem& problem);
-  //{ solver.minimize(problem, x); }
+  int init(const input::Parameters& parms, const vmc::VMC& vmc);
+  int optimize(vmc::VMC& vmc);
+  const var::parm_vector& optimal_parms(void) const { return vparms_; }
+  //const var::parm_vector& vp(void) { return varparms; }
 private:
-  cppoptlib::LbfgsbSolver<Problem> solver_;
+  int num_parms_;
+  mcdata::MC_Observable optimal_parms_;
+  mcdata::MC_Observable optimal_energy_;
+  mcdata::MC_Observable energy_error_bar_;
+  var::parm_vector vparms_;
+  var::parm_vector vparms_start_;
+  var::parm_vector lbound_;
+  var::parm_vector ubound_;
+  var::parm_vector range_;
+  Eigen::MatrixXd sr_matrix_;
+  Eigen::VectorXd grad_;
+  std::vector<double> xvar_values_;
 };
 
 
-} // end namespace vmc
+} // end namespace opt
 
 #endif

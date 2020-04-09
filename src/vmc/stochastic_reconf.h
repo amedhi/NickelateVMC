@@ -49,12 +49,14 @@ private:
   int max_iter_{200};
   int flat_tail_len_{20};
   int random_start_{true};
-  double stabilizer_{1.0E-4};
-  double grad_tol_{0.01};
-  double ftol_{0.01};
+  bool dir_cutoff_{false};
+  double lambda_cut_{1.0E-3};
+  double stabilizer_{0.2};
+  double grad_tol_{5.0E-3};
+  double ftol_{5.0E-5};
   //int refinement_cycle_{100};
   //int mk_series_len_{40};
-  double lnsearch_mu_{1.0E-4};
+  double lnsearch_mu_{1.0E-2};
   double lnsearch_beta_{0.5};
   double lnsearch_step_{0.5};
   //double start_tstep_{0.05};
@@ -83,6 +85,8 @@ private:
     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
   double proj_grad_norm(const Eigen::VectorXd& x, const Eigen::VectorXd& grad, 
     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
+  void get_stabilized_dir(const Eigen::MatrixXd& sr_matrix, const Eigen::VectorXd& grad,
+    Eigen::VectorXd& dir);
 };
 
 

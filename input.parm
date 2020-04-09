@@ -15,8 +15,8 @@ prefix=""
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 8
-lsize2 = 8
+lsize1 = 10
+lsize2 = 10
 bc1 = "periodic"
 bc2 = "antiperiodic"
 

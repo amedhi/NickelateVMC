@@ -47,9 +47,10 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
         mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
         mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
         // variational parameters
-        varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
+        defval = mf_model_.get_parameter_value("delta_sc");
+        varparms_.add("delta_sc",defval,lb=1.0E-3,ub=2.0,dh=0.01);
         break;
-      case lattice::lattice_id::SW_HONEYCOMB:
+      /*case lattice::lattice_id::SW_HONEYCOMB:
         mf_model_.add_parameter(name="t", defval=1.0, inputs);
         mf_model_.add_parameter(name="t2", defval=1.0, inputs);
         mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
@@ -60,6 +61,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
         mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
         // variational parameters
         varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
+        */
     }
   }
   else if (order_type_==bcs::dwave) {
@@ -113,7 +115,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     double theta2 = 2.0*theta;
     mf_model_.add_constant("theta",theta);
     mf_model_.add_constant("theta2",theta2);
-    cc = CouplingConstant({0,"delta_sc"}, {1,"i*theta*delta_sc"}, {2,"i*theta2*delta_sc"});
+    cc = CouplingConstant({0,"delta_sc"}, {1,"exp(i*theta)*delta_sc"}, {2,"exp(i*theta2)*delta_sc"});
     mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
     // variational parameters
     varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
@@ -304,6 +306,27 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
         varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
         noninteracting_mu_ = false;
     }
+    else if (graph.lattice().id()==lattice::lattice_id::HONEYCOMB) {
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+      mf_model_.add_parameter(name="theta1", defval=0.0, inputs);
+      mf_model_.add_parameter(name="theta2", defval=0.0, inputs);
+      // bond operators
+      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      // site operators
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // pairing term
+      cc = CouplingConstant({0,"delta_sc"}, {1,"delta_sc*exp(i*theta1)"}, 
+        {2,"delta_sc*exp(i*theta2)"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      // variational parameters
+      //defval = mf_model_.get_parameter_value("delta_sc");
+      //varparms_.add("delta_sc", defval, lb=1.0E-3, ub=2.0, dh=0.01);
+      defval = mf_model_.get_parameter_value("theta1");
+      varparms_.add("theta1", defval, lb=0.0, ub=two_pi(), dh=0.2);
+      defval = mf_model_.get_parameter_value("theta2");
+      varparms_.add("theta2", defval, lb=0.0, ub=two_pi(), dh=0.2);
+    }
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
     }
@@ -322,7 +345,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     if (info == 0) noninteracting_mu_ = false;
     else noninteracting_mu_ = true;
     if (inputs.set_value("mu_variational", false, info)) 
-      varparms_.add("mu",defval=0.0,lb=-2.0,ub=+2.0,dh=0.1);
+      varparms_.add("mu",defval=0.0,lb=-3.0,ub=+3.0,dh=0.02);
   }
 
   // finalize MF Hamiltonian
@@ -408,7 +431,7 @@ void BCS_State::update(const input::Parameters& inputs)
 void BCS_State::update(const var::parm_vector& pvector, const unsigned& start_pos)
 {
   // update from variational parameters
-  unsigned i = 0;
+  int i = 0;
   for (auto& p : varparms_) {
     auto x = pvector[start_pos+i];
     p.change_value(x);
@@ -495,7 +518,8 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
       std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
       getchar();
     }
-  }*/
+  }
+  */
 }
 
 void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)

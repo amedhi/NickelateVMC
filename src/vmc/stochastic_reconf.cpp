@@ -37,6 +37,9 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   max_iter_ = inputs.set_value("sr_max_iter", 100, nowarn);
   //start_tstep_ = inputs.set_value("sr_start_tstep", 0.05, nowarn);
   random_start_ = inputs.set_value("sr_random_start", true, nowarn);
+  dir_cutoff_ = inputs.set_value("sr_dir_cutoff", false, nowarn);
+  lambda_cut_ = inputs.set_value("sr_lambda_cut", 1.0E-3, nowarn);
+  stabilizer_ = inputs.set_value("sr_stabilizer", 0.2, nowarn);
   flat_tail_len_ = inputs.set_value("sr_flat_tail_len", 10, nowarn);
   ftol_ = inputs.set_value("sr_ftol", 5.0E-5, nowarn);
   grad_tol_ = inputs.set_value("sr_gradtol", 5.0E-3, nowarn);
@@ -126,6 +129,7 @@ int StochasticReconf::optimize(VMC& vmc)
   optimal_parms_.reset();
   optimal_energy_.reset();
   energy_error_bar_.reset();
+  Eigen::VectorXd search_dir(num_parms_);
   // start optimization
   // starting value of variational parameters
   vparms_start_ = vmc.varp_values();
@@ -192,14 +196,10 @@ int StochasticReconf::optimize(VMC& vmc)
     int rng_seed = 1;
     //vmc.seed_rng(1);
     // initial function values
-    double start_en, error_bar; 
-    vmc.sr_function(vparms_,start_en,error_bar,grad_,sr_matrix_,num_sim_samples_,rng_seed);
-    // apply to stabilizer to sr matrix 
-    for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
 
     // Stochastic reconfiguration iterations
     bool converged = false;
-    double energy = start_en;
+    double energy, error_bar;
     std::vector<double> iter_energy;
     std::vector<double> iter_energy_err;
     std::vector<double> iter_gnorm;
@@ -208,6 +208,8 @@ int StochasticReconf::optimize(VMC& vmc)
     RealVector vparm_slope(num_parms_);
     RealVector grads_slope(num_parms_);
     bool ln_search = true;
+    bool SA_steps = false;
+    int sim_samples = num_sim_samples_;
     for (int iter=1; iter<=max_iter_; ++iter) {
       // file outs
       file_energy_<<std::setw(6)<<iter<<std::scientific<<std::setw(16)<<energy; 
@@ -232,28 +234,36 @@ int StochasticReconf::optimize(VMC& vmc)
           logfile_ << " iteration  =  "<<std::setw(6)<<iter<<"(SA step)"<<"\n";
       }
 
+      vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,sim_samples,rng_seed);
+      // apply to stabilizer to sr matrix 
+      for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
       // search direction
-      Eigen::VectorXd search_dir = sr_matrix_.fullPivLu().solve(-grad_);
-
-      // max step size considering bounds
-      double max_step = max_step_size(vparms_, search_dir, lbound_, ubound_);
-      if (ln_search) {
-        // line search with Armijio condition
-        ln_search = line_search(vmc,vparms_,energy,error_bar,grad_,search_dir,max_step);
-        // simulation at new parameters
-        vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,num_sim_samples_,rng_seed);
+      if (dir_cutoff_) {
+        get_stabilized_dir(sr_matrix_, grad_, search_dir);
       }
       else {
+        search_dir = sr_matrix_.fullPivLu().solve(-grad_);
+      }
+
+      // max step size considering bounds
+      if (ln_search) {
+        double max_step = max_step_size(vparms_, search_dir, lbound_, ubound_);
+        // line search with Armijio condition
+        ln_search = line_search(vmc,vparms_,energy,error_bar,grad_,
+          search_dir,max_step);
+        if (!ln_search) {
+          SA_steps = true;
+          sim_samples = 5*num_sim_samples_;
+        }
+      }
+      if (SA_steps) {
         // Stochastic Approximation steps
         double tstep = 1.0/(iter+1);
         vparms_ += tstep * search_dir;
         // box constraint and max_norm (of components not hitting boundary) 
         vparms_ = lbound_.cwiseMax(vparms_.cwiseMin(ubound_));
-        // simulation at new parameters with higher precision
-        vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,num_sim_samples2_,rng_seed);
-        // apply to stabilizer to sr matrix 
-        for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
       }
+
       // simulation at new parameters
       //vmc.sr_function(vparms_,en,error_bar,grad_,sr_matrix_,num_sim_samples_,rng_seed);
       double gnorm = grad_.squaredNorm();
@@ -531,13 +541,23 @@ bool StochasticReconf::line_search(VMC& vmc, Eigen::VectorXd& x,
      throw std::logic_error("StochasticReconf::line_search: the moving direction uphill\n");
 
   double decr_factor = lnsearch_mu_*dg_init; 
+  double err_tol = -0.2*fx_err;
+  //std::cout << "decr_factor = " << decr_factor << "\n";
   double step = 0.8*std::min(lnsearch_step_, max_step);
+
   int max_linesearch = 5;
+  //std::cout << "\n fx_init = " << fx_init << "\n";
   for(int iter = 0; iter < max_linesearch; ++iter) {
+    //std::cout << " search iter = " << iter << "\n";
+    //std::cout << " step= " << step << "\n";
     x.noalias() = x_init + step * dir;
     // evaluate this candidate
     vmc(x,fx,fx_err,grad);
-    if (fx < fx_init + step*decr_factor) return true;
+    //std::cout << " fx_next = " << fx << "\n";
+    //std::cout << " gain = " << fx_init-fx << "\n\n";
+    if (fx < fx_init + std::min(err_tol, step*decr_factor)) {
+      return true;
+    }
     step *= lnsearch_beta_;
   }
   // failed: restore initial values
@@ -573,6 +593,30 @@ double StochasticReconf::proj_grad_norm(const Eigen::VectorXd& x, const Eigen::V
     res = std::max(res, std::abs(proj - x[i]));
   }
   return res;
+}
+
+void StochasticReconf::get_stabilized_dir(const Eigen::MatrixXd& sr_matrix, const Eigen::VectorXd& grad,
+  Eigen::VectorXd& dir)
+{
+  // cut-off redundant directions
+  Eigen::SelfAdjointEigenSolver<RealMatrix> es(sr_matrix, Eigen::ComputeEigenvectors);
+  double lamda_max = es.eigenvalues()[num_parms_-1];
+  int cut_idx = 0;
+  for (int i=0; i<num_parms_; ++i) {
+    if (std::abs(es.eigenvalues()[i]/lamda_max)>lambda_cut_) {
+      cut_idx = i;
+      break;
+    }
+  }
+  for (int n=0; n<num_parms_; ++n) {
+    double sum = 0;
+    for (int i=cut_idx; i<num_parms_; ++i) {
+      double sum2 = es.eigenvectors().col(i).dot(grad);
+      sum += es.eigenvectors()(n,i) * sum2/es.eigenvalues()(i);
+    }
+    dir(n) = -sum;
+  }
+  //std::cout << es.eigenvalues().transpose() << "\n";
 }
 
 

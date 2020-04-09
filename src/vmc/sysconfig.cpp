@@ -136,7 +136,7 @@ int SysConfig::init_config(void)
   // try for a well condictioned amplitude matrix
   double rcond = 0.0;
   int num_attempt = 0;
-  while (rcond<1.0E-15) {
+  while (rcond<1.0E-20) {
   //while (rcond<1.0E-12) {
     BasisState::set_random();
     //BasisState::set_custom();

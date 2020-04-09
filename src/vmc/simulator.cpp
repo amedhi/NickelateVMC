@@ -18,6 +18,7 @@ Simulator::Simulator(const input::Parameters& inputs) : vmc(inputs)
   optimization_mode_ = inputs.set_value("optimizing_run",false);
   if (optimization_mode_) {
     sreconf.init(inputs, vmc);
+    //optimizer_.init(inputs, vmc);
     //vmc.set_box_constraints();
     //nlopt_.init(inputs, vmc);
   }
@@ -29,7 +30,7 @@ int Simulator::run(const input::Parameters& inputs)
   if (vmc.disordered_system()) {
     // optimizing run
     if (optimization_mode_) {
-      for (unsigned n=0; n<vmc.num_disorder_configs(); ++n) {
+      for (int n=0; n<vmc.num_disorder_configs(); ++n) {
         if (vmc.optimal_parms_exists(n)) continue;
         std::cout << " optimizing disorder config " << n;
         std::cout << " of " << vmc.num_disorder_configs() << "\n";
@@ -45,7 +46,7 @@ int Simulator::run(const input::Parameters& inputs)
     }
 
     // normal run
-    for (unsigned n=0; n<vmc.num_disorder_configs(); ++n) {
+    for (int n=0; n<vmc.num_disorder_configs(); ++n) {
     //for (unsigned n=0; n<1; ++n) {
       vmc.disorder_start(inputs, n);
       vmc.run_simulation();
@@ -65,6 +66,7 @@ int Simulator::run(const input::Parameters& inputs)
     //nlopt_.optimize(vmc);
     vmc.start(inputs, run_mode::sr_function, true);
     if (sreconf.optimize(vmc)) {
+    //if (optimizer_.optimize(vmc)) {
       vmc.run_simulation(sreconf.optimal_parms());
       vmc.print_results();
     }

@@ -52,7 +52,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         add_bondterm(name="hopping", cc, op::spin_hop());
         add_siteterm(name="hubbard", cc="U", op::hubbard_int());
         break;
-      case lattice::lattice_id::SW_HONEYCOMB:
+      /*case lattice::lattice_id::SW_HONEYCOMB:
         add_parameter(name="t", defval=1.0, inputs);
         add_parameter(name="t2", defval=1.0, inputs);
         add_parameter(name="U", defval=0.0, inputs);
@@ -61,6 +61,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         add_bondterm(name="hopping", cc, op::spin_hop());
         add_siteterm(name="hubbard", cc="U", op::hubbard_int());
         break;
+       */
 
       case lattice::lattice_id::NICKELATE:
         // model parameters

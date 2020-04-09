@@ -16,8 +16,14 @@ VMC_CPPFLAGS=-D$(MPI)
 endif
 
 #-------------------------------------------------------------
-# other preprocessor directiives
+WAVEFUNC=REAL
+ifeq ($(WAVEFUNC), REAL)
 VMC_CPPFLAGS=-DREAL_WAVEFUNCTION  -DEIGEN_NO_DEBUG -DEIGEN_USE_MKL_ALL
+else
+VMC_CPPFLAGS=-DEIGEN_NO_DEBUG -DEIGEN_USE_MKL_ALL
+endif
+
+# other preprocessor directiives
 
 #-------------------------------------------------------------
 # 2. Compile flags 

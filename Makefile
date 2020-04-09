@@ -85,10 +85,14 @@ VMC_HDRS = $(addprefix src/,$(HDRS))
 MUPARSER_LIB = $(PROJECT_ROOT)/src/expression/muparserx/libmuparserx.a
 #-------------------------------------------------------------
 # Target
+ifeq ($(WAVEFUNC), REAL)
 TAGT=a.out
-ifeq ($(MPI), HAVE_BOOST_MPI)
-TAGT=v.out
+else
+TAGT=c.out
 endif
+#ifeq ($(MPI), HAVE_BOOST_MPI)
+#TAGT=v.out
+#endif
 
 # Put all auto generated stuff to this build dir.
 ifeq ($(BUILD_DIR), $(CURDIR))

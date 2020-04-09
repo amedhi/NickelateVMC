@@ -99,8 +99,10 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
       for (int i=0; i<term.num_out_bonds(); ++i) {
         Vector3d delta = term.bond_vector(i);
         //pairing_block_ += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+        //std::cout << term.coeff_matrix(i) << "\n"; getchar();
         work2 = term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
-        pairing_block_ += 0.5*(work2 + work2.adjoint());
+        //pairing_block_ += 0.5*(work2 + work2.adjoint());
+        pairing_block_ += work2;
       }
     }
   }
