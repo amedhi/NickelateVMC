@@ -48,7 +48,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
         mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
         // variational parameters
         defval = mf_model_.get_parameter_value("delta_sc");
-        varparms_.add("delta_sc",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+        varparms_.add("delta_sc",defval,lb=1.0E-6,ub=2.0,dh=0.01);
         break;
       /*case lattice::lattice_id::SW_HONEYCOMB:
         mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -345,7 +345,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     if (info == 0) noninteracting_mu_ = false;
     else noninteracting_mu_ = true;
     if (inputs.set_value("mu_variational", false, info)) 
-      varparms_.add("mu",defval=0.0,lb=-3.0,ub=+3.0,dh=0.02);
+      varparms_.add("mu",defval=0.0,lb=-3.0,ub=+3.0,dh=0.1);
   }
 
   // finalize MF Hamiltonian
@@ -421,7 +421,7 @@ void BCS_State::update(const input::Parameters& inputs)
     // the next line is 'really' needed 
     mf_model_.update_site_parameter("mu", 0.0);
     double mu_0 = get_noninteracting_mu();
-    //std::cout << "mu = " << mu_0 << "\n";
+    std::cout << "mu = " << mu_0 << "\n";
     mf_model_.update_site_parameter("mu", mu_0);
   }
   // check MF energy

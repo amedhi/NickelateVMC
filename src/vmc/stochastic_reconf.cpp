@@ -359,7 +359,8 @@ int StochasticReconf::optimize(VMC& vmc)
     file_vparms_.close();
 
     // optimized quantities for this sample
-    if (converged) {
+    //if (converged) {
+    if (true) {
       int n = iter_energy.size()-flat_tail_len_;
       for (int i=0; i<flat_tail_len_; ++i) {
         optimal_energy_ << iter_energy[n+i];
