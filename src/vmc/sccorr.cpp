@@ -6,6 +6,7 @@
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "./sccorr.h"
+#include "../utils/curve_fit.h"
 
 
 namespace vmc {
@@ -255,9 +256,9 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
       fs_ << std::endl; 
     }
   }
-  // print ODLRO
-  fs_ << "\n# odlro "; 
-  for (const auto& p : xvals) fs_ << std::setw(14) << p;
+  // Order parameter (from max_distance value)
+  fs_ << "\n# phi(1)"; 
+  for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
   //fs_ << std::setw(6) << max_dist_-1; 
   for (int i=0; i<odlro.size(); i+=2) {
     fs_ << std::scientific << std::setw(15) << std::sqrt(std::abs(odlro[i]));
@@ -266,9 +267,47 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   fs_ << MC_Data::conv_str(0); 
   fs_ << std::endl; 
 
+  // Order parameter 'phi': obtained by fitting the data
+  fs_ << "# phi(2)"; 
+  for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
+  util::CurveFit curve_fit;
+  for (int i=0; i<bondpair_types_.size(); ++i) {
+    Eigen::VectorXd xv(max_dist_-2);
+    Eigen::VectorXd yv(max_dist_-2);
+    Eigen::VectorXd yerr(max_dist_-2);
+    int j = 0;
+    int n = max_dist_*i;
+    for (int d=2; d<max_dist_; ++d) {
+      xv(j) = d;
+      yv(j) = MC_Data::mean(n+d);
+      yerr(j) = MC_Data::stddev(n+d);
+      j++;
+    }
+    //std::cout << yv.transpose() << "\n";
+    //std::cout << yerr.transpose() << "\n\n";
+    // fit
+    double phi, err;
+    Eigen::VectorXd p = Eigen::VectorXd::Ones(4);
+    Eigen::VectorXd p2 = Eigen::VectorXd::Ones(3);
+    FitFunc func;
+    FitFunc2 func2;
+    if (curve_fit.lmfit(func,p,xv,yv)) {
+      phi = std::sqrt(std::abs(p(0)));
+    }
+    else if (curve_fit.lmfit(func2,p2,xv,yv)) {
+      phi = std::sqrt(std::abs(p2(0)));
+    }
+    else {
+      phi = std::sqrt(std::abs(yv(max_dist_-1)));
+    }
+    err = std::sqrt(yerr.sum()/yerr.size());
+    fs_ << std::scientific << std::setw(15) << phi;
+    fs_ << std::fixed << std::setw(10) << err;
+  }
+  fs_ << MC_Data::conv_str(0); 
+  fs_ << std::endl; 
+
   //fstream() << MC_Data::conv_str(0); //.substr(0,10); 
-  fs_ << std::endl;
-  fs_ << std::endl;
   fs_ << std::flush;
   close_file();
 }

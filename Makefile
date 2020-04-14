@@ -55,6 +55,7 @@ HDRS=    scheduler/mpi_comm.h \
          scheduler/scheduler.h \
          expression/complex_expression.h \
          utils/utils.h \
+         utils/curve_fit.h \
          lattice/constants.h lattice/lattice.h lattice/graph.h \
 	 montecarlo/simulator.h \
          model/modelparams.h  model/quantum_op.h \

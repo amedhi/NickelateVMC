@@ -6,7 +6,7 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-optimizing_run = "YES" 
+optimizing_run = "NO" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 prefix=""
@@ -36,9 +36,9 @@ wavefunction = "DWAVE_SC"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.16
-gfactor = 0.5 # 0.3037000
-delta_sc = 0.5 # 0.08
-mu = 0.0 # -0.4263000
+gfactor = 0.3037000
+delta_sc = 0.08
+mu = -0.4263000
 mu_variational = "YES"
 as_func_of = "hole_doping"
 
@@ -48,7 +48,7 @@ as_func_of = "hole_doping"
 Energy = "YES"
 EnergyGradient = "NO"
 Magnetization = "NO"
-SC_Correlation = "NO"
+SC_Correlation = "YES"
 SiteOccupancy = "NO"
 
 

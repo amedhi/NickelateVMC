@@ -68,6 +68,47 @@ private:
   */
 };
 
+// to fit F(r)
+class FitFunc
+{
+public:
+  FitFunc(void) {}
+  ~FitFunc(void) {}
+  double operator()(const double& x, const Eigen::VectorXd& p)
+  {
+    return p[0] + p[1]*std::exp(-x/p[2])*std::cos(p[3]*x);
+  }
+  void derivative(const double& x, const Eigen::VectorXd& p, Eigen::VectorXd& pgrad)
+  {
+    double xp = std::exp(-x/p[2]);
+    double cs = std::cos(p[3]*x);
+    pgrad[0] = 1.0;
+    pgrad[1] = xp*cs; 
+    pgrad[2] = p[1]*pgrad[1]*x/(p[2]*p[2]);
+    pgrad[3] = -p[1]*xp*std::sin(p[3]*x)*x;
+  }
+};
+
+class FitFunc2
+{
+public:
+  FitFunc2(void) {}
+  ~FitFunc2(void) {}
+  double operator()(const double& x, const Eigen::VectorXd& p)
+  {
+    return p[0] + p[1]*std::exp(-x/p[2])*std::cos(x);
+  }
+  void derivative(const double& x, const Eigen::VectorXd& p, Eigen::VectorXd& pgrad)
+  {
+    double xp = std::exp(-x/p[2]);
+    double cs = std::cos(x);
+    pgrad[0] = 1.0;
+    pgrad[1] = xp*cs; 
+    pgrad[2] = p[1]*pgrad[1]*x/(p[2]*p[2]);
+  }
+};
+
+
 
 } // end namespace vmc
 
