@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
-* @Last Modified by:   amedhi
-* @Last Modified time: 2020-04-03 11:29:40
+* @Last Modified by:   Amal Medhi, amedhi@mbpro
+* @Last Modified time: 2020-04-15 11:32:09
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -138,6 +138,23 @@ int Fermisea::init(const input::Parameters& inputs,
     cc.add_type(1, "e_R");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
+
+  else if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE2) {
+    mf_model_.add_parameter(name="t0", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t1", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t2", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t3", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t4", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t5", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t6", defval=1.0, inputs);
+    // bond operator terms
+    cc.create(7);
+    for (int i=0; i<7; ++i) {
+      cc.add_type(i, "-t"+std::to_string(i));
+    }
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+  }
+
   else {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());

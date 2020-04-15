@@ -39,29 +39,39 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   model::CouplingConstant cc;
   if (order_type_==bcs::swave) {
     order_name_ = "s-wave";
-    switch (graph.lattice().id()) {
-      default:
-        mf_model_.add_parameter(name="t", defval=1.0, inputs);
-        mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-        mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-        mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
-        mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-        // variational parameters
-        defval = mf_model_.get_parameter_value("delta_sc");
-        varparms_.add("delta_sc",defval,lb=1.0E-6,ub=2.0,dh=0.01);
-        break;
-      /*case lattice::lattice_id::SW_HONEYCOMB:
-        mf_model_.add_parameter(name="t", defval=1.0, inputs);
-        mf_model_.add_parameter(name="t2", defval=1.0, inputs);
-        mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"}, {1,"-t2"});
-        mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-        mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
-        mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-        // variational parameters
-        varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
-        */
+    if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE2) {
+      mf_model_.add_parameter(name="t0", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t1", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t2", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t3", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t4", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t5", defval=1.0, inputs);
+      mf_model_.add_parameter(name="t6", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+      // bond operator terms
+      cc.create(7);
+      for (int i=0; i<7; ++i) {
+        cc.add_type(i, "-t"+std::to_string(i));
+      }
+      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+      // pairing
+      mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
+      // ch potemtial
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_sc");
+      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
+    }
+
+    else {
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_sc");
+      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
     }
   }
   else if (order_type_==bcs::dwave) {

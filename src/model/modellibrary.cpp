@@ -32,265 +32,263 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
   if (model_name == "HUBBARD") {
     mid = model_id::HUBBARD;
-    switch (lattice.id()) {
-      case lattice::lattice_id::SQUARE_NNN:
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=1.0, inputs);
-        add_parameter(name="U", defval=0.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
-        break;
-      case lattice::lattice_id::SIMPLECUBIC:
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=1.0, inputs);
-        add_parameter(name="th", defval=1.0, inputs);
-        add_parameter(name="U", defval=0.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
-        break;
-      /*case lattice::lattice_id::SW_HONEYCOMB:
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="t2", defval=1.0, inputs);
-        add_parameter(name="U", defval=0.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"}, {1,"-t2"});
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
-        break;
-       */
-
-      case lattice::lattice_id::NICKELATE:
-        // model parameters
-        add_parameter(name="U", defval=0.0, inputs);
-        add_parameter(name="e_N", defval=0.0, inputs);
-        add_parameter(name="e_R", defval=0.0, inputs);
-        add_parameter(name="t_NN_100", defval=0.0, inputs);
-        add_parameter(name="t_NN_001", defval=0.0, inputs);
-        add_parameter(name="t_NN_110", defval=0.0, inputs);
-        add_parameter(name="t_NN_200", defval=0.0, inputs);
-        add_parameter(name="t_NN_001", defval=0.0, inputs);
-        add_parameter(name="t_RR_100", defval=0.0, inputs);
-        add_parameter(name="t_RR_001", defval=0.0, inputs);
-        add_parameter(name="t_RR_101", defval=0.0, inputs);
-        add_parameter(name="t_RR_102", defval=0.0, inputs);
-        add_parameter(name="t_RR_110", defval=0.0, inputs);
-        add_parameter(name="t_RR_002", defval=0.0, inputs);
-        add_parameter(name="t_RR_111", defval=0.0, inputs);
-        add_parameter(name="t_RN_200", defval=0.0, inputs);
-        add_parameter(name="t_RN_202", defval=0.0, inputs);
-
-        // bond operators
-        cc.create(15);
-        cc.add_type(0, "t_NN_100");
-        cc.add_type(1, "t_NN_100");
-        cc.add_type(2, "t_NN_110");
-        cc.add_type(3, "t_NN_200");
-        cc.add_type(4, "t_NN_001");
-        cc.add_type(5, "t_RR_100");
-        cc.add_type(6, "t_RR_100");
-        cc.add_type(7, "t_RR_001");
-        cc.add_type(8, "t_RR_101");
-        cc.add_type(9, "t_RR_102");
-        cc.add_type(10, "t_RR_110");
-        cc.add_type(11, "t_RR_002");
-        cc.add_type(12, "t_RR_111");
-        cc.add_type(13, "t_RN_200");
-        cc.add_type(14, "t_RN_202");
-        add_bondterm(name="hopping", cc, op::spin_hop());
-
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "e_N");
-        cc.add_type(1, "e_R");
-        add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-
-        // interaction
-        cc.create(2);
-        cc.add_type(0, "U");
-        cc.add_type(1, "0");
-        add_siteterm(name="hubbard", cc, op::hubbard_int());
-        break;
-
-      case lattice::lattice_id::NICKELATE_2D:
-        add_parameter(name="U", defval=0.0, inputs);
-        add_parameter(name="e_N", defval=0.0, inputs);
-        add_parameter(name="e_R", defval=0.0, inputs);
-        add_parameter(name="t_NN_100", defval=1.0, inputs);
-        add_parameter(name="t_NN_110", defval=0.0, inputs);
-        add_parameter(name="t_RR_100", defval=1.0, inputs);
-        add_parameter(name="t_RR_110", defval=0.0, inputs);
-        add_parameter(name="t_RN_200", defval=0.0, inputs);
-        // bond operators
-        cc.create(7);
-        cc.add_type(0, "t_NN_100");
-        cc.add_type(1, "t_NN_100");
-        cc.add_type(2, "t_NN_110");
-        cc.add_type(3, "t_RR_100");
-        cc.add_type(4, "t_RR_100");
-        cc.add_type(5, "t_RR_110");
-        cc.add_type(6, "t_RN_200");
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "e_N");
-        cc.add_type(1, "e_R");
-        add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-        // interaction
-        cc.create(2);
-        cc.add_type(0, "U");
-        cc.add_type(1, "0");
-        add_siteterm(name="hubbard", cc, op::hubbard_int());
-        break;
-
-      case lattice::lattice_id::NICKELATE_2L:
-        add_parameter(name="U", defval=0.0, inputs);
-        add_parameter(name="e_R", defval=0.0, inputs);
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=0.0, inputs);
-        add_parameter(name="th", defval=1.0, inputs);
-        // bond operators
-        cc.create(7);
-        cc.add_type(0, "t");
-        cc.add_type(1, "t");
-        cc.add_type(2, "tp");
-        cc.add_type(3, "t");
-        cc.add_type(4, "t");
-        cc.add_type(5, "tp");
-        cc.add_type(6, "th");
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "0");
-        cc.add_type(1, "e_R");
-        add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-        // interaction
-        cc.create(2);
-        cc.add_type(0, "U");
-        cc.add_type(1, "0");
-        add_siteterm(name="hubbard", cc, op::hubbard_int());
-        break;
-
-      default:
-        // model parameters
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="U", defval=0.0, inputs);
-        // bond operator terms
-        add_bondterm(name="hopping", cc="-t", op::spin_hop());
-        add_siteterm(name="hubbard", cc="U", op::hubbard_int());
-        break;
+    if (lattice.id() == lattice::lattice_id::SQUARE_NNN) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
-  }
+    else if (lattice.id() == lattice::lattice_id::SIMPLECUBIC) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="th", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+    else if (lattice.id() == lattice::lattice_id::NICKELATE) {
+      // model parameters
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="e_N", defval=0.0, inputs);
+      add_parameter(name="e_R", defval=0.0, inputs);
+      add_parameter(name="t_NN_100", defval=0.0, inputs);
+      add_parameter(name="t_NN_001", defval=0.0, inputs);
+      add_parameter(name="t_NN_110", defval=0.0, inputs);
+      add_parameter(name="t_NN_200", defval=0.0, inputs);
+      add_parameter(name="t_NN_001", defval=0.0, inputs);
+      add_parameter(name="t_RR_100", defval=0.0, inputs);
+      add_parameter(name="t_RR_001", defval=0.0, inputs);
+      add_parameter(name="t_RR_101", defval=0.0, inputs);
+      add_parameter(name="t_RR_102", defval=0.0, inputs);
+      add_parameter(name="t_RR_110", defval=0.0, inputs);
+      add_parameter(name="t_RR_002", defval=0.0, inputs);
+      add_parameter(name="t_RR_111", defval=0.0, inputs);
+      add_parameter(name="t_RN_200", defval=0.0, inputs);
+      add_parameter(name="t_RN_202", defval=0.0, inputs);
+
+      // bond operators
+      cc.create(15);
+      cc.add_type(0, "t_NN_100");
+      cc.add_type(1, "t_NN_100");
+      cc.add_type(2, "t_NN_110");
+      cc.add_type(3, "t_NN_200");
+      cc.add_type(4, "t_NN_001");
+      cc.add_type(5, "t_RR_100");
+      cc.add_type(6, "t_RR_100");
+      cc.add_type(7, "t_RR_001");
+      cc.add_type(8, "t_RR_101");
+      cc.add_type(9, "t_RR_102");
+      cc.add_type(10, "t_RR_110");
+      cc.add_type(11, "t_RR_002");
+      cc.add_type(12, "t_RR_111");
+      cc.add_type(13, "t_RN_200");
+      cc.add_type(14, "t_RN_202");
+      add_bondterm(name="hopping", cc, op::spin_hop());
+
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "e_N");
+      cc.add_type(1, "e_R");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+
+      // interaction
+      cc.create(2);
+      cc.add_type(0, "U");
+      cc.add_type(1, "0");
+      add_siteterm(name="hubbard", cc, op::hubbard_int());
+    }
+    else if (lattice.id() == lattice::lattice_id::NICKELATE_2D) {
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="e_N", defval=0.0, inputs);
+      add_parameter(name="e_R", defval=0.0, inputs);
+      add_parameter(name="t_NN_100", defval=1.0, inputs);
+      add_parameter(name="t_NN_110", defval=0.0, inputs);
+      add_parameter(name="t_RR_100", defval=1.0, inputs);
+      add_parameter(name="t_RR_110", defval=0.0, inputs);
+      add_parameter(name="t_RN_200", defval=0.0, inputs);
+      // bond operators
+      cc.create(7);
+      cc.add_type(0, "t_NN_100");
+      cc.add_type(1, "t_NN_100");
+      cc.add_type(2, "t_NN_110");
+      cc.add_type(3, "t_RR_100");
+      cc.add_type(4, "t_RR_100");
+      cc.add_type(5, "t_RR_110");
+      cc.add_type(6, "t_RN_200");
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "e_N");
+      cc.add_type(1, "e_R");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      // interaction
+      cc.create(2);
+      cc.add_type(0, "U");
+      cc.add_type(1, "0");
+      add_siteterm(name="hubbard", cc, op::hubbard_int());
+    }
+    else if (lattice.id() == lattice::lattice_id::NICKELATE_2L) {
+      add_parameter(name="U", defval=0.0, inputs);
+      add_parameter(name="e_R", defval=0.0, inputs);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=0.0, inputs);
+      add_parameter(name="th", defval=1.0, inputs);
+      // bond operators
+      cc.create(7);
+      cc.add_type(0, "t");
+      cc.add_type(1, "t");
+      cc.add_type(2, "tp");
+      cc.add_type(3, "t");
+      cc.add_type(4, "t");
+      cc.add_type(5, "tp");
+      cc.add_type(6, "th");
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "0");
+      cc.add_type(1, "e_R");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      // interaction
+      cc.create(2);
+      cc.add_type(0, "U");
+      cc.add_type(1, "0");
+      add_siteterm(name="hubbard", cc, op::hubbard_int());
+    }
+    else if (lattice.id() == lattice::lattice_id::SW_GRAPHENE2) {
+      add_parameter(name="t0", defval=1.0, inputs);
+      add_parameter(name="t1", defval=1.0, inputs);
+      add_parameter(name="t2", defval=1.0, inputs);
+      add_parameter(name="t3", defval=1.0, inputs);
+      add_parameter(name="t4", defval=1.0, inputs);
+      add_parameter(name="t5", defval=1.0, inputs);
+      add_parameter(name="t6", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      cc.create(7);
+      for (int i=0; i<7; ++i) {
+        cc.add_type(i, "-t"+std::to_string(i));
+      }
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // interaction
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+    else {
+      // model parameters
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+  } // end model_name == "HUBBARD"
 
   else if (model_name == "TJ") {
     mid = model_id::TJ;
     int nowarn;
-    if (inputs.set_value("no_double_occupancy",true,nowarn))
+    if (inputs.set_value("no_double_occupancy",true,nowarn)) {
       set_no_dbloccupancy();
-    switch (lattice.id()) {
-      case lattice::lattice_id::SQUARE_NNN:
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=1.0, inputs);
-        add_parameter(name="J", defval=0.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        cc = CouplingConstant({0,"J"},{1,"J"},{2,"0"},{3,"0"});
-   	add_bondterm(name="exchange", cc="J", op::sisj_plus());
-        break;
-      case lattice::lattice_id::SIMPLECUBIC:
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=1.0, inputs);
-        add_parameter(name="th", defval=1.0, inputs);
-        add_parameter(name="J", defval=0.0, inputs);
-        // bond operator terms
-        cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
-        add_bondterm(name="hopping", cc, op::spin_hop());
-   	    add_bondterm(name="exchange", cc="J", op::sisj_plus());
-        break;
-      case lattice::lattice_id::NICKELATE_2D:
-        add_parameter(name="J", defval=0.0, inputs);
-        add_parameter(name="e_N", defval=0.0, inputs);
-        add_parameter(name="e_R", defval=0.0, inputs);
-        add_parameter(name="t_NN_100", defval=1.0, inputs);
-        add_parameter(name="t_NN_110", defval=0.0, inputs);
-        add_parameter(name="t_RR_100", defval=1.0, inputs);
-        add_parameter(name="t_RR_110", defval=0.0, inputs);
-        add_parameter(name="t_RN_200", defval=0.0, inputs);
-        // bond operators
-        cc.create(7);
-        cc.add_type(0, "t_NN_100");
-        cc.add_type(1, "t_NN_100");
-        cc.add_type(2, "t_NN_110");
-        cc.add_type(3, "t_RR_100");
-        cc.add_type(4, "t_RR_100");
-        cc.add_type(5, "t_RR_110");
-        cc.add_type(6, "t_RN_200");
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "e_N");
-        cc.add_type(1, "e_R");
-        add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-        // interaction
-        cc.create(7);
-        cc.add_type(0, "J");
-        cc.add_type(1, "J");
-        cc.add_type(2, "0");
-        cc.add_type(3, "0");
-        cc.add_type(4, "0");
-        cc.add_type(5, "0");
-        cc.add_type(6, "0");
-        add_bondterm(name="exchange", cc, op::sisj_plus());
-        break;
-
-      case lattice::lattice_id::NICKELATE_2L:
-        add_parameter(name="J", defval=0.0, inputs);
-        add_parameter(name="e_R", defval=0.0, inputs);
-        add_parameter(name="t", defval=1.0, inputs);
-        add_parameter(name="tp", defval=0.0, inputs);
-        add_parameter(name="th", defval=1.0, inputs);
-        // bond operators
-        cc.create(7);
-        cc.add_type(0, "t");
-        cc.add_type(1, "t");
-        cc.add_type(2, "tp");
-        cc.add_type(3, "t");
-        cc.add_type(4, "t");
-        cc.add_type(5, "tp");
-        cc.add_type(6, "th");
-        add_bondterm(name="hopping", cc, op::spin_hop());
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "0");
-        cc.add_type(1, "e_R");
-        add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-        // interaction
-        cc.create(7);
-        cc.add_type(0, "J");
-        cc.add_type(1, "J");
-        cc.add_type(2, "0");
-        cc.add_type(3, "0");
-        cc.add_type(4, "0");
-        cc.add_type(5, "0");
-        cc.add_type(6, "0");
-        add_bondterm(name="exchange", cc, op::sisj_plus());
-        break;
-
-      default:
-    	  // model parameters
-    	  add_parameter(name="t", defval=1.0, inputs);
-    	  add_parameter(name="J", defval=0.0, inputs);
-    	  // bond operator terms
-    	  add_bondterm(name="hopping", cc="-t", op::spin_hop());
-   	    add_bondterm(name="exchange", cc="J", op::sisj_plus());
     }
-  }
-
-  /*------------- undefined lattice--------------*/
+    if (lattice.id() == lattice::lattice_id::SQUARE_NNN) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      cc = CouplingConstant({0,"J"},{1,"J"},{2,"0"},{3,"0"});
+      add_bondterm(name="exchange", cc="J", op::sisj_plus());
+    }
+    else if (lattice.id() == lattice::lattice_id::SIMPLECUBIC) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="th", defval=1.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      add_bondterm(name="exchange", cc="J", op::sisj_plus());
+    }
+    else if (lattice.id() == lattice::lattice_id::NICKELATE_2D) {
+      add_parameter(name="J", defval=0.0, inputs);
+      add_parameter(name="e_N", defval=0.0, inputs);
+      add_parameter(name="e_R", defval=0.0, inputs);
+      add_parameter(name="t_NN_100", defval=1.0, inputs);
+      add_parameter(name="t_NN_110", defval=0.0, inputs);
+      add_parameter(name="t_RR_100", defval=1.0, inputs);
+      add_parameter(name="t_RR_110", defval=0.0, inputs);
+      add_parameter(name="t_RN_200", defval=0.0, inputs);
+      // bond operators
+      cc.create(7);
+      cc.add_type(0, "t_NN_100");
+      cc.add_type(1, "t_NN_100");
+      cc.add_type(2, "t_NN_110");
+      cc.add_type(3, "t_RR_100");
+      cc.add_type(4, "t_RR_100");
+      cc.add_type(5, "t_RR_110");
+      cc.add_type(6, "t_RN_200");
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "e_N");
+      cc.add_type(1, "e_R");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      // interaction
+      cc.create(7);
+      cc.add_type(0, "J");
+      cc.add_type(1, "J");
+      cc.add_type(2, "0");
+      cc.add_type(3, "0");
+      cc.add_type(4, "0");
+      cc.add_type(5, "0");
+      cc.add_type(6, "0");
+      add_bondterm(name="exchange", cc, op::sisj_plus());
+    }
+    else if (lattice.id() == lattice::lattice_id::NICKELATE_2L) {
+      add_parameter(name="J", defval=0.0, inputs);
+      add_parameter(name="e_R", defval=0.0, inputs);
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=0.0, inputs);
+      add_parameter(name="th", defval=1.0, inputs);
+      // bond operators
+      cc.create(7);
+      cc.add_type(0, "t");
+      cc.add_type(1, "t");
+      cc.add_type(2, "tp");
+      cc.add_type(3, "t");
+      cc.add_type(4, "t");
+      cc.add_type(5, "tp");
+      cc.add_type(6, "th");
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "0");
+      cc.add_type(1, "e_R");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      // interaction
+      cc.create(7);
+      cc.add_type(0, "J");
+      cc.add_type(1, "J");
+      cc.add_type(2, "0");
+      cc.add_type(3, "0");
+      cc.add_type(4, "0");
+      cc.add_type(5, "0");
+      cc.add_type(6, "0");
+      add_bondterm(name="exchange", cc, op::sisj_plus());
+    }
+    else {
+      // model parameters
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      // bond operator terms
+      add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      add_bondterm(name="exchange", cc="J", op::sisj_plus());
+    }
+  } // end model_name == "TJ"
   else {
     throw std::range_error("*error: modellibrary: undefined model");
   }

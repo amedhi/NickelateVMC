@@ -258,6 +258,63 @@ int Lattice::define_lattice(void)
     add_bond(type=23,ngb=1,src=15,src_offset=pos(0,0,0),tgt=6,tgt_offset=pos(0,1,0));
   }
 
+  else if (lname == "SW_GRAPHENE2") {
+    // type
+    lid = lattice_id::SW_GRAPHENE2;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    // basis vectors
+    double a = 1.0;
+    double x = a*0.6034; 
+    double y = a*0.7975; 
+    set_basis_vectors(a1=vec(x,-y,0), a2=vec(x,y,0), a3=vec(0,0,0));
+    // sites
+    Vector3d a1 = basis_vector_a1();
+    Vector3d a2 = basis_vector_a2();
+    add_basis_site(type=0,coord=0.09*(a1+a2));
+    add_basis_site(type=0,coord=(0.062*a1+0.299*a2));
+    add_basis_site(type=0,coord=(0.211*a1+0.497*a2));
+    add_basis_site(type=0,coord=(0.435*a1+0.564*a2));
+    add_basis_site(type=0,coord=(0.564*a1+0.435*a2));
+    add_basis_site(type=0,coord=(0.497*a1+0.211*a2));
+    add_basis_site(type=0,coord=(0.299*a1+0.062*a2));
+    add_basis_site(type=0,coord=(0.497*a1+0.789*a2));
+    add_basis_site(type=0,coord=(0.701*a1+0.062*a2));
+    add_basis_site(type=0,coord=(0.91*a1+0.91*a2));
+    add_basis_site(type=0,coord=(0.938*a1+0.701*a2));
+    add_basis_site(type=0,coord=(0.789*a1+0.497*a2));
+    add_basis_site(type=0,coord=(0.857*a1+0.318*a2));
+    add_basis_site(type=0,coord=(0.682*a1+0.143*a2));
+    add_basis_site(type=0,coord=(0.143*a1+0.682*a2));
+    add_basis_site(type=0,coord=(0.318*a1+0.857*a2));
+
+    // bonds
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=2,tgt_offset=pos(0,0,0));
+    add_bond(type=2,ngb=1,src=2,src_offset=pos(0,0,0),tgt=3,tgt_offset=pos(0,0,0));
+    add_bond(type=3,ngb=1,src=3,src_offset=pos(0,0,0),tgt=4,tgt_offset=pos(0,0,0));
+    add_bond(type=2,ngb=1,src=4,src_offset=pos(0,0,0),tgt=5,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=5,src_offset=pos(0,0,0),tgt=6,tgt_offset=pos(0,0,0));
+    add_bond(type=0,ngb=1,src=6,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,0,0));
+    add_bond(type=2,ngb=1,src=3,src_offset=pos(0,0,0),tgt=7,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=7,src_offset=pos(0,0,0),tgt=8,tgt_offset=pos(0,0,0));
+    add_bond(type=0,ngb=1,src=8,src_offset=pos(0,0,0),tgt=9,tgt_offset=pos(0,0,0));
+    add_bond(type=0,ngb=1,src=9,src_offset=pos(0,0,0),tgt=10,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=10,src_offset=pos(0,0,0),tgt=11,tgt_offset=pos(0,0,0));
+    add_bond(type=2,ngb=1,src=11,src_offset=pos(0,0,0),tgt=4,tgt_offset=pos(0,0,0));
+    add_bond(type=5,ngb=1,src=2,src_offset=pos(0,0,0),tgt=14,tgt_offset=pos(0,0,0));
+    add_bond(type=6,ngb=1,src=14,src_offset=pos(0,0,0),tgt=15,tgt_offset=pos(0,0,0));
+    add_bond(type=5,ngb=1,src=15,src_offset=pos(0,0,0),tgt=7,tgt_offset=pos(0,0,0));
+    add_bond(type=5,ngb=1,src=11,src_offset=pos(0,0,0),tgt=12,tgt_offset=pos(0,0,0));
+    add_bond(type=6,ngb=1,src=12,src_offset=pos(0,0,0),tgt=13,tgt_offset=pos(0,0,0));
+    add_bond(type=5,ngb=1,src=13,src_offset=pos(0,0,0),tgt=5,tgt_offset=pos(0,0,0));
+
+    add_bond(type=4,ngb=1,src=12,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=4,ngb=1,src=10,src_offset=pos(0,0,0),tgt=14,tgt_offset=pos(1,0,0));
+    add_bond(type=0,ngb=1,src=9,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=4,ngb=1,src=8,src_offset=pos(0,0,0),tgt=13,tgt_offset=pos(0,1,0));
+    add_bond(type=4,ngb=1,src=15,src_offset=pos(0,0,0),tgt=6,tgt_offset=pos(0,1,0));
+  }
+
   /*------------- undefined lattice--------------*/
   else {
     throw std::range_error("error: latticelibrary: undefined lattice");
