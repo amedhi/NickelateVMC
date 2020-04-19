@@ -27,7 +27,7 @@ bc2 = "antiperiodic"
 model = "HUBBARD"
 t = 1.0
 #J = 0.35
-U = 8.0
+U = 6.0
 
 #---------------------------------------------
 # Variational wavefunction
@@ -35,17 +35,17 @@ U = 8.0
 wavefunction = "DWAVE_SC"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
-hole_doping = 0.16
-gfactor = 0.3037000
+hole_doping = 0.00
+gfactor = 0.58
 delta_sc = 0.08
-mu = -0.4263000
-mu_variational = "YES"
+#mu = -0.4263000
+#mu_variational = "YES"
 as_func_of = "hole_doping"
 
 #---------------------------------------------
 # List of observable to calculate:
 #---------------------------------------------
-Energy = "YES"
+Energy = "NO"
 EnergyGradient = "NO"
 Magnetization = "NO"
 SC_Correlation = "YES"

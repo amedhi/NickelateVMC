@@ -39,18 +39,14 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   model::CouplingConstant cc;
   if (order_type_==bcs::swave) {
     order_name_ = "s-wave";
-    if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE2) {
+    if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE) {
       mf_model_.add_parameter(name="t0", defval=1.0, inputs);
       mf_model_.add_parameter(name="t1", defval=1.0, inputs);
       mf_model_.add_parameter(name="t2", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t3", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t4", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t5", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t6", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       // bond operator terms
-      cc.create(7);
-      for (int i=0; i<7; ++i) {
+      cc.create(3);
+      for (int i=0; i<3; ++i) {
         cc.add_type(i, "-t"+std::to_string(i));
       }
       mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());

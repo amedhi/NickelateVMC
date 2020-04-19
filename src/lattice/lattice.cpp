@@ -305,6 +305,12 @@ int Lattice::add_bond(const unsigned& type, const unsigned& ngb, const unsigned&
   return Unitcell::add_bond(type, ngb, src_id, src_offset, tgt_id, tgt_offset);
 }
 
+int Lattice::add_bond(const unsigned& type, const unsigned& src_id, const Vector3i& src_offset,
+    const unsigned& tgt_id, const Vector3i& tgt_offset)
+{
+  return Unitcell::add_bond(type, 1, src_id, src_offset, tgt_id, tgt_offset);
+}
+
 int Lattice::add_bond(const Bond& b)
 { 
   return Unitcell::add_bond(b);

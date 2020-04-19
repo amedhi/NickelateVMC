@@ -27,7 +27,7 @@ const unsigned MAX_BOND_TYPES = 40;
 
 /*---------------lattice types-----------------*/
 enum class lattice_id {
-  UNDEFINED, SQUARE, SQUARE_NNN, CHAIN, HONEYCOMB, SW_GRAPHENE, SW_GRAPHENE2, SIMPLECUBIC, 
+  UNDEFINED, SQUARE, SQUARE_NNN, CHAIN, HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, 
   NICKELATE, NICKELATE_2D, NICKELATE_2L
 };
 
@@ -204,6 +204,8 @@ public:
   int add_basis_site(const unsigned& type, const unsigned& atomid, const Vector3d& site_coord);
   int add_basis_site(const unsigned& type, const Vector3d& site_coord);
   int add_bond(const unsigned& type, const unsigned& ngb, const unsigned& src_id, const Vector3i& src_offset,
+    const unsigned& tgt_id, const Vector3i& tgt_offset); 
+  int add_bond(const unsigned& type, const unsigned& src_id, const Vector3i& src_offset,
     const unsigned& tgt_id, const Vector3i& tgt_offset); 
   int add_bond(const Bond& b); 
 
