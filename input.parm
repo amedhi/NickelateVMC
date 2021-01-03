@@ -15,8 +15,8 @@ prefix=""
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 10
-lsize2 = 10
+lsize1 = 8
+lsize2 = 8
 bc1 = "periodic"
 bc2 = "antiperiodic"
 
@@ -27,7 +27,7 @@ bc2 = "antiperiodic"
 model = "HUBBARD"
 t = 1.0
 #J = 0.35
-U = 6.0
+U = 4.0
 
 #---------------------------------------------
 # Variational wavefunction
@@ -36,8 +36,8 @@ wavefunction = "DWAVE_SC"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.00
-gfactor = 0.58
-delta_sc = 0.08
+gfactor = 0.5 #0.58
+delta_sc = 0.5
 #mu = -0.4263000
 #mu_variational = "YES"
 as_func_of = "hole_doping"
@@ -45,10 +45,10 @@ as_func_of = "hole_doping"
 #---------------------------------------------
 # List of observable to calculate:
 #---------------------------------------------
-Energy = "NO"
+Energy = "YES"
 EnergyGradient = "NO"
 Magnetization = "NO"
-SC_Correlation = "YES"
+SC_Correlation = "NO"
 SiteOccupancy = "NO"
 
 

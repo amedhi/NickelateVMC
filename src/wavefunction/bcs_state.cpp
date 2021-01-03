@@ -112,23 +112,64 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   }
   else if (order_type_==bcs::d_plus_id) {
     order_name_ = "d+id";
-    mf_model_.add_parameter(name="t", defval=1.0, inputs);
-    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-    mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-    mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-    // pairing term
-    double theta = 2.0*pi()/3.0;
-    double theta2 = 2.0*theta;
-    mf_model_.add_constant("theta",theta);
-    mf_model_.add_constant("theta2",theta2);
-    cc = CouplingConstant({0,"delta_sc"}, {1,"exp(i*theta)*delta_sc"}, {2,"exp(i*theta2)*delta_sc"});
-    mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-    // variational parameters
-    varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
+    if (graph.lattice().id()==lattice::lattice_id::SQUARE_NNN) {
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // pairing term
+      double theta = 2.0*pi()/3.0;
+      double theta2 = 2.0*theta;
+      mf_model_.add_constant("theta",theta);
+      mf_model_.add_constant("theta2",theta2);
+      cc = CouplingConstant({0,"delta_sc"}, {1,"exp(i*theta)*delta_sc"}, {2,"exp(i*theta2)*delta_sc"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      // variational parameters
+      varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
+    }
   }
   else if (order_type_==bcs::custom_sc) {
     order_name_ = "custom_sc";
-    if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
+    if (graph.lattice().id()==lattice::lattice_id::SQUARE_IONIC) {
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="tp", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_d", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_xy", defval=0.0, inputs);
+      mf_model_.add_parameter(name="P", defval=0.0, inputs);
+      mf_model_.add_parameter(name="m", defval=0.0, inputs);
+
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+      // SC pairing term
+      cc = CouplingConstant({0,"delta_d"},{1,"-delta_d"},
+        {2,"-delta_xy"},{3,"delta_xy"});
+      //mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      // site term
+      cc.create(2);
+      cc.add_type(0, "P-m");
+      cc.add_type(1, "m-P");
+      //mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
+      cc.create(2);
+      cc.add_type(0, "P+m");
+      cc.add_type(1, "-(P+m)");
+      //mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_d");
+      varparms_.add("delta_d",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("delta_xy");
+      varparms_.add("delta_xy",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("P");
+      varparms_.add("P", defval,lb=-1.0,ub=+1.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("m");
+      varparms_.add("m", defval,lb=0.0,ub=+1.0,dh=0.1);
+    }
+    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
         mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
         mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
         mf_model_.add_parameter(name="t_NN_100", defval=0.0, inputs);

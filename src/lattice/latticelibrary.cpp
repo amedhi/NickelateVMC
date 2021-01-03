@@ -54,6 +54,29 @@ int Lattice::define_lattice(void)
     add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(-1,1,0));
   }
 
+  else if (lname == "SQUARE_IONIC") {
+    // type
+    lid = lattice_id::SQUARE_IONIC;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    // basis vectors
+    double a = 1.0;
+    double b = std::sqrt(2.0)*a;
+    set_basis_vectors(a1=vec(b,0,0), a2=vec(0,b,0), a3=vec(0,0,0));
+    // add sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(0.5*b,0.5*b,0));
+    // add bonds
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=0,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+  }
+
   else if (lname == "SIMPLE_CUBIC") {
     // type
     lid = lattice_id::SIMPLECUBIC;
