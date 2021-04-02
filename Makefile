@@ -82,17 +82,18 @@ HDRS=    scheduler/mpi_comm.h \
 	 vmc/vmc.h \
 	 vmc/simulator.h \
 	 vmcpp.h \
+#-------------------------------------------------------------
 VMC_HDRS = $(addprefix src/,$(HDRS))
 MUPARSER_LIB = $(PROJECT_ROOT)/src/expression/muparserx/libmuparserx.a
 #-------------------------------------------------------------
 # Target
 ifeq ($(WAVEFUNC), REAL)
-TAGT=a.out
+  TAGT=a.out
 else
-TAGT=c.out
+  TAGT=c.out
 endif
 #ifeq ($(MPI), HAVE_BOOST_MPI)
-#TAGT=v.out
+#  TAGT=v.out
 #endif
 
 # Put all auto generated stuff to this build dir.
@@ -104,25 +105,23 @@ endif
 OBJS=$(patsubst %.cpp,$(BUILD_DIR)/%.o,$(VMC_SRCS))
 # GCC/Clang will create these .d files containing dependencies.
 DEPS=$(patsubst %.o,%.d,$(OBJS)) 
-# compiler flags
 
 .PHONY: all
 all: $(TAGT) #$(INCL_HDRS)
 
 $(TAGT): $(OBJS) $(MUPARSER_LIB)
-	$(VMC_CXX) -o $(TAGT) $(OBJS) $(VMC_LDFLAGS) $(VMC_LIBS) $(MUPARSER_LIB)
-
+	$(CXX) -o $(TAGT) $(OBJS) $(LDFLAGS) $(LIBS) $(MUPARSER_LIB)
 
 %.o: %.cpp
-	$(VMC_CXX) -c $(VMC_CXXFLAGS) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 # Include all .d files
 -include $(DEPS)
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
-	@echo "$(VMC_CXX) -c $(VMC_CXXFLAGS) -o $(@F) $(<F)"
-	@$(VMC_CXX) -MMD -c $(VMC_CXXFLAGS) -o $@ $<
+	@echo "$(CXX) -c $(CXXFLAGS) -o $(@F) $(<F)"
+	@$(CXX) -MMD -c $(CXXFLAGS) -o $@ $<
 
 $(VMC_INCLDIR)/%.h: %.h 
 	@mkdir -p $(@D)
