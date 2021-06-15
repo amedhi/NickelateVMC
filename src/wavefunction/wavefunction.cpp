@@ -20,10 +20,13 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
   if (name_ == "FERMISEA") {
     groundstate_.reset(new Fermisea(inputs,graph));
   }
-  else if (name_ == "SWAVE_SC") {
+  else if (name_ == "SC_SWAVE") {
     groundstate_.reset(new BCS_State(bcs::swave,inputs,graph));
   }
-  else if (name_ == "DWAVE_SC") {
+  else if (name_ == "SC_EXTENDED_SWAVE") {
+    groundstate_.reset(new BCS_State(bcs::extended_swave,inputs,graph));
+  }
+  else if (name_ == "SC_DWAVE") {
     groundstate_.reset(new BCS_State(bcs::dwave,inputs,graph));
   }
   else if (name_ == "SC_D+ID") {

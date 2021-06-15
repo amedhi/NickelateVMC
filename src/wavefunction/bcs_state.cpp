@@ -39,6 +39,70 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   model::CouplingConstant cc;
   if (order_type_==bcs::swave) {
     order_name_ = "s-wave";
+
+    if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      // s-wave site pairing
+      mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_sc");
+      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
+    }
+
+    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+      mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
+      mf_model_.add_parameter(name="t", defval=1.0, inputs);
+      mf_model_.add_parameter(name="tp", defval=0.0, inputs);
+      mf_model_.add_parameter(name="th", defval=0.0, inputs);
+      mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
+      mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
+      mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
+      mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
+
+      // bond operators
+      cc.create(7);
+      cc.add_type(0, "t");
+      cc.add_type(1, "t");
+      cc.add_type(2, "tp");
+      cc.add_type(3, "t");
+      cc.add_type(4, "t");
+      cc.add_type(5, "tp");
+      cc.add_type(6, "th");
+      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+      // site operators
+      cc.create(2);
+      cc.add_type(0, "-mu_N");
+      cc.add_type(1, "e_R-mu_R");
+      mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+
+      // pairing term
+      // s-wave paring on Ni & R sites
+      cc.create(2);
+      cc.add_type(0, "delta_N");
+      cc.add_type(1, "delta_R");
+      mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_N");
+      varparms_.add("delta_N", defval,lb=1.0E-3,ub=3.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("delta_R");
+      varparms_.add("delta_R",defval,lb=1.0E-3,ub=3.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("mu_N");
+      varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("mu_R");
+      varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
+      noninteracting_mu_ = false;
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
+    }
+  }
+  else if (order_type_==bcs::extended_swave) {
+    order_name_ = "extended_s-wave";
     if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE) {
       mf_model_.add_parameter(name="t0", defval=1.0, inputs);
       mf_model_.add_parameter(name="t1", defval=1.0, inputs);

@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2020-04-19 00:03:22
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2021-06-14 20:05:32
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -116,6 +116,7 @@ int Fermisea::init(const input::Parameters& inputs,
     cc.add_type(1, "e_R");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
+
   else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t", defval=1.0, inputs);

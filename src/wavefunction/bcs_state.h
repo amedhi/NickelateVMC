@@ -21,7 +21,7 @@
 
 namespace var {
 
-enum class bcs {swave, dwave, d_plus_id, af_swave, af_dwave, custom_sc};
+enum class bcs {swave, extended_swave, dwave, d_plus_id, af_swave, af_dwave, custom_sc};
 
 class BCS_State : public GroundState
 {

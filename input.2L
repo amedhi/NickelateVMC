@@ -1,0 +1,58 @@
+#---------------------------------------
+#    	      ~VMC Simulation~           
+#    	      Input Parameters           
+#---------------------------------------
+#---------------------------------------
+job = "VMC Simulation"
+optimizing_run = "NO"
+mode = "NEW"
+print_level = -2
+prefix = ""
+#---------------------------------------
+lattice = "NICKELATE_2L"
+lsize1 = 10
+lsize2 = 10
+bc1 = "periodic"
+bc2 = "antiperiodic"
+#---------------------------------------
+model = "HUBBARD"
+e_R   =   2.500000
+t     =  -1.000000
+tp    =   0.100000
+th    =  -0.200000
+U     =   6.000000
+#---------------------------------------
+wavefunction = "CUSTOM_SC"
+#wavefunction = "FERMISEA"
+gutzwiller_proj = "YES"
+hole_doping = -0.5 #   0.160000
+gfactor =   0.39
+delta_N =   0.06
+delta_R =   0.02, 0.02, 0.2
+mu_N =  -0.5
+mu_R =   1.0
+#as_func_of = "hole_doping"
+as_func_of = "delta_R"
+#---------------------------------------
+Energy = "YES"
+EnergyGradient = "NO"
+Magnetization = "NO"
+SC_Correlation = "NO"
+SiteOccupancy = "NO"
+#---------------------------------------
+rng_seed = 0
+measure_steps = 500000
+warmup_steps = 5000
+min_interval = 3
+max_interval = 10
+#---------------------------------------
+sr_progress_stdout = "YES"
+sr_progress_log = "YES"
+sr_measure_steps = 10000
+sr_opt_samples = 6
+sr_max_iter = 200
+sr_start_tstep =   0.080000
+sr_flat_tail_len = 20
+sr_random_start = "YES"
+sr_rslope_tol =   0.010000
+sr_aslope_tol =   0.000010

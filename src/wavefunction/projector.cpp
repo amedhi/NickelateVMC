@@ -17,7 +17,7 @@ void WavefunProjector::init(const input::Parameters& parms)
   if (gutzwiller_proj_) {
     g = parms.set_value("gfactor", 1.0);
     if (g<0.0) throw std::range_error("WavefunProjector::init: out-of-range 'g'-value.");
-    varparms_.add("gfactor", g, 1.0E-4, 1.0);
+    varparms_.add("gfactor", g, 1.0E-4, 10.0);
   }
   //pfactors_.insert({"g", g});
   // gw ratio
@@ -105,7 +105,8 @@ void WavefunProjector::set_gw_ratio(void)
 { 
   double g = gw_factor();
   //std::cout << "### g = " << g << "\n";
-  if (g<0.0 || g >1.0) throw std::range_error("WavefunProjector::set_gw_ratio: out-of-range 'g'-value");
+  //if (g<0.0 || g >1.0) throw std::range_error("WavefunProjector::set_gw_ratio: out-of-range 'g'-value");
+  if (g<0.0) throw std::range_error("WavefunProjector::set_gw_ratio: out-of-range 'g'-value");
   gw_ratio_[0] = 1.0/(g*g);  // nd_increament = -2
   gw_ratio_[1] = 1.0/g;      // nd_increament = -1
   gw_ratio_[2] = 1.0;        // nd_increament =  0

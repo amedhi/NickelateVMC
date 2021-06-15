@@ -32,7 +32,7 @@ U = 4.0
 #---------------------------------------------
 # Variational wavefunction
 #---------------------------------------------
-wavefunction = "DWAVE_SC"
+wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.00

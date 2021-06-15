@@ -150,6 +150,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       cc.add_type(1, "0");
       add_siteterm(name="hubbard", cc, op::hubbard_int());
     }
+
     else if (lattice.id() == lattice::lattice_id::NICKELATE_2L) {
       add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="e_R", defval=0.0, inputs);
@@ -177,6 +178,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       cc.add_type(1, "0");
       add_siteterm(name="hubbard", cc, op::hubbard_int());
     }
+
     else if (lattice.id() == lattice::lattice_id::SW_GRAPHENE) {
       add_parameter(name="t0", defval=1.0, inputs);
       add_parameter(name="t1", defval=1.0, inputs);
