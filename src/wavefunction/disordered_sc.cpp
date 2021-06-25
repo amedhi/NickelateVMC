@@ -14,8 +14,9 @@
 
 namespace var {
 
-DisorderedSC::DisorderedSC(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
-  : GroundState(true)
+DisorderedSC::DisorderedSC(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
+    const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+  : GroundState(order, pair_symm)
 {
   init(inputs, graph);
 }

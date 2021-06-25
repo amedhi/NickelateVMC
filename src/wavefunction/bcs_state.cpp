@@ -10,15 +10,14 @@
 
 namespace var {
 
-BCS_State::BCS_State(const bcs& order_type, const input::Parameters& inputs, 
-    const lattice::LatticeGraph& graph) 
-  : GroundState(true)
+BCS_State::BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
+    const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+  : GroundState(order,pair_symm)
 {
-  init(order_type, inputs, graph);
+  init(inputs, graph);
 }
 
-int BCS_State::init(const bcs& order_type, const input::Parameters& inputs, 
-  const lattice::LatticeGraph& graph)
+int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
 {
   name_ = "BCS";
   // sites & bonds
@@ -30,16 +29,115 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   large_number_ = 5.0E+4;
 
   // build MF Hamiltonian
-  order_type_ = order_type;
   varparms_.clear();
   mf_model_.init(graph.lattice());
   std::string name;
   double defval, lb, ub, dh;
   using namespace model;
   model::CouplingConstant cc;
+
+  using order_t = MF_Order::order_t;
+  using pairing_t = MF_Order::pairing_t;
+//---------------------------------------------------------------------------
+  if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+    mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+    if (order()==order_t::SC && pair_symm()==pairing_t::SWAVE) {
+      order_name_ = "SC-SWAVE";
+      mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
+    }
+    else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
+      order_name_ = "SC-DWAVE";
+      cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    }
+    else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
+      order_name_ = "SC-Extended_S";
+      cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
+    }
+    // variational parameters
+    defval = mf_model_.get_parameter_value("delta_sc");
+    varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
+    add_chemical_potential(inputs);
+  }
+//---------------------------------------------------------------------------
+  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+    mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+    mf_model_.add_parameter(name="tp", defval=0.0, inputs);
+    mf_model_.add_parameter(name="th", defval=0.0, inputs);
+    mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
+    mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
+    mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
+    mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
+
+    // site operators
+    cc.create(2);
+    cc.add_type(0, "-mu_N");
+    cc.add_type(1, "e_R-mu_R");
+    mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+
+    // bond operators
+    cc.create(7);
+    cc.add_type(0, "-t");
+    cc.add_type(1, "-t");
+    cc.add_type(2, "-tp");
+    cc.add_type(3, "-t");
+    cc.add_type(4, "-t");
+    cc.add_type(5, "-tp");
+    cc.add_type(6, "-th");
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    // pairing term
+    if (order()==order_t::SC && pair_symm()==pairing_t::SWAVE) {
+      order_name_ = "SC-SWAVE";
+      cc.create(2);
+      cc.add_type(0, "delta_N");
+      cc.add_type(1, "delta_R");
+      mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
+    }
+    else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
+      order_name_ = "SC-DWAVE";
+      cc.create(7);
+      cc.add_type(0, "delta_N");
+      cc.add_type(1, "-delta_N");
+      cc.add_type(2, "0");
+      cc.add_type(3, "delta_R");
+      cc.add_type(4, "-delta_R");
+      cc.add_type(5, "0");
+      cc.add_type(6, "0");
+      mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
+    }
+    // variational parameters
+    defval = mf_model_.get_parameter_value("delta_N");
+    varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
+    defval = mf_model_.get_parameter_value("delta_R");
+    varparms_.add("delta_R",defval,lb=1.0E-3,ub=6.0,dh=0.02);
+    defval = mf_model_.get_parameter_value("mu_N");
+    varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
+    defval = mf_model_.get_parameter_value("mu_R");
+    varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
+    noninteracting_mu_ = false;
+  }
+//---------------------------------------------------------------------------
+  else {
+    throw std::range_error("BCS_State::BCS_State: undefined for the lattice");
+  }
+
+
+//******************************************************************************
+#ifdef DEPRECATED_STUFF
+
   if (order_type_==bcs::swave) {
     order_name_ = "s-wave";
-
     if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
@@ -49,7 +147,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
       mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
       // variational parameters
       defval = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
+      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
     }
 
     else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
@@ -88,9 +186,9 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
 
       // variational parameters
       defval = mf_model_.get_parameter_value("delta_N");
-      varparms_.add("delta_N", defval,lb=1.0E-3,ub=3.0,dh=0.01);
+      varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
       defval = mf_model_.get_parameter_value("delta_R");
-      varparms_.add("delta_R",defval,lb=1.0E-3,ub=3.0,dh=0.01);
+      varparms_.add("delta_R",defval,lb=1.0E-3,ub=6.0,dh=0.02);
       defval = mf_model_.get_parameter_value("mu_N");
       varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
       defval = mf_model_.get_parameter_value("mu_R");
@@ -445,6 +543,7 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
   else {
     throw std::range_error("BCS_State::BCS_State: unidefined bcs order");
   }
+
   // chemical potential
   if (graph.lattice().id()==lattice::lattice_id::NICKELATE ||
       graph.lattice().id()==lattice::lattice_id::NICKELATE_2D ) {
@@ -456,8 +555,11 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     if (info == 0) noninteracting_mu_ = false;
     else noninteracting_mu_ = true;
     if (inputs.set_value("mu_variational", false, info)) 
-      varparms_.add("mu",defval=0.0,lb=-3.0,ub=+3.0,dh=0.1);
+      varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
   }
+#endif //DEPRECATED_STUFF
+//******************************************************************************
+
 
   // finalize MF Hamiltonian
   mf_model_.finalize(graph);
@@ -483,6 +585,23 @@ int BCS_State::init(const bcs& order_type, const input::Parameters& inputs,
     work_k_[k].resize(kblock_dim_,kblock_dim_);
   } 
   return 0;
+}
+
+void BCS_State::add_chemical_potential(const input::Parameters& inputs)
+{
+  // default handling
+  int info;
+  double defval, lb, ub, dh;
+  std::string name;
+  model::CouplingConstant cc;
+  using namespace model;
+  mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
+  mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+  if (info == 0) noninteracting_mu_ = false;
+  else noninteracting_mu_ = true;
+  if (inputs.set_value("mu_variational", false, info)) {
+    varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
+  }
 }
 
 std::string BCS_State::info_str(void) const

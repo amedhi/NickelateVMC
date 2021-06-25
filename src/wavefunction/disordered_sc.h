@@ -41,9 +41,9 @@ private:
 class DisorderedSC : public GroundState
 {
 public:
-  DisorderedSC() : GroundState(true) {}
-  DisorderedSC(const input::Parameters& inputs, 
-    const lattice::LatticeGraph& graph); 
+  DisorderedSC() : GroundState() {}
+  DisorderedSC(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
+    const input::Parameters& inputs, const lattice::LatticeGraph& graph); 
   ~DisorderedSC() {} 
   int init(const input::Parameters& inputs, 
     const lattice::LatticeGraph& graph);

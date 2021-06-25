@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2021-06-14 20:05:32
+* @Last Modified time: 2021-06-25 16:47:44
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -12,8 +12,9 @@
 
 namespace var {
 
-Fermisea::Fermisea(const input::Parameters& inputs, const lattice::LatticeGraph& graph) 
-  : GroundState(true)
+Fermisea::Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
+  const lattice::LatticeGraph& graph) 
+  : GroundState(order, MF_Order::pairing_t::null)
 {
   init(inputs, graph);
 }
@@ -26,6 +27,7 @@ int Fermisea::init(const input::Parameters& inputs,
   num_sites_ = graph.num_sites();
   num_bonds_ = graph.num_bonds();
   // particle number
+  set_nonmagnetic(true);
   set_particle_num(inputs);
 
   // build MF Hamiltonian
@@ -125,13 +127,13 @@ int Fermisea::init(const input::Parameters& inputs,
 
     // bond operators
     cc.create(7);
-    cc.add_type(0, "t");
-    cc.add_type(1, "t");
-    cc.add_type(2, "tp");
-    cc.add_type(3, "t");
-    cc.add_type(4, "t");
-    cc.add_type(5, "tp");
-    cc.add_type(6, "th");
+    cc.add_type(0, "-t");
+    cc.add_type(1, "-t");
+    cc.add_type(2, "-tp");
+    cc.add_type(3, "-t");
+    cc.add_type(4, "-t");
+    cc.add_type(5, "-tp");
+    cc.add_type(6, "-th");
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
     // site operators
     cc.create(2);

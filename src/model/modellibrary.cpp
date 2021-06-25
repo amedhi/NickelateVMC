@@ -159,13 +159,13 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="th", defval=1.0, inputs);
       // bond operators
       cc.create(7);
-      cc.add_type(0, "t");
-      cc.add_type(1, "t");
-      cc.add_type(2, "tp");
-      cc.add_type(3, "t");
-      cc.add_type(4, "t");
-      cc.add_type(5, "tp");
-      cc.add_type(6, "th");
+      cc.add_type(0, "-t");
+      cc.add_type(1, "-t");
+      cc.add_type(2, "-tp");
+      cc.add_type(3, "-t");
+      cc.add_type(4, "-t");
+      cc.add_type(5, "-tp");
+      cc.add_type(6, "-th");
       add_bondterm(name="hopping", cc, op::spin_hop());
       // site operators
       cc.create(2);

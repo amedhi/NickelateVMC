@@ -14,12 +14,11 @@
 
 namespace var {
 
-
 class Fermisea : public GroundState
 {
 public:
-  Fermisea() : GroundState(true) {}
-  Fermisea(const input::Parameters& inputs, 
+  Fermisea() : GroundState() {}
+  Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
     const lattice::LatticeGraph& graph); 
   ~Fermisea() {} 
   int init(const input::Parameters& inputs, 

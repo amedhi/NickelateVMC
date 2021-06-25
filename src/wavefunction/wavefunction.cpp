@@ -17,26 +17,28 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
 {
   name_ = inputs.set_value("wavefunction", "NONE");
   boost::to_upper(name_);
+  using order_t = MF_Order::order_t;
+  using pairing_t = MF_Order::pairing_t;
   if (name_ == "FERMISEA") {
-    groundstate_.reset(new Fermisea(inputs,graph));
+    groundstate_.reset(new Fermisea(order_t::null,inputs,graph));
   }
   else if (name_ == "SC_SWAVE") {
-    groundstate_.reset(new BCS_State(bcs::swave,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,graph));
   }
-  else if (name_ == "SC_EXTENDED_SWAVE") {
-    groundstate_.reset(new BCS_State(bcs::extended_swave,inputs,graph));
+  else if (name_ == "SC_EXTENDED_S") {
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::EXTENDED_S,inputs,graph));
   }
   else if (name_ == "SC_DWAVE") {
-    groundstate_.reset(new BCS_State(bcs::dwave,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,graph));
   }
   else if (name_ == "SC_D+ID") {
-    groundstate_.reset(new BCS_State(bcs::d_plus_id,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,graph));
   }
   else if (name_ == "CUSTOM_SC") {
-    groundstate_.reset(new BCS_State(bcs::custom_sc,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,graph));
   }
   else if (name_ == "DISORDERED_SC") {
-    groundstate_.reset(new DisorderedSC(inputs,graph));
+    groundstate_.reset(new DisorderedSC(order_t::SC,pairing_t::DWAVE,inputs,graph));
   }
   else {
     throw std::range_error("Wavefunction::Wavefunction: unidefined wavefunction");

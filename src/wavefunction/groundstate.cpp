@@ -63,7 +63,7 @@ void GroundState::set_particle_num(const input::Parameters& inputs)
 
   band_filling_ = 1.0-hole_doping_inp_;
   int num_sites = static_cast<int>(num_sites_);
-  if (pairing_type_) {
+  if (nonmagnetic_) {
     int n = static_cast<int>(std::round(0.5*band_filling_*num_sites));
     if (n<0 || n>num_sites) throw std::range_error("Wavefunction:: hole doping out-of-range");
     num_upspins_ = static_cast<unsigned>(n);
