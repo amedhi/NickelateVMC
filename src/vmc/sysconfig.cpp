@@ -605,6 +605,60 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
   return 0.5 * bc_phase * net_ratio;
 }
 
+amplitude_t SysConfig::apply_sitepair_hop(const int& i_cdag, const int& i_c) const
+{
+  // Evaluates the following operator:
+  //   F_{ab}(i,j) = c^{\dag}_{i\up}c^{\dag}_{i\dn}c^{\dag}_{j\dn}c^{\dag}_{j\up}
+  //               = c^{\dag}_{i\dn}c^{\dag}_{j\dn} x c^{\dag}_{i\up}c^{\dag}_{j\up}
+  int frsite = i_c;
+  int tosite = i_cdag;
+
+  int upspin, dnspin;
+  amplitude_t det_ratio1, det_ratio2;
+  amplitude_t net_ratio(0.0);
+  // upspin hop
+  if (!op_cdagc_up(frsite, tosite)) return net_ratio;
+  upspin = which_upspin();
+  if (frsite==tosite) {
+    det_ratio1 = amplitude_t(1.0);
+  }
+  else {
+    wf.get_amplitudes(psi_row, tosite, dnspin_sites());
+    det_ratio1 = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
+  }
+  if (std::abs(det_ratio1) < dratio_cutoff()) return net_ratio; // for safety
+
+  // dnspin hop
+  if (!op_cdagc_dn(frsite, tosite)) return net_ratio;
+  dnspin = which_dnspin();
+  if (frsite==tosite) {
+    det_ratio2 = amplitude_t(1.0);
+  }
+  else {
+    wf.get_amplitudes(psi_col, upspin_sites(), tosite);
+    // since one upspin have moved
+    wf.get_amplitudes(psi_col(upspin), tosite, tosite);
+    // updated 'dnspin'-th row of psi_inv
+    amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
+    // elements other than 'upspin'-th
+    for (int i=0; i<upspin; ++i) {
+      amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+      inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+    }
+    for (int i=upspin+1; i<num_upspins_; ++i) {
+      amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+      inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+    }
+    inv_row(upspin) = ratio_inv * psi_inv(dnspin,upspin);
+    // ratio for the dnspin hop
+    det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
+  }
+  // net ratio for up & dn spin hop
+  net_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
+
+  return net_ratio;
+}
+
 void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
 {
   // grad_logpsi wrt pj parameters

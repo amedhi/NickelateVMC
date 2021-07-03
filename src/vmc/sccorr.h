@@ -39,7 +39,7 @@ class SC_Correlation : public mcdata::MC_Observable
 public:
   using site_t = lattice::LatticeGraph::site_descriptor;
   using MC_Observable::MC_Observable;
-  void setup(const lattice::LatticeGraph& graph);
+  void setup(const lattice::LatticeGraph& graph, const var::MF_Order::pairing_t& pairsymm);
   void measure(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
     const SysConfig& config);
   //const unsigned& num_site_pairs(void) const { return src_pairs_size_; }
@@ -49,6 +49,7 @@ public:
     const std::vector<std::string>& xvars) override;
   void print_result(const std::vector<double>& xvals) override; 
 private:
+  var::MF_Order::pairing_t pair_symm_{var::MF_Order::pairing_t::DWAVE};
   int num_basis_sites_{1};
   int max_dist_{0};
   symmetry_site_pairs symm1_pairs_;
@@ -66,6 +67,10 @@ private:
   std::vector<Eigen::MatrixXd> bond_pair_corr_;
   std::vector<Eigen::MatrixXi> num_symm_pairs_;
   */
+  void measure_swave(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+    const SysConfig& config);
+  void measure_dwave(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+    const SysConfig& config);
 };
 
 // to fit F(r)

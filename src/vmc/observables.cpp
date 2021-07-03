@@ -54,7 +54,7 @@ void ObservableSet::init(const input::Parameters& inputs,
   // set up observables
   if (energy_) energy_.setup(graph,model);
   if (energy_grad_) energy_grad_.setup(config);
-  if (sc_corr_) sc_corr_.setup(graph);
+  if (sc_corr_) sc_corr_.setup(graph,config.wavefunc().pair_symmetry());
   if (sr_matrix_) sr_matrix_.setup(graph,config);
   if (site_occupancy_) site_occupancy_.setup(graph,config);
 }

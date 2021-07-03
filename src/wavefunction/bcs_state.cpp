@@ -120,11 +120,11 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     defval = mf_model_.get_parameter_value("delta_N");
     varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
     defval = mf_model_.get_parameter_value("delta_R");
-    varparms_.add("delta_R",defval,lb=1.0E-3,ub=6.0,dh=0.02);
+    varparms_.add("delta_R",defval,lb=0.0,ub=6.0,dh=0.02);
     defval = mf_model_.get_parameter_value("mu_N");
-    varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
+    varparms_.add("mu_N", defval,lb=-5.0,ub=+5.0,dh=0.1);
     defval = mf_model_.get_parameter_value("mu_R");
-    varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
+    varparms_.add("mu_R", defval,lb=-5.0,ub=+5.0,dh=0.1);
     noninteracting_mu_ = false;
   }
 //---------------------------------------------------------------------------

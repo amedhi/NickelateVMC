@@ -27,7 +27,7 @@ public:
   ~MF_Order() {} 
   int id(void) const;
   void set_order(const MF_Order::order_t& order) { order_=order; }
-  void set_pair_symm(const MF_Order::pairing_t& pairsymm) { pairing_=pairsymm; }
+  void set_pair_symmetry(const MF_Order::pairing_t& pairsymm) { pairing_=pairsymm; }
   const MF_Order::order_t& order(void) const { return order_; }
   const MF_Order::pairing_t& pair_symm(void) { return pairing_; } 
   bool pairing_type(void) const 

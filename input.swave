@@ -10,38 +10,40 @@ print_level = -2
 prefix = "swave"
 #---------------------------------------
 lattice = "NICKELATE_2L"
+#lattice = "SQUARE"
 lsize1 = 10
 lsize2 = 10
 bc1 = "periodic"
 bc2 = "periodic"
 #---------------------------------------
 model = "HUBBARD"
-e_R   =   2.500000
+e_R   =  -2.500000
 t     =   1.000000
 tp    =  -0.100000
 th    =   0.200000
 U     =  -6.000000
 #---------------------------------------
-wavefunction = "SWAVE_SC"
+wavefunction = "SC_SWAVE"
 #wavefunction = "FERMISEA"
-gutzwiller_proj = "YES"
-hole_doping = 0.0 #   0.160000
-gfactor =   1.8
-delta_N =   1.0
-delta_R =   0.8
-mu_N =   0.0
-mu_R =   0.0
-as_func_of = "delta_R"
+gutzwiller_proj = "NO"
+gfactor =   1.0
+hole_doping = -0.9 #   0.160000
+#delta_sc =  1.8
+delta_N =   2.220454E+00
+delta_R =   0.0
+mu_N =   -1.787726E+00
+mu_R =   -1.787726E+00
+as_func_of = "hole_doping"
 #as_func_of = "delta_R"
 #---------------------------------------
 Energy = "YES"
 EnergyGradient = "NO"
 Magnetization = "NO"
-SC_Correlation = "NO"
+SC_Correlation = "YES"
 SiteOccupancy = "NO"
 #---------------------------------------
 rng_seed = 0
-measure_steps = 10000
+measure_steps = 50000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10

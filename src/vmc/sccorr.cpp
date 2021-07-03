@@ -11,8 +11,9 @@
 
 namespace vmc {
 
-void SC_Correlation::setup(const lattice::LatticeGraph& graph)
+void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Order::pairing_t& pairsymm)
 {
+  pair_symm_ = pairsymm;
   lattice::LatticeGraph::out_edge_iterator ei, ei_end;
   max_dist_ = graph.lattice().size1()/2+1;
   num_basis_sites_ = graph.lattice().num_basis_sites();
@@ -74,6 +75,14 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph)
     bondpair_types_[0] = std::make_pair(0,0);
     bondpair_types_[1] = std::make_pair(0,1);
   }
+
+  if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
+    bondpair_types_.resize(num_basis_sites_);
+    for (int i=0; i<num_basis_sites_; ++i) {
+      bondpair_types_[i] = std::make_pair(0,0);
+    }
+  }
+
   //corr_data_.resize(bondpair_types_.size(), max_dist_);
   corr_data_.resize(max_dist_, bondpair_types_.size());
   std::vector<std::string> elem_names;
@@ -83,6 +92,48 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph)
 }
 
 void SC_Correlation::measure(const lattice::LatticeGraph& graph, 
+  const model::Hamiltonian& model, const SysConfig& config)
+{
+  if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
+    measure_swave(graph, model, config);
+  }
+  else if (pair_symm_==var::MF_Order::pairing_t::DWAVE) {
+    measure_dwave(graph, model, config);
+  }
+  else if (pair_symm_==var::MF_Order::pairing_t::null) {
+    measure_dwave(graph, model, config);
+  }
+  else {
+    throw std::range_error("SC_Correlation::measure: not implemented for this symmetry");
+  }
+}
+
+void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph, 
+  const model::Hamiltonian& model, const SysConfig& config)
+{
+  corr_data_.setZero();
+  int i_cdag, i_c;
+  for (int d=1; d<max_dist_; ++d) {
+    for (int n=0; n<num_basis_sites_; ++n) {
+      for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
+        i_cdag = p.first;
+        i_c = p.second;
+        double term = std::real(config.apply_sitepair_hop(i_cdag,i_c));
+        corr_data_(d,n) += term;
+      }
+    }
+  }
+  for (int d=1; d<max_dist_; ++d) {
+    for (int n=0; n<num_basis_sites_; ++n) {
+      corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
+    }
+  }
+
+  // reshape add to databin
+  *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
+}
+
+void SC_Correlation::measure_dwave(const lattice::LatticeGraph& graph, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
   lattice::LatticeGraph::out_bond_iterator b1, b1_end, b2, b2_end;
