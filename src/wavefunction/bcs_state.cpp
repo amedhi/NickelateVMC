@@ -101,6 +101,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       cc.add_type(1, "delta_R");
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
     }
+
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
       order_name_ = "SC-DWAVE";
       cc.create(7);
