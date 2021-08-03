@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2021-06-25 22:45:37
+* @Last Modified time: 2021-08-01 23:20:27
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -193,6 +193,15 @@ int Fermisea::init(const input::Parameters& inputs,
   //getchar();
 
   return 0;
+}
+
+void Fermisea::update(const lattice::LatticeGraph& graph)
+{
+  // update for change in lattice BC (same structure & size)
+  // bloch basis
+  blochbasis_.construct(graph);
+  // FT matrix for transformation from 'site basis' to k-basis
+  set_ft_matrix(graph);
 }
 
 std::string Fermisea::info_str(void) const

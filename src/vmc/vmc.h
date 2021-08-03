@@ -76,6 +76,7 @@ private:
   model::Hamiltonian model;
   SysConfig config;
   SiteDisorder site_disorder_;
+  int rng_seed_;
   unsigned num_sites_;
   unsigned num_varparms_;
 

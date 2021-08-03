@@ -33,6 +33,7 @@ public:
     const bool& with_gradient=false);
   int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 
     const bool& need_psi_grad=false);
+  int rebuild(const lattice::LatticeGraph& graph);
   std::string signature_str(void) const { return wf.signature_str(); } 
   const unsigned& num_varparms(void) const { return num_varparms_; } 
   int num_particles(void) const { return num_upspins_+num_dnspins_; } 
@@ -46,20 +47,20 @@ public:
   double accept_ratio(void);
   void reset_accept_ratio(void);
   int apply(const model::op::quantum_op& qn_op, const int& site_i) const;
-  amplitude_t apply(const model::op::quantum_op& op, const int& site_i, 
-    const int& site_j, const int& bc_phase) const;
+  amplitude_t apply(const model::op::quantum_op& op, const int& fr_site, 
+    const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const;
   amplitude_t apply_bondsinglet_hop(const int& idag, const int& ia_dag,
     const int& bphase_i, const int& j, const int& ja, const int& bphase_j) const;
   amplitude_t apply_sitepair_hop(const int& i_cdag, const int& i_c) const;
   int apply_niup_nidn(const int& site_i) const;
   amplitude_t apply_upspin_hop(const int& i, const int& j,
-    const int& bc_phase) const;
+    const int& bc_state, const std::complex<double>& bc_phase) const;
   amplitude_t apply_dnspin_hop(const int& i, const int& j,
-    const int& bc_phase) const;
-  amplitude_t apply_cdagc_up(const int& i, const int& j,
-    const int& bc_phase) const;
-  amplitude_t apply_cdagc_dn(const int& i, const int& j,
-    const int& bc_phase) const;
+    const int& bc_state, const std::complex<double>& bc_phase) const;
+  amplitude_t apply_cdagc_up(const int& fr_site, const int& to_site,
+    const int& bc_state, const std::complex<double>& bc_phase) const;
+  amplitude_t apply_cdagc_dn(const int& fr_site, const int& to_site,
+    const int& bc_state, const std::complex<double>& bc_phase) const;
   amplitude_t apply_sisj_plus(const int& i, const int& j) const;
   void get_grad_logpsi(RealVector& grad_logpsi) const;
   const int& num_updates(void) const { return num_updates_; }

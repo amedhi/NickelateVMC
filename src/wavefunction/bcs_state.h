@@ -33,6 +33,7 @@ public:
   std::string info_str(void) const override; 
   void update(const input::Parameters& inputs) override;
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;
+  void update(const lattice::LatticeGraph& graph) override;
   void get_wf_amplitudes(Matrix& psi) override;
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:

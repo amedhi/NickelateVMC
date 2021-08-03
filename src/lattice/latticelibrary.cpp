@@ -26,7 +26,7 @@ int Lattice::define_lattice(void)
   if (lname == "SQUARE") {
     // type
     lid = lattice_id::SQUARE;
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
 
     // basis vectors
     set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
@@ -42,7 +42,7 @@ int Lattice::define_lattice(void)
   else if (lname == "SQUARE_NNN") {
     // type
     lid = lattice_id::SQUARE_NNN;
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
     set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
     // add sites
@@ -57,7 +57,7 @@ int Lattice::define_lattice(void)
   else if (lname == "SQUARE_IONIC") {
     // type
     lid = lattice_id::SQUARE_IONIC;
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
     double a = 1.0;
     double b = std::sqrt(2.0)*a;
@@ -95,8 +95,8 @@ int Lattice::define_lattice(void)
   /*------------- 'CHAIN' lattice--------------*/
   else if (lname == "CHAIN") {
     lid = lattice_id::CHAIN;
-    extent[dim2] = Extent{1, boundary_type::open, boundary_type::open};
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim2] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
     set_basis_vectors(a1=vec(1,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
     // add sites
@@ -227,7 +227,7 @@ int Lattice::define_lattice(void)
   else if (lname == "SW_GRAPHENE") {
     // type
     lid = lattice_id::SW_GRAPHENE;
-    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
     double a = 1.0;
     double x = a*0.6034; 
@@ -318,7 +318,54 @@ int Lattice::construct(const input::Parameters& parms)
     extent[dim].periodicity = boundary_condition(bc);
     extent[dim].bc = extent[dim].periodicity;
     if (extent[dim].bc == boundary_type::antiperiodic) extent[dim].bc = boundary_type::periodic;
+    if (extent[dim].periodicity == boundary_type::antiperiodic) {
+      extent[dim].bc_twist = pi();
+    }
+    else {
+      extent[dim].bc_twist = 0.0;
+    }
   }
+
+  //extent[0].bc_twist = 0.0;
+  //extent[1].bc_twist += two_pi()/extent[dim2].size * 2;
+  //extent[2].bc_twist = 0.0;
+  //for (unsigned dim=dim1; dim<=dim3; ++dim) {
+  //  std::cout << "twist = " << extent[dim].bc_twist << "\n";
+  //}
+  //std::cout << "\n";
+
+  
+  // number of different boundary conditions
+  int bc1_twists = parms.set_value("bc1_twists", 1, info);
+  int bc2_twists = parms.set_value("bc2_twists", 1, info);
+  int bc3_twists = parms.set_value("bc3_twists", 1, info);
+  if (extent[dim1].size==1) bc1_twists = 1;
+  if (extent[dim2].size==1) bc2_twists = 1;
+  if (extent[dim3].size==1) bc3_twists = 1;
+  num_total_twists_ = bc1_twists*bc2_twists*bc3_twists;
+  twist_angles_.resize(num_total_twists_,3);
+  // twist angles
+  double dtheta1 = two_pi()/extent[dim1].size;
+  double dtheta2 = two_pi()/extent[dim2].size;
+  double dtheta3 = two_pi()/extent[dim3].size;
+  int n = 0;
+  for (int k=0; k<bc3_twists; ++k) {
+    double step3 = k*dtheta3;
+    for (int j=0; j<bc2_twists; ++j) {
+      double step2 = j*dtheta2;
+      for (int i=0; i<bc1_twists; ++i) {
+        twist_angles_(n,0) = extent[dim1].bc_twist + i*dtheta1;
+        twist_angles_(n,1) = extent[dim2].bc_twist + step2;
+        twist_angles_(n,2) = extent[dim3].bc_twist + step3;
+        n++;
+      }
+    }
+  }
+  // check
+  //for (int i=0; i<num_total_twists_; ++i) {
+  //  std::cout << "twist["<<i<<"] = "<<twist_angles_.row(i)<<"\n";
+  //}
+  //getchar();
 
   // empty unitcell
   Unitcell::clear();
@@ -445,7 +492,7 @@ int Lattice::symmetrize_lattice(void)
   }
   Unitcell::clear_bonds();
   for (auto& b : bonds) {
-    if (connect_bond(b, sites)) {
+    if (connect_bond2(b, sites)) {
       b.reset_bravindex(Vector3i(0,0,0));
       Unitcell::add_bond(b);
     }

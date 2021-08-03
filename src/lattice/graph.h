@@ -32,7 +32,9 @@ struct VertexProperties {
 struct EdgeProperties {
   unsigned type; 
   unsigned stype; 
+  BC_state bc_state;
   int sign; 
+  std::complex<double> phase;
   unsigned vector_id; 
   Vector3d vector; 
 };
@@ -74,9 +76,11 @@ public:
     { this->operator[](*ei).type = new_val; }
   void change_type_value(const in_bond_iterator& ei, const unsigned& new_val) 
     { this->operator[](*ei).type = new_val; }
+  void update_boundary_twist(const int& twist_id);
 
   // getter functions
   const Lattice& lattice(void) const { return lattice_; }
+  const int& num_boundary_twists(void) const { return lattice_.num_boundary_twists(); }
 
   // vertex accessors
   const unsigned& num_sites(void) const { return num_vertices_; }
@@ -121,6 +125,10 @@ public:
   const int& bond_sign(const bond_iterator& ei) const { return this->operator[](*ei).sign; }
   const int& bond_sign(const in_bond_iterator& ei) const { return this->operator[](*ei).sign; }
   const int& bond_sign(const out_bond_iterator& ei) const { return this->operator[](*ei).sign; }
+  const std::complex<double>& bond_phase(const bond_iterator& ei) const { return this->operator[](*ei).phase; }
+  const std::complex<double>& bond_phase(const in_bond_iterator& ei) const { return this->operator[](*ei).phase; }
+  const std::complex<double>& bond_phase(const out_bond_iterator& ei) const { return this->operator[](*ei).phase; }
+
   const unsigned& vector_id(const bond_iterator& ei) const { return this->operator[](*ei).vector_id; }
   const unsigned& vector_id(const in_bond_iterator& ei) const { return this->operator[](*ei).vector_id; }
   const unsigned& vector_id(const out_bond_iterator& ei) const { return this->operator[](*ei).vector_id; }

@@ -21,6 +21,12 @@ void GroundState::update(const var::parm_vector& pvector, const unsigned& start_
   throw std::runtime_error("GroundState::update_parameters: function must be overriden");
 }
 
+void GroundState::update(const lattice::LatticeGraph& graph)
+{
+  throw std::runtime_error("GroundState::update: function must be overriden");
+}
+
+
 void GroundState::get_wf_amplitudes(Matrix& psi)
 {
   throw std::runtime_error("GroundState::get_wf_amplitudes: function must be overriden");

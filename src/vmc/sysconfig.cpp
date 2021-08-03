@@ -114,6 +114,13 @@ int SysConfig::build(const lattice::LatticeGraph& graph, const var::parm_vector&
   return init_config();
 }
 
+// rebuild for new lattice boundary twist
+int SysConfig::rebuild(const lattice::LatticeGraph& graph)
+{
+  wf.recompute(graph);
+  return init_config();
+}
+
 int SysConfig::init_config(void)
 {
   num_upspins_ = wf.num_upspins();
@@ -349,17 +356,17 @@ int SysConfig::inv_update_dnspin(const int& dnspin, const RowVector& psi_col,
   return 0;
 }
 
-amplitude_t SysConfig::apply(const model::op::quantum_op& qn_op, const int& site_i, 
-    const int& site_j, const int& bc_phase) const
+amplitude_t SysConfig::apply(const model::op::quantum_op& qn_op, const int& fr_site, 
+    const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const
 {
   amplitude_t term(0); 
   switch (qn_op.id()) {
     case model::op_id::cdagc_sigma:
-      term = apply_upspin_hop(site_i,site_j,bc_phase);
-      term+= apply_dnspin_hop(site_i,site_j,bc_phase);
+      term = apply_upspin_hop(fr_site,to_site,bc_state,bc_phase);
+      term+= apply_dnspin_hop(fr_site,to_site,bc_state,bc_phase);
       break;
     case model::op_id::sisj_plus:
-      term = apply_sisj_plus(site_i,site_j); 
+      term = apply_sisj_plus(fr_site,to_site); 
       break;
     default: 
       throw std::range_error("SysConfig::apply: undefined bond operator.");
@@ -390,9 +397,43 @@ int SysConfig::apply_niup_nidn(const int& site_i) const
   return op_ni_updn(site_i); 
 }
 
-amplitude_t SysConfig::apply_upspin_hop(const int& i, const int& j,
-  const int& bc_phase) const
+amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
+  const int& bc_state, const std::complex<double>& bc_phase) const
 {
+  if (site_i == site_j) return ampl_part(op_ni_up(site_i));
+  if (op_cdagc_up(site_i,site_j)) {
+    int upspin = which_upspin();
+    int delta_nd = dblocc_increament();
+    int to_site = site_j;
+    // det_ratio for the term
+    wf.get_amplitudes(psi_row, to_site, dnspin_sites());
+    amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
+    if (bc_state < 0) { // it's a boundary bond
+      return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    }
+    else {
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    }
+  }
+  else if (op_cdagc_up(site_j,site_i)) {
+    int upspin = which_upspin();
+    int delta_nd = dblocc_increament();
+    int to_site = site_i;
+    // det_ratio for the term
+    wf.get_amplitudes(psi_row, to_site, dnspin_sites());
+    amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
+    if (bc_state < 0) { // it's a boundary bond
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+    }
+    else {
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    }
+  }
+  else {
+    return amplitude_t(0.0);
+  }
+
+  /*
   if (i == j) return ampl_part(op_ni_up(i));
   if (!op_cdagc_up_plus(i,j)) return amplitude_t(0.0);
   int upspin = which_upspin();
@@ -403,10 +444,12 @@ amplitude_t SysConfig::apply_upspin_hop(const int& i, const int& j,
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
   det_ratio = ampl_part(std::conj(det_ratio));
   return amplitude_t(bc_phase) * det_ratio * pj.gw_ratio(delta_nd);
+  */
+
 }
 
 amplitude_t SysConfig::apply_cdagc_up(const int& fr_site, const int& to_site,
-  const int& bc_phase) const
+  const int& bc_state, const std::complex<double>& bc_phase) const
 {
   if (fr_site == to_site) return ampl_part(op_ni_up(fr_site));
   if (!op_cdagc_up(fr_site,to_site)) return amplitude_t(0.0);
@@ -415,13 +458,52 @@ amplitude_t SysConfig::apply_cdagc_up(const int& fr_site, const int& to_site,
   // det_ratio for the term
   wf.get_amplitudes(psi_row, to_site, dnspin_sites());
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
-  det_ratio = ampl_part(std::conj(det_ratio));
-  return amplitude_t(bc_phase) * det_ratio * pj.gw_ratio(delta_nd);
+  //det_ratio = ampl_part(std::conj(det_ratio));
+  if (bc_state < 0) { // it's a boundary bond
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+  }
+  else {
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+  }
 }
 
-amplitude_t SysConfig::apply_dnspin_hop(const int& i, const int& j,
-  const int& bc_phase) const
+amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
+  const int& bc_state, const std::complex<double>& bc_phase) const
 {
+  if (site_i == site_j) return ampl_part(op_ni_dn(site_i));
+  if (op_cdagc_dn(site_i,site_j)) {
+    int dnspin = which_dnspin();
+    int to_site = site_j;
+    int delta_nd = dblocc_increament();
+    // det_ratio for the term
+    wf.get_amplitudes(psi_col, upspin_sites(), to_site);
+    amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
+    if (bc_state < 0) { // it's a boundary bond
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+    }
+    else {
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    }
+  }
+  else if (op_cdagc_dn(site_j,site_i)) {
+    int dnspin = which_dnspin();
+    int to_site = site_i;
+    int delta_nd = dblocc_increament();
+    // det_ratio for the term
+    wf.get_amplitudes(psi_col, upspin_sites(), to_site);
+    amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
+    if (bc_state < 0) { // it's a boundary bond
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+    }
+    else {
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    }
+  }
+  else {
+    return amplitude_t(0.0);
+  }
+
+  /*
   if (i == j) return ampl_part(op_ni_dn(i));
   if (!op_cdagc_dn_plus(i,j)) return amplitude_t(0.0);
   int dnspin = which_dnspin();
@@ -432,10 +514,11 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& i, const int& j,
   amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
   det_ratio = ampl_part(std::conj(det_ratio));
   return amplitude_t(bc_phase) * det_ratio * pj.gw_ratio(delta_nd);
+  */
 }
 
 amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
-  const int& bc_phase) const
+  const int& bc_state, const std::complex<double>& bc_phase) const
 {
   if (fr_site == to_site) return ampl_part(op_ni_dn(fr_site));
   if (!op_cdagc_dn(fr_site,to_site)) return amplitude_t(0.0);
@@ -444,8 +527,13 @@ amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
   // det_ratio for the term
   wf.get_amplitudes(psi_col, upspin_sites(), to_site);
   amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
-  det_ratio = ampl_part(std::conj(det_ratio));
-  return amplitude_t(bc_phase) * det_ratio * pj.gw_ratio(delta_nd);
+  //det_ratio = ampl_part(std::conj(det_ratio));
+  if (bc_state < 0) { // it's a boundary bond
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+  }
+  else {
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+  }
 }
 
 amplitude_t SysConfig::apply_sisj_plus(const int& i, const int& j) const

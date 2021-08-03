@@ -18,13 +18,23 @@ RandomGenerator::RandomGenerator() : seed_type_(0), real_generator(0.0, 1.0)
 RandomGenerator::RandomGenerator(const unsigned& seed_type) 
   : seed_type_(seed_type), real_generator(0.0, 1.0)
 {
-  if (seed_type_==1) time_seed();
-  //for (auto& g : state_generators) g = int_dist(-1,-1);
+  //if (seed_type_==1) time_seed();
+  if (seed_type_==0) {
+    this->std::mt19937_64::seed(0);
+  }
+  else {
+    time_seed();
+  }
 }
 
 void RandomGenerator::seed(const int& seed_type) {
   seed_type_ = seed_type;
-  if (seed_type_==1) time_seed();
+  if (seed_type_==0) {
+    this->std::mt19937_64::seed(0);
+  }
+  else {
+    time_seed();
+  }
 } 
 
 void RandomGenerator::time_seed(void) 

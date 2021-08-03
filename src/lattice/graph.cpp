@@ -8,6 +8,8 @@
 *----------------------------------------------------------------------------*/
 #include "graph.h"
 
+constexpr std::complex<double> ii(void) { return std::complex<double>(0.0, 1.0); }
+
 namespace lattice {
 //namespace graph {
 
@@ -86,7 +88,7 @@ void LatticeGraph::construct_graph(void)
   for (unsigned i=0; i<bonds.size(); ++i) {
     Bond b = bonds[i];
     // connect the bond, discard if can't be connected (for bonds across open boundaries) 
-    if (!lattice_.connect_bond(b, sites)) continue; 
+    if (!lattice_.connect_bond2(b, sites)) continue; 
     // add to graph
     source = boost::vertex(b.src_id(), *this);
     target = boost::vertex(b.tgt_id(), *this);
@@ -95,7 +97,29 @@ void LatticeGraph::construct_graph(void)
     // edge properties
     this->operator[](e).type = b.type();
     this->operator[](e).stype = b.type();
-    this->operator[](e).sign = b.sign();
+    //this->operator[](e).sign = b.sign();
+    //this->operator[](e).bcstate = b.bc_state();
+
+    // redefine meaning of 'sign' ('-'ve mean boundary bond)
+    // bond phase
+    std::complex<double> phase = 1.0;
+    int sign = 1;
+    if (b.bc_state()[0]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*lattice_.bc1_twist());
+    }
+    if (b.bc_state()[1]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*lattice_.bc2_twist());
+    } 
+    if (b.bc_state()[2]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*lattice_.bc3_twist());
+    } 
+    this->operator[](e).bc_state = b.bc_state();
+    this->operator[](e).sign = sign;
+    this->operator[](e).phase = phase;
+
     this->operator[](e).vector_id = b.vector_id();
     //this->operator[](e).vector = sites[b.tgt_id()].coord() - sites[b.src_id()].coord();
     this->operator[](e).vector = b.vector();
@@ -115,6 +139,26 @@ void LatticeGraph::construct_graph(void)
   //for (auto it=p.first; it!=p.second;++it) { std::cout << *it << "\n"; }
   //std::pair<in_edge_iterator, in_edge_iterator> po = boost::in_edges(0, *this); 
   //for (auto it=po.first; it!=po.second;++it) { std::cout << *it << "\n"; }
+}
+
+void LatticeGraph::update_boundary_twist(const int& twist_id) 
+{
+  lattice_.set_boundary_twist(twist_id);
+  for (auto ei=ei_begin_; ei!=ei_end_; ++ei) {
+    if (this->operator[](*ei).sign == -1) {
+      std::complex<double> phase = 1.0;
+      if (this->operator[](*ei).bc_state[0] == -1) {
+        phase *= std::exp(ii()*lattice_.bc1_twist());
+      }
+      if (this->operator[](*ei).bc_state[1] == -1) {
+        phase *= std::exp(ii()*lattice_.bc2_twist());
+      }
+      if (this->operator[](*ei).bc_state[2] == -1) {
+        phase *= std::exp(ii()*lattice_.bc3_twist());
+      }
+      this->operator[](*ei).phase = phase;
+    }
+  }
 }
 
 const LatticeGraph::site_descriptor 

@@ -81,6 +81,8 @@ void BasisState::init_spins(const int& num_upspins, const int& num_dnspins)
   uphole_sites_.resize(num_upholes_);
   dnhole_sites_.resize(num_dnholes_);
   // random generator
+  // rng site generator
+  rng_.set_site_generator(0,num_sites_-1);
   // assuming 'num_upspins>0', 'num_dnspins>0'
   rng_.set_upspin_generator(0,num_upspins_-1);
   rng_.set_dnspin_generator(0,num_dnspins_-1);

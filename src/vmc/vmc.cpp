@@ -18,7 +18,8 @@ VMC::VMC(const input::Parameters& inputs)
   , num_varparms_{config.num_varparms()}
 {
   // seed random generator
-  config.rng().seed(inputs.set_value("rng_seed", 1));
+  rng_seed_ = inputs.set_value("rng_seed", 1);
+  config.rng().seed(rng_seed_);
   // mc parameters
   num_sites_ = graph.num_sites();
   num_measure_steps_ = inputs.set_value("measure_steps", 0);
@@ -183,16 +184,18 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
 
 int VMC::run_simulation(const int& sample_size)
 {
+  // initialize
+  observables.reset();
+  int num_measure_steps = num_measure_steps_;
+  if (sample_size>0) num_measure_steps = sample_size;
+
   // warmup run
   if (!silent_mode_) std::cout << " warming up... " << std::flush;
   for (int n=0; n<num_warmup_steps_; ++n) config.update_state();
   if (!silent_mode_) std::cout << "done\n" << std::flush;
   // measuring run
-  int num_measure_steps = num_measure_steps_;
-  if (sample_size>0) num_measure_steps = sample_size;
-  int measurement_count = 0;
   int skip_count = min_interval_;
-  observables.reset();
+  int measurement_count = 0;
   while (measurement_count < num_measure_steps) {
     config.update_state();
     if (skip_count >= min_interval_) {
@@ -206,6 +209,52 @@ int VMC::run_simulation(const int& sample_size)
     }
     skip_count++;
   }
+
+  //observables.finalize();
+  //std::cout << observables.energy().result_str(-1) << "\n";
+  //getchar();
+
+  // if more than 1 BC twists, run again
+  for (int bc=1; bc<graph.num_boundary_twists(); ++bc) {
+    if (!silent_mode_) {
+      std::cout << "\n-------------------------------------" << std::endl;
+      std::cout << " Running again for BC twist - "<<bc+1 << " / ";
+      std::cout << graph.num_boundary_twists() << std::endl;
+      std::cout << "-------------------------------------\n" << std::flush;
+    }
+
+    //observables.reset();
+    graph.update_boundary_twist(bc);
+    config.rng().seed(rng_seed_);
+    config.rebuild(graph);
+
+    // warmup run
+    if (!silent_mode_) std::cout << " warming up... " << std::flush;
+    for (int n=0; n<num_warmup_steps_; ++n) config.update_state();
+    if (!silent_mode_) std::cout << "done\n" << std::flush;
+    // measuring run
+    int skip_count = min_interval_;
+    int measurement_count = 0;
+    while (measurement_count < num_measure_steps) {
+      config.update_state();
+      if (skip_count >= min_interval_) {
+        if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
+          skip_count = 0;
+          config.reset_accept_ratio();
+          observables.do_measurement(graph,model,config,site_disorder_);
+          ++measurement_count;
+          if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
+        }
+      }
+      skip_count++;
+    }
+
+    //observables.finalize();
+    //std::cout << observables.energy().result_str(-1) << "\n";
+    //getchar();
+  }
+
+  // finalize
   observables.finalize();
   if (!silent_mode_) {
     std::cout << " simulation done\n";

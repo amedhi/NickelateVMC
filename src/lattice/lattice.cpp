@@ -32,9 +32,9 @@ Site::Site(const unsigned& uid, const unsigned& type, const unsigned& atomid, co
   uid_ = uid;
   type_ = type;
   atomid_ = atomid;
-  bravindex_ = bravindex_;
+  bravindex_ = bravindex;
   coord_ = coord;
-  cell_coord_ = cell_coord_;
+  cell_coord_ = cell_coord;
 }
 
 void Site::translate_by(const int& id_offset, const Vector3i& bravindex_offset, const Vector3d& coord_offset)
@@ -93,6 +93,18 @@ unsigned Bond::num_bond = 0;
   tgt_offset_ = tgt_offset;
 }*/
 
+Bond::Bond() 
+{
+  id_ = num_bond++;
+  type_ = 0;
+  ngb_ = 1;
+  bravindex_ = Vector3i(0,0,0);
+  sign_ = 1;
+  bc_state_[0] = 1;
+  bc_state_[1] = 1;
+  bc_state_[2] = 1;
+}
+
 Bond::Bond(const unsigned& type, const unsigned& ngb, const Site& src, const Vector3i& src_offset, 
   const Site& tgt, const Vector3i& tgt_offset)
   : std::pair<Site,Site>(src,tgt)
@@ -104,6 +116,9 @@ Bond::Bond(const unsigned& type, const unsigned& ngb, const Site& src, const Vec
   ngb_ = ngb;
   bravindex_ = Vector3i(0,0,0);
   sign_ = 1;
+  bc_state_[0] = 1; 
+  bc_state_[1] = 1;
+  bc_state_[2] = 1;
 }
 
 void Bond::connect(const Site& src, const Vector3i& src_offset, const Site& tgt, 
@@ -114,6 +129,16 @@ void Bond::connect(const Site& src, const Vector3i& src_offset, const Site& tgt,
   this->first.reset_bravindex(src_offset);
   this->second.reset_bravindex(tgt_offset);
   sign_ = sign;
+}
+
+void Bond::connect(const Site& src, const Vector3i& src_offset, const Site& tgt, 
+    const Vector3i& tgt_offset, const BC_state& bstate)
+{
+  this->first = src;
+  this->second = tgt;
+  this->first.reset_bravindex(src_offset);
+  this->second.reset_bravindex(tgt_offset);
+  bc_state_ = bstate;
 }
 
 /*void Bond::connect(const unsigned& src_id, const Vector3i& src_offset, const unsigned& tgt_id, 
@@ -363,6 +388,7 @@ Vector3i Lattice::get_next_bravindex(const Vector3i& current_index) const
 }
 
 
+/*
 bool Lattice::connect_bond(Bond& bond, const std::vector<Site>& sites) const
 {
   // source site
@@ -401,6 +427,7 @@ bool Lattice::connect_bond(Bond& bond, const std::vector<Site>& sites) const
   bond.connect(sites[src_id], src_offset, sites[tgt_id], tgt_offset, sign);
   return true;
 }
+*/
 
 std::pair<Vector3i, int> Lattice::boundary_wrap(const Vector3i& cell_idx) const
 {
@@ -430,29 +457,79 @@ std::pair<Vector3i, int> Lattice::boundary_wrap(const Vector3i& cell_idx) const
     }
   }
   return std::pair<Vector3i, int>(new_idx, phase);
+}
 
- /*
+bool Lattice::connect_bond2(Bond& bond, const std::vector<Site>& sites) const
+{
+  // source site
+  BC_state bstate1, bstate2;
+  Vector3i src_cell, src_offset;
+  src_offset = bond.first.bravindex();
+  //src_offset = bond.src_offset();
+  src_cell = bond.bravindex() + src_offset;
+  // if the source is inside the lattice, offset = 0
   for (unsigned dim=dim1; dim<=dim3; ++dim) {
-    if (new_idx[dim]<0 || new_idx[dim]>=static_cast<int>(extent[dim].size)) {
+    if (src_cell[dim] >= 0 && src_cell[dim] < static_cast<int>(extent[dim].size)) src_offset[dim]=0;
+  }
+  // id of the source site
+  boost::tie(src_cell, bstate1) = boundary_wrap2(src_cell);
+  int src_id = mapped_site_id(bond.src_id(), src_cell);
+  if (src_id < 0) return false;  // bond can't be connected due to open boundary
+
+  // target site
+  Vector3i tgt_cell, tgt_offset;
+  tgt_offset = bond.second.bravindex();
+  //tgt_offset = bond.tgt_offset();
+  tgt_cell = bond.bravindex() + tgt_offset;
+  // if the target is inside the lattice, offset = 0
+  for (unsigned dim=dim1; dim<=dim3; ++dim) {
+    if (tgt_cell[dim] >= 0 && tgt_cell[dim] < static_cast<int>(extent[dim].size)) tgt_offset[dim]=0;
+  }
+  // id of the target site
+  boost::tie(tgt_cell, bstate2) = boundary_wrap2(tgt_cell);
+  int tgt_id = mapped_site_id(bond.tgt_id(), tgt_cell);
+  if (tgt_id < 0) return false;  // bond can't be connected due to open boundary
+
+  // connect the bond
+  //unsigned s = static_cast<unsigned>(src_id);
+  //unsigned t = static_cast<unsigned>(tgt_id);
+  BC_state bstate;
+  for (unsigned dim=dim1; dim<=dim3; ++dim) {
+    bstate[dim] = bstate1[dim] * bstate2[dim];
+  }
+  bond.connect(sites[src_id],src_offset,sites[tgt_id],tgt_offset,bstate);
+  return true;
+}
+
+std::pair<Vector3i, BC_state> Lattice::boundary_wrap2(const Vector3i& cell_idx) const
+{
+  Vector3i new_idx(cell_idx);
+  BC_state bstate;
+  for (unsigned dim=dim1; dim<=dim3; ++dim) {
+    bstate[dim] = 1;
+    int size = static_cast<int>(extent[dim].size); 
+    if (new_idx[dim]>=size) {
       if (extent[dim].bc == boundary_type::periodic) {
-        new_idx[dim] = new_idx[dim] % extent[dim].size;
-        if (new_idx[dim]<0) new_idx[dim] += static_cast<int>(extent[dim].size);
-        // Determine phase: 
-        //   Phase is negative, if the edge gets wrapped across
-        //   antiperiodic' boundary odd number of times 
-        if (extent[dim].periodicity == boundary_type::antiperiodic) {
-          int n = std::abs(cell_idx[dim] / static_cast<int>(extent[dim].size));
-          //int n = abs(cell_idx[dim] / extent[dim].size);
-          if (cell_idx[dim]<0) n++;
-          if (n % 2 != 0) phase = -phase;
+        while (new_idx[dim]>=size) {
+          new_idx[dim] -= size;
+          bstate[dim] = -bstate[dim];
         }
-      } 
+      }
+      else new_idx[dim] = -1;
+    }
+    else if (new_idx[dim]<0) {
+      if (extent[dim].bc == boundary_type::periodic) {
+        while (new_idx[dim]<0) {
+          new_idx[dim] += size;
+          bstate[dim] = -bstate[dim];
+        }
+      }
       else new_idx[dim] = -1;
     }
   }
-  return std::pair<Vector3i, int>(new_idx, phase);
- */
+  return std::pair<Vector3i, BC_state>(new_idx, bstate);
 }
+
 
 int Lattice::mapped_site_id(const unsigned& local_id, const Vector3i& bravindex) const
 {

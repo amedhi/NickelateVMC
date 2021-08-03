@@ -87,6 +87,17 @@ int Wavefunction::compute(const lattice::LatticeGraph& graph, const var::parm_ve
   return 0;
 }
 
+// recompute for change in lattice BC 
+int Wavefunction::recompute(const lattice::LatticeGraph& graph)
+{
+  groundstate_->update(graph);
+  groundstate_->get_wf_amplitudes(psi_up_);
+  if (have_gradient_) {
+    groundstate_->get_wf_gradient(psi_gradient_);
+  }
+  return 0;
+}
+
 void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& row, 
   const std::vector<int>& col) const
 {

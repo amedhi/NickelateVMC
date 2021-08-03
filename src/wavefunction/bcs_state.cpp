@@ -581,11 +581,20 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   dphi_k_.resize(kblock_dim_,kblock_dim_);
   phi_k_.resize(num_kpoints_);
   work_k_.resize(num_kpoints_);
-  for (unsigned k=0; k<num_kpoints_; ++k) {
+  for (int k=0; k<num_kpoints_; ++k) {
     phi_k_[k].resize(kblock_dim_,kblock_dim_);
     work_k_[k].resize(kblock_dim_,kblock_dim_);
   } 
   return 0;
+}
+
+void BCS_State::update(const lattice::LatticeGraph& graph)
+{
+  // update for change in lattice BC (same structure & size)
+  // bloch basis
+  blochbasis_.construct(graph);
+  // FT matrix for transformation from 'site basis' to k-basis
+  set_ft_matrix(graph);
 }
 
 void BCS_State::add_chemical_potential(const input::Parameters& inputs)

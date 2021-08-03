@@ -39,11 +39,11 @@ void Energy::measure(const lattice::LatticeGraph& graph,
       unsigned type = graph.bond_type(b);
       unsigned site_i = graph.source(b);
       unsigned site_j = graph.target(b);
-      int bc_phase = graph.bond_sign(b);
       // matrix elements each term & bond type
       unsigned term = 0;
       for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
-        matrix_elem(term,type) += config.apply(it->qn_operator(),site_i,site_j,bc_phase);
+        matrix_elem(term,type) += config.apply(it->qn_operator(),site_i,site_j,
+          graph.bond_sign(b),graph.bond_phase(b));
         term++;
       }
     }

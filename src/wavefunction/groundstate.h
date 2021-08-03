@@ -49,6 +49,7 @@ public:
   virtual ~GroundState() {} 
   virtual void update(const input::Parameters& inputs);
   virtual void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
+  virtual void update(const lattice::LatticeGraph& graph);
   virtual void get_wf_amplitudes(Matrix& psi);
   virtual void get_wf_gradient(std::vector<Matrix>& psi_gradient); 
   virtual std::string info_str(void) const; 

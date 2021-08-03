@@ -15,10 +15,12 @@ prefix=""
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 8
-lsize2 = 8
+lsize1 = 10
+lsize2 = 10
 bc1 = "periodic"
 bc2 = "antiperiodic"
+#bc1_twists = 10
+#bc2_twists = 10
 
 #---------------------------------------------
 # Model:
@@ -27,7 +29,7 @@ bc2 = "antiperiodic"
 model = "HUBBARD"
 t = 1.0
 #J = 0.35
-U = 4.0
+U = 8.0
 
 #---------------------------------------------
 # Variational wavefunction
@@ -35,10 +37,10 @@ U = 4.0
 wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
-hole_doping = 0.00
-gfactor = 0.5 #0.58
-delta_sc = 0.5
-#mu = -0.4263000
+hole_doping = 0.16
+gfactor = 0.3037
+delta_sc = 0.08
+mu = -0.4263000
 #mu_variational = "YES"
 as_func_of = "hole_doping"
 
