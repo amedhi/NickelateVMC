@@ -194,7 +194,7 @@ const double& MC_Data::tau(void) const
   return tau_;
 }
 
-void MC_Data::finalize(void)  const
+void MC_Data::finalize(void) const
 { 
   if (top_bin->have_new_samples()) {
     // mean
@@ -209,6 +209,17 @@ void MC_Data::finalize(void)  const
     }
   }
 }
+
+void MC_Data::copy_finalize(const MC_Data& mcdata) 
+{
+  finalize();
+  mean_ = mcdata.mean_data();
+  stddev_ = mcdata.stddev_data();
+  tau_ = mcdata.tau();
+  error_converged_ = mcdata.error_converged();
+}
+
+
 
 void MC_Data::find_conv_and_tau(const unsigned& n) const 
 { 
@@ -281,6 +292,7 @@ std::string MC_Data::conv_str(const int& n) const
   os << std::scientific << std::uppercase << std::setprecision(6) << std::right;
   os << std::setw(10) << this->num_samples();
   os << std::setw(11) << error_converged_;
+
   os << std::setw(7) << std::setprecision(2) << std::right << std::fixed << tau_;
   os << std::resetiosflags(std::ios_base::floatfield) << std::nouppercase; 
   return os.str();

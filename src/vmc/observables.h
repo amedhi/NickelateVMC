@@ -35,6 +35,9 @@ public:
   void as_functions_of(const std::string& xvar);
   void switch_off(void);
   void reset(void); 
+  void reset_grand_data(void); 
+  void save_results(void); 
+  void avg_grand_data(void); 
   int do_measurement(const lattice::LatticeGraph& graph, 
     const model::Hamiltonian& model, const SysConfig& config, const SiteDisorder& site_disorder);
   inline Energy& energy(void) { return energy_; }

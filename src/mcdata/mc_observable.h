@@ -33,7 +33,6 @@ public:
   void resize(const int& size) override;
   void resize(const int& size, const std::vector<std::string>& elem_names);
   void set_replace_mode(const bool& replace_mode) { replace_mode_=replace_mode; }
-  void save_result(void);
   void set_have_total(void) { have_total_=true; }
   virtual void reset(void) { MC_Data::clear(); }
   void check_on(const input::Parameters& inputs, const bool& replace_mode); 
@@ -48,6 +47,8 @@ public:
   MC_Data& grand_data(void);
   data_t grand_stddev(void) const;
   void reset_grand_data(void); 
+  void save_result(void);
+  void avg_grand_data(void); 
   virtual void print_heading(const std::string& header, 
     const std::vector<std::string>& xvars);
   virtual void print_result(const std::vector<double>& xvals); 
@@ -67,6 +68,7 @@ private:
   bool have_total_{false};
   std::string name_{""};
   std::string fname_{""};
+  mcdata::MC_Data data(void) { return mcdata::MC_Data(*this); }
 };
 
 

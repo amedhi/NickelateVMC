@@ -170,13 +170,31 @@ void MC_Observable::close_file(void)
   fs_.close();
 }
 
+void MC_Observable::reset_grand_data(void) 
+{ 
+  num_dataset_=0; 
+  avg_mcdata_.clear(); 
+  avg_stddev_.setZero(); 
+  avg_tau_ = -1;
+} 
+
 void MC_Observable::save_result(void)
 {
   avg_mcdata_ << MC_Data::mean_data();
   avg_stddev_ += MC_Data::stddev_data();
+  //std::cout << "mean_data="<< MC_Data::mean_data() << "\n"; 
+  //std::cout << "save_result="<< avg_mcdata_.result_str(-1) << "\n"; 
   avg_tau_ += MC_Data::tau();
   ++num_dataset_;
 }
+
+void MC_Observable::avg_grand_data(void) 
+{ 
+  //std::cout << avg_mcdata_.result_str(-1); 
+  mcdata::MC_Data::copy_finalize(avg_mcdata_);
+  //std::cout << MC_Data::result_str(-1); 
+  //getchar();
+} 
 
 MC_Data& MC_Observable::grand_data(void) 
 {
@@ -188,13 +206,6 @@ data_t MC_Observable::grand_stddev(void) const
   if (num_dataset_ > 0) return avg_stddev_/static_cast<double>(num_dataset_); 
   else return avg_stddev_;
 }
-
-void MC_Observable::reset_grand_data(void) 
-{ 
-  num_dataset_=0; 
-  avg_mcdata_.clear(); 
-  avg_stddev_.setZero(); 
-} 
 
 
 } // end namespace mcdata

@@ -68,6 +68,34 @@ void ObservableSet::reset(void)
   if (site_occupancy_) site_occupancy_.reset();
 }
 
+void ObservableSet::reset_grand_data(void)
+{
+  if (energy_) energy_.reset_grand_data();
+  if (energy_grad_) energy_grad_.reset_grand_data();
+  if (sc_corr_) sc_corr_.reset_grand_data();
+  if (sr_matrix_) sr_matrix_.reset_grand_data();
+  if (site_occupancy_) site_occupancy_.reset_grand_data();
+}
+
+void ObservableSet::save_results(void)
+{
+  if (energy_) energy_.save_result();
+  if (energy_grad_) energy_grad_.save_result();
+  if (sc_corr_) sc_corr_.save_result();
+  if (sr_matrix_) sr_matrix_.save_result();
+  if (site_occupancy_) site_occupancy_.save_result();
+}
+
+void ObservableSet::avg_grand_data(void)
+{
+  if (energy_) energy_.avg_grand_data();
+  if (energy_grad_) energy_grad_.avg_grand_data();
+  if (sc_corr_) sc_corr_.avg_grand_data();
+  if (sr_matrix_) sr_matrix_.avg_grand_data();
+  if (site_occupancy_) site_occupancy_.avg_grand_data();
+}
+
+
 int ObservableSet::do_measurement(const lattice::LatticeGraph& graph, 
     const model::Hamiltonian& model, const SysConfig& config, const SiteDisorder& site_disorder)
 {

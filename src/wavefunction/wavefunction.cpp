@@ -90,10 +90,12 @@ int Wavefunction::compute(const lattice::LatticeGraph& graph, const var::parm_ve
 // recompute for change in lattice BC 
 int Wavefunction::recompute(const lattice::LatticeGraph& graph)
 {
+  //std::cout << "recomputing\n"; 
   groundstate_->update(graph);
   groundstate_->get_wf_amplitudes(psi_up_);
   if (have_gradient_) {
     groundstate_->get_wf_gradient(psi_gradient_);
+    //std::cout << "get_wf_gradient\n"; getchar();
   }
   return 0;
 }

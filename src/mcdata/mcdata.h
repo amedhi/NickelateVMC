@@ -73,6 +73,7 @@ public:
   void operator<<(const double& sample);
   const int& num_samples(void) const { return top_bin->num_samples(); }
   void finalize(void) const;
+  void copy_finalize(const MC_Data& mcdata);
   const std::string& name(void) const { return name_; }
   unsigned size(void) const { return mean_.size(); }
   const data_t& mean_data(void) const; 
@@ -83,6 +84,7 @@ public:
   //const data_t& tau(void) const { finalize(); return tau_; } 
   const double& stddev(const int& n) const;
   const double& tau(void) const;
+  const std::string& error_converged(void) const { return error_converged_; }
   std::string result_str(const int& n=0) const; 
   std::string conv_str(const int& n=0) const; 
   const MC_Data& with_statistic(void) const { show_statistic_=true; return *this; }
