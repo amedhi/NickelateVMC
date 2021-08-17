@@ -28,6 +28,13 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   // infinity limit
   large_number_ = 5.0E+4;
 
+  // Bloch basis
+  blochbasis_.construct(graph);
+  num_kpoints_ = blochbasis_.num_kpoints();
+  kblock_dim_ = blochbasis_.subspace_dimension();
+  // FT matrix for transformation from 'site basis' to k-basis
+  set_ft_matrix(graph);
+
   // build MF Hamiltonian
   varparms_.clear();
   mf_model_.init(graph.lattice());
@@ -38,6 +45,9 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
 
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
+  bool mf_model_finalized = false;
+  int info;
+  bool mu_default = inputs.set_value("mu_default", false);
 //---------------------------------------------------------------------------
   if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -73,13 +83,16 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     mf_model_.add_parameter(name="th", defval=0.0, inputs);
     mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
-    mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
-    mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
+    mf_model_.add_parameter(name="mu_N", defval=0.0, inputs, info);
+    if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu`\n";
+    mf_model_.add_parameter(name="mu_R", defval=0.0, inputs, info);
+    if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu`\n";
 
     // site operators
     cc.create(2);
     cc.add_type(0, "-mu_N");
-    cc.add_type(1, "e_R-mu_R");
+    //cc.add_type(1, "e_R-mu_R");
+    cc.add_type(1, "e_R-mu_N");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
 
     // bond operators
@@ -99,6 +112,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       cc.create(2);
       cc.add_type(0, "delta_N");
       cc.add_type(1, "delta_R");
+      //cc.add_type(1, "0");
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
     }
 
@@ -122,15 +136,34 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
     defval = mf_model_.get_parameter_value("delta_R");
     varparms_.add("delta_R",defval,lb=0.0,ub=6.0,dh=0.02);
-    defval = mf_model_.get_parameter_value("mu_N");
-    varparms_.add("mu_N", defval,lb=-5.0,ub=+5.0,dh=0.1);
-    defval = mf_model_.get_parameter_value("mu_R");
-    varparms_.add("mu_R", defval,lb=-5.0,ub=+5.0,dh=0.1);
+
+    // chemical potential
     noninteracting_mu_ = false;
+    if (inputs.set_value("mu_default", false)) {
+      // starting with non-interacting mu
+      mf_model_.finalize(graph);
+      mf_model_.update_site_parameter("mu_N", 0.0);
+      mf_model_.update_site_parameter("mu_R", 0.0);
+      double mu_0 = get_noninteracting_mu();
+      //std::cout << "mu = " << mu_0 << "\n"; getchar();
+      mf_model_.update_site_parameter("mu_N", mu_0);
+      mf_model_.update_site_parameter("mu_R", mu_0);
+      mf_model_finalized = true;
+    }
+    defval = mf_model_.get_parameter_value("mu_N");
+    varparms_.add("mu_N",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
+    //defval = mf_model_.get_parameter_value("mu_R");
+    //varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
   }
 //---------------------------------------------------------------------------
   else {
     throw std::range_error("BCS_State::BCS_State: undefined for the lattice");
+  }
+
+  // finalize MF Hamiltonian
+  num_varparms_ = varparms_.size();
+  if (!mf_model_finalized) {
+    mf_model_.finalize(graph);
   }
 
 
@@ -562,16 +595,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
 //******************************************************************************
 
 
-  // finalize MF Hamiltonian
-  mf_model_.finalize(graph);
-  num_varparms_ = varparms_.size();
-
-  // bloch basis
-  blochbasis_.construct(graph);
-  num_kpoints_ = blochbasis_.num_kpoints();
-  kblock_dim_ = blochbasis_.subspace_dimension();
-  // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(graph);
 
   //std::cout<< "mu_0 = " <<  get_noninteracting_mu() << "\n";
 
@@ -676,6 +699,7 @@ void BCS_State::update(const var::parm_vector& pvector, const unsigned& start_po
     auto x = pvector[start_pos+i];
     p.change_value(x);
     mf_model_.update_parameter(p.name(), x);
+    //std::cout << p.name() << " = " << x << "\n";
     ++i;
   }
   mf_model_.update_terms();

@@ -51,7 +51,7 @@ private:
   int random_start_{true};
   bool dir_cutoff_{false};
   double lambda_cut_{1.0E-3};
-  double stabilizer_{0.2};
+  double stabilizer_{0.001};
   double grad_tol_{5.0E-3};
   double ftol_{5.0E-5};
   //int refinement_cycle_{100};
@@ -59,7 +59,7 @@ private:
   double lnsearch_mu_{1.0E-2};
   double lnsearch_beta_{0.5};
   double lnsearch_step_{0.5};
-  //double start_tstep_{0.05};
+  double start_tstep_{0.1};
   //double rslope_tol_{1.0E-2};
   //double aslope_tol_{1.0E-5};
   //double mk_thresold_{0.30};

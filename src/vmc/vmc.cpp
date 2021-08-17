@@ -261,6 +261,8 @@ int VMC::run_simulation(const int& sample_size)
       // finalize & save
       observables.finalize();
       //std::cout << "Energy = " << observables.energy().result_str(-1) << "\n";
+      std::cout << "sc_correlation = " << observables.sc_corr().result_str(-1) << "\n"; 
+      //getchar();
       observables.save_results();
     }
     // grand averages

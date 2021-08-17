@@ -35,8 +35,8 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   num_sim_samples2_ = 5*num_sim_samples_;
   num_opt_samples_ = inputs.set_value("sr_opt_samples", 10, nowarn);
   max_iter_ = inputs.set_value("sr_max_iter", 100, nowarn);
-  //start_tstep_ = inputs.set_value("sr_start_tstep", 0.05, nowarn);
-  random_start_ = inputs.set_value("sr_random_start", true, nowarn);
+  start_tstep_ = inputs.set_value("sr_start_tstep", 0.1, nowarn);
+  random_start_ = inputs.set_value("sr_random_start", false, nowarn);
   dir_cutoff_ = inputs.set_value("sr_dir_cutoff", false, nowarn);
   lambda_cut_ = inputs.set_value("sr_lambda_cut", 1.0E-3, nowarn);
   stabilizer_ = inputs.set_value("sr_stabilizer", 0.2, nowarn);
@@ -207,8 +207,10 @@ int StochasticReconf::optimize(VMC& vmc)
     std::deque<mcdata::data_t> iter_grads;
     RealVector vparm_slope(num_parms_);
     RealVector grads_slope(num_parms_);
-    bool ln_search = true;
-    bool SA_steps = false;
+    //bool ln_search = true;
+    //bool SA_steps = false;
+    bool ln_search = false;
+    bool SA_steps = true;
     int sim_samples = num_sim_samples_;
     for (int iter=1; iter<=max_iter_; ++iter) {
       // file outs
@@ -238,14 +240,18 @@ int StochasticReconf::optimize(VMC& vmc)
       // apply to stabilizer to sr matrix 
       for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
       // search direction
+      /*
       if (dir_cutoff_) {
         get_stabilized_dir(sr_matrix_, grad_, search_dir);
       }
       else {
         search_dir = sr_matrix_.fullPivLu().solve(-grad_);
       }
+      */
+      search_dir = sr_matrix_.fullPivLu().solve(-grad_);
 
       // max step size considering bounds
+      ln_search = false;
       if (ln_search) {
         double max_step = max_step_size(vparms_, search_dir, lbound_, ubound_);
         // line search with Armijio condition
@@ -258,8 +264,9 @@ int StochasticReconf::optimize(VMC& vmc)
       }
       if (SA_steps) {
         // Stochastic Approximation steps
-        double tstep = 1.0/(iter+1);
-        vparms_ += tstep * search_dir;
+        //double tstep = 1.0/(iter+1);
+        //vparms_ += tstep * search_dir;
+        vparms_ += start_tstep_ * search_dir;
         // box constraint and max_norm (of components not hitting boundary) 
         vparms_ = lbound_.cwiseMax(vparms_.cwiseMin(ubound_));
       }

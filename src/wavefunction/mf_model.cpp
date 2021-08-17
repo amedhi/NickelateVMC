@@ -206,6 +206,12 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   for (auto& M : expr_matrices_) {
     M.resize(dim_);
     for (unsigned i=0; i<dim_; ++i) M[i].resize(dim_);
+    // initialize
+    for (unsigned i=0; i<dim_; ++i) {
+      for (unsigned j=0; j<dim_; ++j) {
+        M[i][j] = "0";
+      }
+    }
   }
 
   // operator
@@ -244,6 +250,12 @@ void UnitcellTerm::build_siteterm(const model::HamiltonianTerm& hamterm,
   expr_matrices_.resize(1);
   expr_matrices_[0].resize(dim_);
   for (unsigned i=0; i<dim_; ++i) expr_matrices_[0][i].resize(dim_);
+  for (unsigned i=0; i<dim_; ++i) {
+    for (unsigned j=0; j<dim_; ++j) {
+      expr_matrices_[0][i][j] = "0";
+    }
+  }
+
   // operator
   op_ = hamterm.qn_operator();
   // build the matrix 
