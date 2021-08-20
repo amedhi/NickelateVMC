@@ -164,6 +164,7 @@ int SysConfig::init_config(void)
 
   // amplitude matrix invers
   psi_inv = psi_mat.inverse();
+  //std::cout << psi_mat << "\n"; getchar();
   //std::cout << psi_inv << "\n"; getchar();
   // run parameters
   set_run_parameters();

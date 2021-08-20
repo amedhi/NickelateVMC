@@ -238,7 +238,8 @@ int StochasticReconf::optimize(VMC& vmc)
 
       vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,sim_samples,rng_seed);
       // apply to stabilizer to sr matrix 
-      for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
+      //for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
+      for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) *= (1.0+stabilizer_);
       // search direction
       /*
       if (dir_cutoff_) {
