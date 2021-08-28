@@ -679,7 +679,8 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
       det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
     }
     // net ratio for up & dn spin hop
-    amplitude_t det_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
+    //amplitude_t det_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
+    amplitude_t det_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
     if (pj.have_gutzwiller()) {
       det_ratio *= pj.gw_ratio(delta_nd);
     }
@@ -743,7 +744,8 @@ amplitude_t SysConfig::apply_sitepair_hop(const int& i_cdag, const int& i_c) con
     det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
   }
   // net ratio for up & dn spin hop
-  net_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
+  //net_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
+  net_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
 
   return net_ratio;
 }

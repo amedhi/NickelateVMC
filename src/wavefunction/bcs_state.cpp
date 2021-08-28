@@ -111,8 +111,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       order_name_ = "SC-SWAVE";
       cc.create(2);
       cc.add_type(0, "delta_N");
-      //cc.add_type(1, "delta_R");
-      cc.add_type(1, "0");
+      cc.add_type(1, "delta_R");
+      //cc.add_type(1, "0");
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
     }
 
@@ -134,8 +134,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     // variational parameters
     defval = mf_model_.get_parameter_value("delta_N");
     varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
-    //defval = mf_model_.get_parameter_value("delta_R");
-    //varparms_.add("delta_R",defval,lb=0.0,ub=6.0,dh=0.02);
+    defval = mf_model_.get_parameter_value("delta_R");
+    varparms_.add("delta_R",defval,lb=0.0,ub=6.0,dh=0.02);
 
     // chemical potential
     noninteracting_mu_ = false;
@@ -152,8 +152,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     }
     defval = mf_model_.get_parameter_value("mu_N");
     varparms_.add("mu_N",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
-    //defval = mf_model_.get_parameter_value("mu_R");
-    //varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
+    defval = mf_model_.get_parameter_value("mu_R");
+    varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
   }
 //---------------------------------------------------------------------------
   else {

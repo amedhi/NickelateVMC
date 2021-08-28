@@ -19,8 +19,11 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
   num_basis_sites_ = graph.lattice().num_basis_sites();
   // for each basis site, pairs of sites connected by translational symmetry
   //std::cout << "--SC_Correlation::setup: HACK--\n";
+  symm_list_.clear();
   symm_list_.resize(num_basis_sites_); 
   for (auto& elem : symm_list_) elem.resize(max_dist_);
+
+  /*
   for (auto s1=graph.sites_begin(); s1!=graph.sites_end(); ++s1) {
   //for (auto s1=graph.sites_begin(); s1!=graph.sites_begin()+1; ++s1) {
     Vector3d rs1 = graph.site_cellcord(s1);
@@ -39,16 +42,32 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
       }
     }
   }
+  */
+
+  for (auto s1=graph.sites_begin(); s1!=graph.sites_end(); ++s1) {
+    Vector3d rs1 = graph.site_cellcord(s1);
+    //if (rs1[0]>0) continue;
+    Vector3i bravindex(0,0,0);
+    for (int d=1; d<max_dist_; ++d) {
+      bravindex += Vector3i(1,0,0);
+      auto s2 = graph.translated_site(graph.site(s1), bravindex);    
+      int n = graph.site_uid(s2);
+      //std::cout << n << ":  ";
+      //std::cout << graph.site(s1) << " -- " << graph.site(s2) << "\n"; getchar();
+      symm_list_[n].pairs_at_dist(d).push_back({graph.site(s1), graph.site(s2)});
+    }
+  }
+
 
   /*
   for (int n=0; n<num_basis_sites_; ++n) {
     for (int d=1; d<max_dist_; ++d) {
       std::cout << "pairs = " << symm_list_[n].pairs_at_dist(d).size() << "\n";
-      for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
-        std::cout << "(n,d) ="<<n<<", "<<d<<": ";
-        std::cout << p.first<<"--"<<p.second<<"\n";
-        getchar();
-      }
+      //for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
+      //  std::cout << "(n,d) ="<<n<<", "<<d<<": ";
+      //  std::cout << p.first<<"--"<<p.second<<"\n";
+      //  getchar();
+      //}
     }
   }
   getchar();
@@ -119,7 +138,9 @@ void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph,
         i_cdag = p.first;
         i_c = p.second;
         double term = std::real(config.apply_sitepair_hop(i_cdag,i_c));
-        corr_data_(d,n) += term;
+        //corr_data_(d,n) += term;
+        term += std::real(config.apply_sitepair_hop(i_c,i_cdag));
+        corr_data_(d,n) += 0.5 * term;
       }
     }
   }
