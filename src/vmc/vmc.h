@@ -32,6 +32,8 @@ public:
   void seed_rng(const int& seed=1);
   int run_simulation(const int& sample_size=-1);
   int run_simulation(const Eigen::VectorXd& varp);
+  int do_warmup_run(void); 
+  int do_measure_run(const int& num_samples); 
   int energy_function(const Eigen::VectorXd& varp, double& en_mean, double& en_stddev,
     Eigen::VectorXd& grad);
   int operator()(const Eigen::VectorXd& varp, double& en_mean, double& en_stddev,
@@ -41,6 +43,7 @@ public:
     const int& sample_size=-1, const int& rng_seed=-1);
   //void get_vparm_values(var::parm_vector& varparms) 
   //  { varparms = config.vparm_values(); }
+  const int& num_measure_steps(void) const { return num_measure_steps_; } 
   const unsigned& num_varp(void) const { return config.num_varparms(); } 
   const var::parm_vector& varp_values(void) { return config.vparm_values(); }
   const var::parm_vector& varp_lbound(void) const { return config.vparm_lbound(); }
@@ -50,12 +53,18 @@ public:
   const double& hole_doping(void) const { return config.hole_doping(); }
   const std::vector<std::string>& xvar_names(void) const { return xvar_names_; }
   const std::vector<double>& xvar_values(void) const { return xvar_values_; }
+  void finalize_results(void) { observables.finalize(); } 
   void print_results(void); 
   const std::string prefix_dir(void) const { return prefix_; }
   std::ostream& print_info(std::ostream& os) const { return os << info_str_.str(); }
   static void copyright_msg(std::ostream& os);
   const bool& disordered_system(void) const { return site_disorder_.exists(); }
   const unsigned& num_disorder_configs(void) const { return site_disorder_.num_configs(); }
+
+  void MPI_send_results(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, 
+    const int& msg_tag) { observables.MPI_send_results(mpi_comm, proc, msg_tag); }
+  void MPI_recv_results(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, 
+    const int& msg_tag) { observables.MPI_recv_results(mpi_comm, proc, msg_tag); }
 
   // disordered case
   int disorder_start(const input::Parameters& inputs, const unsigned& disorder_config, 

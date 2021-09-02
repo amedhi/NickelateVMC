@@ -184,7 +184,6 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
 
 int VMC::run_simulation(const int& sample_size)
 {
-
   if (graph.num_boundary_twists()==1) {
     // initialize
     observables.reset();
@@ -282,6 +281,33 @@ int VMC::run_simulation(const int& sample_size)
   return 0;
 }
 
+int VMC::do_warmup_run(void) 
+{
+  for (int n=0; n<num_warmup_steps_; ++n) {
+    config.update_state();
+  }
+  return 0;
+}
+
+int VMC::do_measure_run(const int& num_samples) 
+{
+  int skip_count = min_interval_;
+  int measurement_count = 0;
+  while (measurement_count < num_samples) {
+    config.update_state();
+    if (skip_count >= min_interval_) {
+      if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
+        skip_count = 0;
+        config.reset_accept_ratio();
+        observables.do_measurement(graph,model,config,site_disorder_);
+        ++measurement_count;
+        //if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
+      }
+    }
+    skip_count++;
+  }
+  return 0;
+}
 
 void VMC::print_results(void) 
 {

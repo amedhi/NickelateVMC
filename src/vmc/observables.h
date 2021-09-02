@@ -48,6 +48,11 @@ public:
   void print_heading(void);
   void print_results(const std::vector<double>& xvals=std::vector<double>()); 
   void print_results(const double& xval); 
+
+  void MPI_send_results(const mpi::mpi_communicator& mpi_comm, 
+    const mpi::proc& proc, const int& msg_tag);
+  void MPI_recv_results(const mpi::mpi_communicator& mpi_comm, 
+    const mpi::proc& proc, const int& msg_tag); 
 private:
   bool replace_mode_{true};
   std::stringstream headstream_;

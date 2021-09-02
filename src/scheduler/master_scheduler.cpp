@@ -15,8 +15,8 @@ namespace scheduler {
 
 int start(int argc, const char *argv[], const AbstractTask& theTask)
 {
-  mpi_environment mpi_env;
-  mpi_communicator mpi_comm;
+  mpi::mpi_environment mpi_env;
+  mpi::mpi_communicator mpi_comm;
   Scheduler* theScheduler;
   if (mpi_comm.is_master()) {
     theScheduler = new MasterScheduler(argc, argv, mpi_comm, theTask);
@@ -31,7 +31,7 @@ int start(int argc, const char *argv[], const AbstractTask& theTask)
 }
 
 MasterScheduler::MasterScheduler(int argc, const char *argv[], 
-  const mpi_communicator& mpi_comm, const AbstractTask& theTask)
+  const mpi::mpi_communicator& mpi_comm, const AbstractTask& theTask)
   : Scheduler()
   , cmdarg(argc, argv)
 {
@@ -48,13 +48,13 @@ MasterScheduler::MasterScheduler(int argc, const char *argv[],
       // send to slave schedulers
       if (mpi_comm.size()>1) {
         for (const auto& p : mpi_comm.slave_procs())
-          mpi_comm.isend(p, MP_make_task, input.task_params());
+          mpi_comm.isend(p, mpi::MP_make_task, input.task_params());
       }
     }
   }
 }
 
-int MasterScheduler::run(const mpi_communicator& mpi_comm) 
+int MasterScheduler::run(const mpi::mpi_communicator& mpi_comm) 
 {
   if (!valid_) return -1;
   auto start_time = std::chrono::steady_clock::now();
@@ -74,12 +74,12 @@ int MasterScheduler::run(const mpi_communicator& mpi_comm)
     // send to slave schedulers
     if (mpi_comm.size()>1) {
       for (const auto& p : mpi_comm.slave_procs())
-        mpi_comm.isend(p, MP_run_task,input.task_params());
+        mpi_comm.isend(p, mpi::MP_run_task,input.task_params());
       // run own task
       theWorker->run(input.task_params(),mpi_comm);
       // wave for slave process
       for (const auto& p : mpi_comm.slave_procs())
-        mpi_comm.recv(p, MP_task_finished);
+        mpi_comm.recv(p, mpi::MP_task_finished);
     }
     else {
       theWorker->run(input.task_params());
@@ -93,7 +93,7 @@ int MasterScheduler::run(const mpi_communicator& mpi_comm)
   }
   // finish
   for (const auto& p : mpi_comm.slave_procs()) {
-    mpi_comm.isend(p, MP_quit_tasks);
+    mpi_comm.isend(p, mpi::MP_quit_tasks);
   }
   theWorker->finish();
 

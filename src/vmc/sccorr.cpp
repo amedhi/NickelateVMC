@@ -98,7 +98,7 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
   if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
     bondpair_types_.resize(num_basis_sites_);
     for (int i=0; i<num_basis_sites_; ++i) {
-      bondpair_types_[i] = std::make_pair(0,0);
+      bondpair_types_[i] = std::make_pair(i,i);
     }
   }
 
@@ -137,6 +137,7 @@ void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph,
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
         i_cdag = p.first;
         i_c = p.second;
+        //std::cout << "swave corr ["<<n<<"] : "<<i_cdag<<"--"<<i_c<<"\n"; getchar();
         double term = std::real(config.apply_sitepair_hop(i_cdag,i_c));
         //corr_data_(d,n) += term;
         term += std::real(config.apply_sitepair_hop(i_c,i_cdag));
@@ -149,6 +150,11 @@ void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph,
       corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
     }
   }
+
+  //std::cout << max_dist_ << "\n\n";
+  //std::cout << corr_data_ << "\n\n";
+  //std::cout << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size()) << "\n";
+  //getchar();
 
   // reshape add to databin
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());

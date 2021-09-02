@@ -13,6 +13,8 @@
 
 namespace vmc {
 
+enum class mpi_mode { NORMAL, BC_TWISTS };
+
 class Simulator : public scheduler::Worker
 {
 public:
@@ -21,7 +23,7 @@ public:
   int start(const input::Parameters& parms) override { return 0; }
   int run(const input::Parameters& parms) override;
   int run(const input::Parameters& parms, 
-    const scheduler::mpi_communicator& mpi_comm) override;
+    const mpi::mpi_communicator& mpi_comm) override;
   void finish(void) override {} 
   void dostep(void) override {} 
   void halt(void) override {} 
@@ -32,6 +34,7 @@ private:
   VMC vmc;
   StochasticReconf sreconf;
   //opt::Optimizer optimizer_;
+  mpi_mode mpi_mode_; 
   bool optimization_mode_{false};
 
   //static double enfunc(const std::vector<double>& x, std::vector<double>& grad, 

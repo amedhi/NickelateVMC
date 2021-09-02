@@ -83,8 +83,46 @@ int Simulator::run(const input::Parameters& inputs)
 
 // parallel run
 int Simulator::run(const input::Parameters& inputs, 
-  const scheduler::mpi_communicator& mpi_comm)
+  const mpi::mpi_communicator& mpi_comm)
 {
+  int num_proc = mpi_comm.size();
+  if (mpi_mode_ == mpi_mode::NORMAL) {
+    // split samples into different procs
+    int total_samples = vmc.num_measure_steps();
+    // master takes lesser run load
+    int proc_samples = total_samples/mpi_comm.size();
+    int excess_samples = total_samples-proc_samples*mpi_comm.size();
+    if (mpi_comm.is_master()) {
+      proc_samples -= mpi_comm.size()-excess_samples-1;
+    }
+    else {
+      proc_samples += 1;
+    }
+    std::cout << "starting in p = " << mpi_comm.rank() << "\n";
+    vmc.start(inputs, run_mode::normal);
+    std::cout << "warming in p = " << mpi_comm.rank() << "\n";
+    vmc.do_warmup_run();
+    std::cout << "measuring "<< proc_samples<<" in p = " << mpi_comm.rank() << "\n";
+    vmc.do_measure_run(proc_samples);
+    // collect samples
+    if (mpi_comm.is_master()) {
+      for (const mpi::proc& p : mpi_comm.slave_procs()) {
+        std::cout << "reciving results from p = " << p << "\n";
+        vmc.MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
+      }
+      vmc.finalize_results();
+      vmc.print_results();
+    }
+    else {
+      std::cout << "sending results from p = " << mpi_comm.rank() << "\n";
+      vmc.MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
+    }
+  }
+  return 0;
+
+
+
+  int num_bcs = vmc.num_disorder_configs();
   // disordered system
   if (vmc.disordered_system()) {
     int num_proc = mpi_comm.size();

@@ -197,6 +197,25 @@ void ObservableSet::print_results(const double& xval)
   }
 }
 
+void ObservableSet::MPI_send_results(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& proc, const int& msg_tag)
+{
+  if (energy_) energy_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (energy_grad_) energy_grad_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (sc_corr_) sc_corr_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (sr_matrix_) sr_matrix_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (site_occupancy_) site_occupancy_.MPI_send_data(mpi_comm, proc, msg_tag);
+}
+
+void ObservableSet::MPI_recv_results(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& proc, const int& msg_tag)
+{
+  if (energy_) energy_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (energy_grad_) energy_grad_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (sc_corr_) sc_corr_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (sr_matrix_) sr_matrix_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (site_occupancy_) site_occupancy_.MPI_add_data(mpi_comm, proc, msg_tag);
+}
 
 } // end namespace vmc
 

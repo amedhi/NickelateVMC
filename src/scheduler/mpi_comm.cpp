@@ -7,7 +7,7 @@
 *----------------------------------------------------------------------------*/
 #include "./mpi_comm.h"
 
-namespace scheduler {
+namespace mpi {
 
 #ifdef HAVE_BOOST_MPI
 
@@ -22,4 +22,4 @@ mpi_communicator::mpi_communicator(void)
 #endif
 
 
-} // end namespace input
+} // end namespace mpi

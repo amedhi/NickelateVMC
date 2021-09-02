@@ -16,10 +16,10 @@
   #include <boost/mpi/communicator.hpp>
 #endif
 
-namespace scheduler {
+namespace mpi {
 
 enum {MP_make_task, MP_task_params, MP_run_task, MP_task_finished,
-  MP_quit_tasks};
+  MP_quit_tasks, MP_data_samples};
 
 //const int MP_task_params = 0;
 //const int MP_run_task = 1;
@@ -28,6 +28,7 @@ enum {MP_make_task, MP_task_params, MP_run_task, MP_task_finished,
 #ifdef HAVE_BOOST_MPI
 
 using mpi_status = boost::mpi::status;
+using proc = int;
 using plist = std::list<int>;
 //  using mpi_environment = boost::mpi::environment;
 //  using mpi_communicator = boost::mpi::communicator;
@@ -113,6 +114,6 @@ private:
 
 
 
-} // end namespace scheduler
+} // end namespace mpi
 
 #endif

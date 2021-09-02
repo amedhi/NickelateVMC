@@ -12,29 +12,29 @@
 namespace scheduler {
 
 
-Scheduler::Scheduler(const mpi_communicator& mpi_comm, const AbstractTask& theTask)
+Scheduler::Scheduler(const mpi::mpi_communicator& mpi_comm, const AbstractTask& theTask)
 {
-  mpi_comm.recv(mpi_comm.master(),MP_make_task,input.task_params());
+  mpi_comm.recv(mpi_comm.master(),mpi::MP_make_task,input.task_params());
   theWorker = theTask.make_worker(input.task_params());
   //std::cout << "I am slave " << mpi_comm.rank() << "\n";
   //std::cout << "id = " << input.task_params().task_id() << "\n";
   //std::cout << "size = " << input.task_params().task_size() << "\n";
 }
 
-int Scheduler::run(const mpi_communicator& mpi_comm) 
+int Scheduler::run(const mpi::mpi_communicator& mpi_comm) 
 {
   bool task_exist = false;
   while (true) {
-    mpi_status msg = mpi_comm.probe();
+    mpi::mpi_status msg = mpi_comm.probe();
     switch (msg.tag()) {
-      case MP_quit_tasks:
+      case mpi::MP_quit_tasks:
         mpi_comm.recv(msg.source(),msg.tag());
         theWorker->finish();
         return 0;
-      case MP_run_task:
+      case mpi::MP_run_task:
         mpi_comm.recv(msg.source(),msg.tag(),input.task_params());
         theWorker->run(input.task_params(),mpi_comm);
-        mpi_comm.send(msg.source(),MP_task_finished);
+        mpi_comm.send(msg.source(),mpi::MP_task_finished);
         task_exist = false;
         break;
       default:

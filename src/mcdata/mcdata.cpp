@@ -60,6 +60,31 @@ bool DataBin::add_sample(const data_t& new_sample)
   return !waiting_sample_exist_;
 }
 
+// add samples from another bin
+bool DataBin::add_samples(const DataBin& bin)
+{
+  if (bin.num_samples() == 0) return !waiting_sample_exist_;
+  num_samples_ += bin.num_samples();
+  ssum_ += bin.ssum();
+  if (no_error_bar_) return false;
+  sumsq_ += bin.sumsq();
+  if (waiting_sample_exist_) {
+    if (bin.waiting_sample_exist()) {
+      carry_ = (waiting_sample_ + bin.waiting_sample())*0.5;
+      waiting_sample_exist_ = false;
+    }
+    // else, 'waiting_sample' in the host bin remains as it is
+  }
+  else {
+    if (bin.waiting_sample_exist()) {
+      waiting_sample_ = bin.waiting_sample();
+      waiting_sample_exist_ = true;
+    }
+    // else, 'carry_' in the host bin remains as it is
+  }
+  return !waiting_sample_exist_;
+}
+
 void DataBin::finalize(void) const
 {
   if (num_samples_last_ != num_samples_) {
@@ -85,6 +110,8 @@ void DataBin::finalize(void) const
 }
 
 /*----------------------MC_Data class------------------*/
+int MC_Data::num_objs = 0; 
+
 void MC_Data::init(const std::string& name, const int& size, const bool& no_error_bar) 
 {
   std::vector<DataBin>::clear();
@@ -158,6 +185,67 @@ void MC_Data::operator<<(const double& sample)
   add_sample(new_sample);
 }
 
+// MPI transfer of data samples
+//---------------------------------------------------------------
+#ifdef HAVE_BOOST_MPI
+
+void MC_Data::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  mpi_comm.isend(p, msg_tag, *this);
+}
+
+void MC_Data::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  MC_Data new_data;
+  mpi_comm.recv(p, msg_tag, new_data);
+  if (id_ != new_data.id()) {
+    throw std::logic_error("MC_Data::MPI_add_data: object id-s not matching");
+  }
+  // add the data
+  for (int i=0; i<max_binlevel_default_; ++i) {
+    if (new_data.data_bin(i).num_samples()==0) return;
+    // combine samples from respective bin 
+    this->operator[](i).add_samples(new_data.data_bin(i));
+  }
+  // moping up: if any bin has 'carry_over', carry it to next bins
+  if (max_binlevel_default_>1) {
+    auto this_bin = top_bin;  
+    data_t new_sample;
+    while (this_bin != end_bin) {
+      if (this_bin->has_carry_over()) {
+        new_sample = this_bin->carry();
+        this_bin++;
+        break;
+      }
+      this_bin++;
+    }
+    if (this_bin == end_bin) return;
+    while (this_bin->add_sample(new_sample)) {
+      new_sample = this_bin->carry();
+      //if (this_bin++ == end_bin) break; // wrong logic?
+      if (++this_bin == end_bin) break;
+    }
+  }
+}
+#else
+
+void MC_Data::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p)
+{
+  throw std::logic_error("MC_Data::MPI_send_data: this is not an mpi program");
+}
+
+void MC_Data::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p)
+{
+  throw std::logic_error("MC_Data::MPI_add_data: this is not an mpi program");
+}
+
+#endif
+//---------------------------------------------------------------
+
 const data_t& MC_Data::mean_data(void) const 
 {
   this->finalize(); return mean_;
@@ -210,6 +298,7 @@ void MC_Data::finalize(void) const
   }
 }
 
+// assign to averages from another object
 void MC_Data::copy_finalize(const MC_Data& mcdata) 
 {
   finalize();
@@ -218,7 +307,6 @@ void MC_Data::copy_finalize(const MC_Data& mcdata)
   tau_ = mcdata.tau();
   error_converged_ = mcdata.error_converged();
 }
-
 
 
 void MC_Data::find_conv_and_tau(const unsigned& n) const 

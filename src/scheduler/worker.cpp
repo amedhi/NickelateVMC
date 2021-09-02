@@ -31,7 +31,7 @@ int Worker::run(const input::Parameters& p)
   return 0;
 }
 
-int Worker::run(const input::Parameters& parms, const mpi_communicator& mpi_comm) 
+int Worker::run(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm) 
 {
   return 0;
 }
