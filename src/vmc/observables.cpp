@@ -118,10 +118,9 @@ int ObservableSet::do_measurement(const lattice::LatticeGraph& graph,
 void ObservableSet::finalize(void)
 {
   if (energy_grad_) {
-    energy_grad_.finalize(energy_.mean_data().sum());
+    energy_grad_.finalize();
   }
 }
-
 
 void ObservableSet::as_functions_of(const std::vector<std::string>& xvars)
 {

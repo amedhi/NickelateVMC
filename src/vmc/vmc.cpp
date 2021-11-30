@@ -182,7 +182,111 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
   return 0;
 }
 
-int VMC::run_simulation(const int& sample_size)
+int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
+{
+  // take care of default argument
+  std::vector<int> bc_twists;
+  if (bc_list.size()==1 && bc_list[0]==-1) {
+    for (int bc=0; bc<graph.num_boundary_twists(); ++bc) {
+      bc_twists.push_back(bc);
+    }
+  }
+  else {
+    bc_twists = bc_list;
+    //for (const int& bc : bc_list) bc_twists.push_back(bc);
+  }
+
+  /*******************************************
+   * Only one and default BC
+   * *****************************************/
+  if (bc_twists.size()==1 && bc_twists[0]==0) {
+    // initialize
+    observables.reset();
+    int num_measure_steps = num_measure_steps_;
+    if (sample_size>0) num_measure_steps = sample_size;
+
+    // warmup run
+    if (!silent_mode_) std::cout << " warming up... " << std::flush;
+    for (int n=0; n<num_warmup_steps_; ++n) config.update_state();
+    if (!silent_mode_) std::cout << "done\n" << std::flush;
+    // measuring run
+    int skip_count = min_interval_;
+    int measurement_count = 0;
+    while (measurement_count < num_measure_steps) {
+      config.update_state();
+      if (skip_count >= min_interval_) {
+        if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
+          skip_count = 0;
+          config.reset_accept_ratio();
+          observables.do_measurement(graph,model,config,site_disorder_);
+          ++measurement_count;
+          if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
+        }
+      }
+      skip_count++;
+    }
+    // finalize
+    observables.finalize();
+    if (!silent_mode_) {
+      std::cout << " simulation done\n";
+      config.print_stats();
+    }
+  }
+  /*******************************************
+   * Average over several BCs
+   * *****************************************/
+  else {
+    // initialize
+    int num_measure_steps = num_measure_steps_;
+    if (sample_size>0) num_measure_steps = sample_size;
+    observables.reset();
+    for (const auto& bc: bc_twists) {
+      if (!silent_mode_) {
+        std::cout << "\n-------------------------------------" << std::endl;
+        std::cout << " Running for BC twist - "<<bc+1 << " / ";
+        std::cout << bc_twists.size() << std::endl;
+        std::cout << "-------------------------------------\n" << std::flush;
+      }
+      graph.update_boundary_twist(bc);
+      config.rng().seed(rng_seed_);
+      config.rebuild(graph);
+      //observables.reset();
+
+      // warmup run
+      if (!silent_mode_) std::cout << " warming up... " << std::flush;
+      for (int n=0; n<num_warmup_steps_; ++n) config.update_state();
+      if (!silent_mode_) std::cout << "done\n" << std::flush;
+      // measuring run
+      int skip_count = min_interval_;
+      int measurement_count = 0;
+      while (measurement_count < num_measure_steps) {
+        config.update_state();
+        if (skip_count >= min_interval_) {
+          if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
+            skip_count = 0;
+            config.reset_accept_ratio();
+            observables.do_measurement(graph,model,config,site_disorder_);
+            ++measurement_count;
+            if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
+          }
+        }
+        skip_count++;
+      }
+      // finalization needed only for "Energy Gradient"
+      observables.finalize();
+    }
+    //std::cout << observables.energy().result_str(-1) << "\n";
+    //getchar();
+    if (!silent_mode_) {
+      std::cout << " simulation done\n";
+      config.print_stats();
+    }
+  }
+  return 0;
+}
+
+/* OLD ONE
+int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
 {
   if (graph.num_boundary_twists()==1) {
     // initialize
@@ -266,7 +370,6 @@ int VMC::run_simulation(const int& sample_size)
     }
     // grand averages
     observables.avg_grand_data();
-
     //observables.finalize();
     //std::cout << observables.energy().result_str(-1) << "\n";
     //getchar();
@@ -277,9 +380,9 @@ int VMC::run_simulation(const int& sample_size)
       config.print_stats();
     }
   }
-
   return 0;
 }
+*/
 
 int VMC::do_warmup_run(void) 
 {

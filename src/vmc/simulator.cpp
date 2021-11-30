@@ -7,6 +7,8 @@
 * Last Modified time: 2017-05-20 11:14:38
 *----------------------------------------------------------------------------*/
 #include <iomanip>
+#include <set>
+#include <boost/algorithm/string.hpp>
 #include "simulator.h"
 //#include <nlopt.hpp>
 //#include "../optimizer/LBFGS.h"
@@ -22,43 +24,20 @@ Simulator::Simulator(const input::Parameters& inputs) : vmc(inputs)
     //vmc.set_box_constraints();
     //nlopt_.init(inputs, vmc);
   }
+  // mpi mode
+  int nowarn;
+  std::string mode = inputs.set_value("mpi_mode","NORMAL",nowarn);
+  boost::to_upper(mode);
+  if (mode=="BC_TWIST") {
+    mpi_mode_ = mpi_mode::BC_TWIST; 
+  }
+  else {
+    mpi_mode_ = mpi_mode::NORMAL; 
+  }
 }
 
 int Simulator::run(const input::Parameters& inputs) 
 {
-  // disordered system
-  if (vmc.disordered_system()) {
-    // optimizing run
-    if (optimization_mode_) {
-      for (int n=0; n<vmc.num_disorder_configs(); ++n) {
-        if (vmc.optimal_parms_exists(n)) continue;
-        std::cout << " optimizing disorder config " << n;
-        std::cout << " of " << vmc.num_disorder_configs() << "\n";
-        vmc.start(inputs, run_mode::sr_function, true);
-        vmc.set_disorder_config(n);
-        if (sreconf.optimize(vmc)) {
-          vmc.save_optimal_parms(sreconf.optimal_parms());
-          //vmc.run_simulation(sreconf.optimal_parms());
-          //vmc.print_results();
-        }
-      }
-      return 0;
-    }
-
-    // normal run
-    for (int n=0; n<vmc.num_disorder_configs(); ++n) {
-    //for (unsigned n=0; n<1; ++n) {
-      vmc.disorder_start(inputs, n);
-      vmc.run_simulation();
-    //  vmc.start(inputs, n);
-    //  vmc.run_simulation();
-      //vmc.save_results();
-    }
-    //vmc.print_avg_results();
-    vmc.print_results();
-    return 0;
-  }
-
   // optimization run
   if (optimization_mode_) {
     if (!inputs.have_option_quiet()) std::cout << " starting optimizing run\n";
@@ -85,44 +64,118 @@ int Simulator::run(const input::Parameters& inputs)
 int Simulator::run(const input::Parameters& inputs, 
   const mpi::mpi_communicator& mpi_comm)
 {
-  int num_proc = mpi_comm.size();
+  int num_procs = mpi_comm.size();
+  std::set<mpi::proc> working_procs;  
+  /**************************************************
+   * NORMAL MODE: Split samples into different procs
+   **************************************************/
   if (mpi_mode_ == mpi_mode::NORMAL) {
-    // split samples into different procs
     int total_samples = vmc.num_measure_steps();
-    // master takes lesser run load
-    int proc_samples = total_samples/mpi_comm.size();
-    int excess_samples = total_samples-proc_samples*mpi_comm.size();
-    if (mpi_comm.is_master()) {
-      proc_samples -= mpi_comm.size()-excess_samples-1;
+    int proc_samples = 0;
+    if (total_samples >= num_procs) {
+      // distribute equally (master takes lesser load)
+      proc_samples = total_samples/num_procs;
+      int excess_samples = total_samples-proc_samples*num_procs;
+      if (mpi_comm.is_master()) {
+        proc_samples -= num_procs-excess_samples-1;
+      }
+      else {
+        proc_samples += 1;
+      }
+      // save the working slaves
+      if (mpi_comm.is_master()) {
+        for (const mpi::proc& p : mpi_comm.slave_procs()) {
+          working_procs.insert(p);
+        }
+      }
     }
     else {
-      proc_samples += 1;
-    }
-    std::cout << "starting in p = " << mpi_comm.rank() << "\n";
-    vmc.start(inputs, run_mode::normal);
-    std::cout << "warming in p = " << mpi_comm.rank() << "\n";
-    vmc.do_warmup_run();
-    std::cout << "measuring "<< proc_samples<<" in p = " << mpi_comm.rank() << "\n";
-    vmc.do_measure_run(proc_samples);
-    // collect samples
-    if (mpi_comm.is_master()) {
-      for (const mpi::proc& p : mpi_comm.slave_procs()) {
-        std::cout << "reciving results from p = " << p << "\n";
-        vmc.MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
+      if (mpi_comm.is_master()) {
+        std::cout << ">> alert: redundant processes in MPI run\n"; 
       }
-      vmc.finalize_results();
+      if (mpi_comm.rank() >= total_samples) return 0; // no work for you
+      proc_samples = 1; // for the remaining guys
+      // save the working slaves
+      if (mpi_comm.is_master()) {
+        int i = 0;
+        for (const mpi::proc& p : mpi_comm.slave_procs()) {
+          if (++i == total_samples) break;
+          working_procs.insert(p);
+        }
+      }
+    }
+    // do one MPI run
+    if (mpi_comm.is_master()) {
+      if (!inputs.have_option_quiet()) std::cout << " starting vmc run in normal MPI mode\n";
+    }
+    mpirun_vmc(inputs, mpi_comm, working_procs, proc_samples, 
+      run_mode::normal);
+    if (mpi_comm.is_master()) {
       vmc.print_results();
     }
-    else {
-      std::cout << "sending results from p = " << mpi_comm.rank() << "\n";
-      vmc.MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
-    }
+    return 0;
   }
+
+  /*******************************************************
+   * BC_TWISTS: Run different BC_TWIST in different procs
+   *******************************************************/
+  if (mpi_mode_ == mpi_mode::BC_TWIST) {
+    int num_bcs = vmc.num_boundary_twists();
+    std::vector<int> bc_list;
+    if (num_bcs >= num_procs) {
+      int num_proc_bcs = num_bcs/num_procs;
+      if (mpi_comm.is_master()) {
+        for (int i=0; i<num_proc_bcs; ++i) bc_list.push_back(i);
+      }
+      else {
+        if (num_proc_bcs*num_procs != num_bcs) num_proc_bcs++;
+        for (int i=0; i<num_proc_bcs; ++i) {
+          int id = mpi_comm.rank()*num_proc_bcs+i;
+          if (id >= num_bcs) break;
+          bc_list.push_back(id);
+        }
+      }
+      // working procs
+      if (mpi_comm.is_master()) {
+        for (const mpi::proc& p : mpi_comm.slave_procs()) {
+          working_procs.insert(p);
+        }
+      }
+    }
+    else {
+      if (mpi_comm.is_master()) {
+        std::cout << ">> alert: redundant processes in MPI run\n"; 
+      }
+      if (mpi_comm.rank() >= num_bcs) return 0; // no work for you
+      bc_list.push_back(mpi_comm.rank());
+      // save the working slaves
+      if (mpi_comm.is_master()) {
+        int i = 0;
+        for (const mpi::proc& p : mpi_comm.slave_procs()) {
+          if (++i == num_bcs) break;
+          working_procs.insert(p);
+        }
+      }
+    }
+    // do one MPI run
+    if (mpi_comm.is_master()) {
+      if (!inputs.have_option_quiet()) std::cout << " starting vmc run in BC_TWIST MPI mode\n";
+    }
+    mpirun_vmc(inputs, mpi_comm, working_procs, bc_list, run_mode::normal);
+    if (mpi_comm.is_master()) {
+      vmc.print_results();
+    }
+    return 0;
+    //vmc.start(inputs, run_mode::normal);
+    //vmc.run_simulation();
+    //if (mpi_comm.is_master()) {
+    //  vmc.print_results();
+    //}
+  }
+
   return 0;
 
 
-
-  int num_bcs = vmc.num_disorder_configs();
   // disordered system
   if (vmc.disordered_system()) {
     int num_proc = mpi_comm.size();
@@ -164,6 +217,71 @@ int Simulator::run(const input::Parameters& inputs,
   }
   return 0;
 }
+
+// one run in parallel
+int Simulator::mpirun_vmc(const input::Parameters& inputs, 
+  const mpi::mpi_communicator& mpi_comm, 
+  const std::set<mpi::proc>& working_procs,
+  const int& proc_samples, const run_mode& mode) 
+{
+  //std::cout << "starting in p = " << mpi_comm.rank() << "\n";
+  vmc.start(inputs, mode);
+  //std::cout << "warming in p = " << mpi_comm.rank() << "\n";
+  vmc.do_warmup_run();
+  //std::cout << "measuring "<< proc_samples<<" in p = " << mpi_comm.rank() << "\n";
+  vmc.do_measure_run(proc_samples);
+  // collect samples
+  if (mpi_comm.is_master()) {
+    /*
+    while (true) {
+      mpi::mpi_status msg = mpi_comm.probe();
+      switch (msg.tag()) {
+        case mpi::MP_data_samples:
+          vmc.MPI_recv_results(mpi_comm, msg.source(), msg.tag());
+          break;
+        default:
+          std::cout << "Simulator::run: unexpected message\n";
+          return 1;
+      }
+    }*/
+    for (const mpi::proc& p : working_procs) {
+      //std::cout << "reciving results from p = " << p << "\n";
+      vmc.MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
+    }
+    vmc.finalize_results();
+  }
+  else {
+    //std::cout << "sending results from p = " << mpi_comm.rank() << "\n";
+    vmc.MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
+  }
+  return 0;
+}
+
+int Simulator::mpirun_vmc(const input::Parameters& inputs, const mpi::mpi_communicator& 
+  mpi_comm, const std::set<mpi::proc>& working_procs, 
+  const std::vector<int>& bc_list, const run_mode& mode) 
+{
+  vmc.start(inputs, mode, true);
+  if (!inputs.have_option_quiet()) {
+    std::cout << " running BC_TWISTS: "<<bc_list.front()+1<<"-"
+      <<bc_list.back()+1<<" in p"<<mpi_comm.rank()<<"\n";
+  } 
+  vmc.run_simulation(-1, bc_list);
+  if (mpi_comm.is_master()) {
+    //if (!inputs.have_option_quiet()) {
+    //  std::cout << " accumulating results...\n";
+    //}
+    for (const mpi::proc& p : working_procs) {
+      vmc.MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
+    }
+  }
+  else {
+    vmc.MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
+  }
+  return 0;
+}
+
+
 
   /*
   //nlopt::opt opt(nlopt::LD_MMA, varparms.size());

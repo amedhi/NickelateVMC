@@ -30,7 +30,8 @@ public:
   int start(const input::Parameters& inputs, const run_mode& mode=run_mode::normal, 
     const bool& silent=false);
   void seed_rng(const int& seed=1);
-  int run_simulation(const int& sample_size=-1);
+  int run_simulation(const int& sample_size=-1, 
+    const std::vector<int>& bc_list={-1});
   int run_simulation(const Eigen::VectorXd& varp);
   int do_warmup_run(void); 
   int do_measure_run(const int& num_samples); 
@@ -43,6 +44,7 @@ public:
     const int& sample_size=-1, const int& rng_seed=-1);
   //void get_vparm_values(var::parm_vector& varparms) 
   //  { varparms = config.vparm_values(); }
+  const int& num_boundary_twists(void) const { return graph.num_boundary_twists(); } 
   const int& num_measure_steps(void) const { return num_measure_steps_; } 
   const unsigned& num_varp(void) const { return config.num_varparms(); } 
   const var::parm_vector& varp_values(void) { return config.vparm_values(); }
@@ -88,6 +90,8 @@ private:
   int rng_seed_;
   unsigned num_sites_;
   unsigned num_varparms_;
+  // default BC_TWIST list
+  std::vector<int> bc_default_{0};
 
   // observables
   ObservableSet observables;

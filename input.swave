@@ -1,4 +1,4 @@
-#---------------------------------------
+#------------iii---------------------------
 #    	      ~VMC Simulation~           
 #    	      Input Parameters           
 #---------------------------------------
@@ -8,13 +8,16 @@ optimizing_run = "NO"
 mode = "NEW"
 print_level = -2
 prefix = "swave"
+mpi_mode = "BC_TWIST" 
+#mpi_mode = "NORMAL" 
 #---------------------------------------
 lattice = "NICKELATE_2L"
-#lattice = "SQUARE"
 lsize1 = 10
 lsize2 = 10
 bc1 = "periodic"
 bc2 = "periodic"
+bc1_twists = 4
+bc2_twists = 4
 #---------------------------------------
 model = "HUBBARD"
 e_R   =  -2.500000
@@ -25,26 +28,27 @@ U     =  -6.000000
 #---------------------------------------
 wavefunction = "SC_SWAVE"
 #wavefunction = "FERMISEA"
-gutzwiller_proj = "NO"
-gfactor =   1.0
-hole_doping = -0.9 #   0.160000
+gutzwiller_proj = "YES"
+gfactor = 1.267940E+00
+hole_doping = 0.3 #   0.160000
 #delta_sc =  1.8
-delta_N =   2.220454E+00
-delta_R =   0.0
-mu_N =   -1.787726E+00
-mu_R =   -1.787726E+00
+delta_N = 1.162792E+00 
+delta_R = 0.02
+mu_N =  -3.263835E+00
+mu_R =  -3.781384E+00
+mu_default = "NO"
 as_func_of = "hole_doping"
 #as_func_of = "delta_R"
 #---------------------------------------
 Energy = "YES"
-EnergyGradient = "NO"
+EnergyGradient = "YES"
 Magnetization = "NO"
-SC_Correlation = "YES"
+SC_Correlation = "NO"
 SiteOccupancy = "NO"
 #---------------------------------------
 rng_seed = 0
-measure_steps = 50000
-warmup_steps = 5000
+measure_steps = 5000
+warmup_steps = 1000
 min_interval = 3
 max_interval = 10
 #---------------------------------------

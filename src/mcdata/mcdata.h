@@ -39,7 +39,6 @@ public:
   bool add_sample(const data_t& sample);
   bool add_samples(const DataBin& bin);
   bool has_samples(void) const { return (num_samples_ > 0); }
-  bool has_carry_over(void) const { return !waiting_sample_exist_; }
   const int& size(void) const { return size_; }
   const int& num_samples(void) const { return num_samples_; }
   const data_t& ssum(void) const { return ssum_; }
@@ -47,6 +46,7 @@ public:
   const data_t& carry(void) const { return carry_; } 
   const data_t& waiting_sample(void) const { return waiting_sample_; } 
   bool waiting_sample_exist(void) const { return waiting_sample_exist_; }
+  bool carry_exist(void) const { return carry_exist_; }
   bool have_new_samples(void) const { return num_samples_!=num_samples_last_; }
   void finalize(void) const;
   const data_t& mean(void) const { finalize(); return mean_; }
@@ -60,6 +60,7 @@ private:
   data_t carry_;
   data_t waiting_sample_;
   bool waiting_sample_exist_{false};
+  bool carry_exist_{false};
   bool no_error_bar_{false};
   data_t MinusOne_;
   mutable data_t mean_;
@@ -128,8 +129,8 @@ public:
   const MC_Data& with_statistic(void) const { show_statistic_=true; return *this; }
   void show_statistic(std::ostream& os=std::cout) const;
   friend std::ostream& operator<<(std::ostream& os, const MC_Data& obs);
-  void MPI_send_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag);
-  void MPI_add_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag);
+  virtual void MPI_send_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag);
+  virtual void MPI_add_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag);
 private:
   static int num_objs;
   int id_;

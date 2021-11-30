@@ -13,7 +13,7 @@
 
 namespace vmc {
 
-enum class mpi_mode { NORMAL, BC_TWISTS };
+enum class mpi_mode {NORMAL, BC_TWIST};
 
 class Simulator : public scheduler::Worker
 {
@@ -36,7 +36,12 @@ private:
   //opt::Optimizer optimizer_;
   mpi_mode mpi_mode_; 
   bool optimization_mode_{false};
-
+  int mpirun_vmc(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm, 
+    const std::set<mpi::proc>& working_procs, const int& proc_samples, 
+    const run_mode& mode=run_mode::normal); 
+  int mpirun_vmc(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm, 
+    const std::set<mpi::proc>& working_procs, const std::vector<int>& bc_list, 
+    const run_mode& mode=run_mode::normal); 
   //static double enfunc(const std::vector<double>& x, std::vector<double>& grad, 
   //  void *my_func_data);
 };

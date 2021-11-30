@@ -63,7 +63,9 @@ bool DataBin::add_sample(const data_t& new_sample)
 // add samples from another bin
 bool DataBin::add_samples(const DataBin& bin)
 {
-  if (bin.num_samples() == 0) return !waiting_sample_exist_;
+  //std::cout << num_samples_ << "\n";
+  carry_exist_ = false;
+  if (bin.num_samples() == 0) return false;
   num_samples_ += bin.num_samples();
   ssum_ += bin.ssum();
   if (no_error_bar_) return false;
@@ -72,6 +74,7 @@ bool DataBin::add_samples(const DataBin& bin)
     if (bin.waiting_sample_exist()) {
       carry_ = (waiting_sample_ + bin.waiting_sample())*0.5;
       waiting_sample_exist_ = false;
+      carry_exist_ = true;
     }
     // else, 'waiting_sample' in the host bin remains as it is
   }
@@ -82,7 +85,7 @@ bool DataBin::add_samples(const DataBin& bin)
     }
     // else, 'carry_' in the host bin remains as it is
   }
-  return !waiting_sample_exist_;
+  return carry_exist_;
 }
 
 void DataBin::finalize(void) const
@@ -192,43 +195,52 @@ void MC_Data::operator<<(const double& sample)
 void MC_Data::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
   const mpi::proc& p, const int& msg_tag)
 {
-  mpi_comm.isend(p, msg_tag, *this);
+  //std::cout<<"sending data from " << name_ << "\n";
+  //std::cout << "Sending data statistic\n";
+  //show_statistic();
+  mpi_comm.send(p, msg_tag, *this);
 }
 
 void MC_Data::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
   const mpi::proc& p, const int& msg_tag)
 {
+  //std::cout<<"reciving data to " << name_ << "\n";
   MC_Data new_data;
   mpi_comm.recv(p, msg_tag, new_data);
+  //std::cout << "id  incoming id = " << id_ << "  " << new_data.id() << "\n";
   if (id_ != new_data.id()) {
     throw std::logic_error("MC_Data::MPI_add_data: object id-s not matching");
   }
+  // check 
+  //std::cout << "Reciving data statistic\n";
+  //show_statistic();
+
   // add the data
   for (int i=0; i<max_binlevel_default_; ++i) {
-    if (new_data.data_bin(i).num_samples()==0) return;
-    // combine samples from respective bin 
+    if (new_data.data_bin(i).num_samples()==0) break;
     this->operator[](i).add_samples(new_data.data_bin(i));
   }
-  // moping up: if any bin has 'carry_over', carry it to next bins
-  if (max_binlevel_default_>1) {
-    auto this_bin = top_bin;  
-    data_t new_sample;
-    while (this_bin != end_bin) {
-      if (this_bin->has_carry_over()) {
+  //std::cout << "Total data statistic\n";
+  //show_statistic();
+  // perform 'carry_over' tasks created by the previous operation
+  for (auto rbin=rbegin(); rbin!=rend(); ++rbin) {
+    if (rbin->num_samples()>0 && rbin->carry_exist()) {
+      data_t new_sample(rbin->carry());
+      // 'this_bin' actually the next to the one pointed by 'rbin' (which is we want)
+      auto this_bin = rbin.base();  
+      if (this_bin == end_bin) break;
+      while (this_bin->add_sample(new_sample)) {
         new_sample = this_bin->carry();
-        this_bin++;
-        break;
+        //if (this_bin++ == end_bin) break; // wrong logic?
+        if (++this_bin == end_bin) break;
       }
-      this_bin++;
-    }
-    if (this_bin == end_bin) return;
-    while (this_bin->add_sample(new_sample)) {
-      new_sample = this_bin->carry();
-      //if (this_bin++ == end_bin) break; // wrong logic?
-      if (++this_bin == end_bin) break;
     }
   }
+  //std::cout << "Mopped up data statistic\n";
+  //show_statistic();
+
 }
+
 #else
 
 void MC_Data::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
@@ -391,7 +403,7 @@ void MC_Data::show_statistic(std::ostream& os) const
   auto bin = top_bin;
   os << name_ << " Statistic:\n";
   unsigned i = 0;
-  while (bin->num_samples()>1) {
+  while (bin->num_samples()>0) {
     os <<"bin-"<<std::setw(2)<<i++<<": "<< std::right<<std::setw(8)<<bin->num_samples(); 
     data_t mean = bin->mean();
     data_t stddev = bin->stddev();

@@ -36,15 +36,21 @@ public:
   using MC_Observable::MC_Observable;
   void setup(const SysConfig& config);
   void measure(const SysConfig& config, const double& config_energy);
-  void finalize(const double& mean_energy);
-  void reset(void) override { MC_Observable::reset(); grad_terms_.reset(); }
+  void finalize(void);
+  void reset(void) override 
+  { 
+    MC_Observable::reset(); grad_terms_.reset(); total_en_.reset();
+  }
   const RealVector& grad_logpsi(void) const { return grad_logpsi_; }
+  void MPI_send_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
+  void MPI_add_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
 private:
   bool setup_done_{false};
   unsigned num_varp_{0};
   mcdata::data_t config_value_;
   RealVector grad_logpsi_;
   mcdata::MC_Observable grad_terms_{"gradient_terms"};
+  mcdata::MC_Observable total_en_{"total_energy"};
 };
 
 class SR_Matrix : public mcdata::MC_Observable
