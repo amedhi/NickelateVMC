@@ -33,12 +33,14 @@ public:
   int run_simulation(const int& sample_size=-1, 
     const std::vector<int>& bc_list={-1});
   int run_simulation(const Eigen::VectorXd& varp);
+  int reset_observables(void);
   int do_warmup_run(void); 
   int do_measure_run(const int& num_samples); 
   int energy_function(const Eigen::VectorXd& varp, double& en_mean, double& en_stddev,
     Eigen::VectorXd& grad);
   int operator()(const Eigen::VectorXd& varp, double& en_mean, double& en_stddev,
      Eigen::VectorXd& grad) { return energy_function(varp,en_mean,en_stddev,grad); }
+  int build_config(const Eigen::VectorXd& varp, const bool& with_psi_grad); 
   int sr_function(const Eigen::VectorXd& vparms, double& en_mean, double& en_stddev,
     Eigen::VectorXd& grad, Eigen::MatrixXd& sr_matrix, 
     const int& sample_size=-1, const int& rng_seed=-1);
@@ -55,6 +57,7 @@ public:
   const double& hole_doping(void) const { return config.hole_doping(); }
   const std::vector<std::string>& xvar_names(void) const { return xvar_names_; }
   const std::vector<double>& xvar_values(void) const { return xvar_values_; }
+  const ObservableSet& observable(void) const { return observables; }
   void finalize_results(void) { observables.finalize(); } 
   void print_results(void); 
   const std::string prefix_dir(void) const { return prefix_; }

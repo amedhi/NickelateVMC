@@ -19,7 +19,7 @@ class AbstractWorker
 {
 public:
   virtual ~AbstractWorker() {};
-  virtual int start(const input::Parameters& p) = 0; // start the runs
+  virtual int start(const mpi::mpi_communicator& mpi_comm) = 0; // start the runs
   virtual int run(const input::Parameters& p) = 0; // run 
   virtual int run(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm) = 0;
   virtual void finish(void) = 0; // mark as finished
@@ -32,7 +32,7 @@ public:
   Worker();
   virtual ~Worker();
   //virtual void construct(); // needs to be called to finish construction
-  int start(const input::Parameters& p) override; // start simulation
+  int start(const mpi::mpi_communicator& mpi_comm) override; // start simulation
   int run(const input::Parameters& p) override; // run 
   int run(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm) override;
   virtual void dostep(void)=0; // do a step

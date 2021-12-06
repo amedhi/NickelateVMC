@@ -20,7 +20,7 @@ class Simulator : public scheduler::Worker
 public:
   Simulator(const input::Parameters& parms); 
   ~Simulator() {}
-  int start(const input::Parameters& parms) override { return 0; }
+  int start(const mpi::mpi_communicator& mpi_comm) override; 
   int run(const input::Parameters& parms) override;
   int run(const input::Parameters& parms, 
     const mpi::mpi_communicator& mpi_comm) override;
@@ -36,9 +36,8 @@ private:
   //opt::Optimizer optimizer_;
   mpi_mode mpi_mode_; 
   bool optimization_mode_{false};
-  int mpirun_vmc(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm, 
-    const std::set<mpi::proc>& working_procs, const int& proc_samples, 
-    const run_mode& mode=run_mode::normal); 
+  int mpirun_vmc(const mpi::mpi_communicator& mpi_comm, 
+    const std::set<mpi::proc>& working_procs, const int& proc_samples); 
   int mpirun_vmc(const input::Parameters& parms, const mpi::mpi_communicator& mpi_comm, 
     const std::set<mpi::proc>& working_procs, const std::vector<int>& bc_list, 
     const run_mode& mode=run_mode::normal); 

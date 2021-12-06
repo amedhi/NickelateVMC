@@ -36,6 +36,14 @@ Simulator::Simulator(const input::Parameters& inputs) : vmc(inputs)
   }
 }
 
+int Simulator::start(const mpi::mpi_communicator& mpi_comm) 
+{
+  if (mpi_comm.is_master() && optimization_mode_) {
+    sreconf.print_info(vmc);
+  }
+  return 0;
+}
+
 int Simulator::run(const input::Parameters& inputs) 
 {
   // optimization run
@@ -104,14 +112,77 @@ int Simulator::run(const input::Parameters& inputs,
         }
       }
     }
-    // do one MPI run
-    if (mpi_comm.is_master()) {
-      if (!inputs.have_option_quiet()) std::cout << " starting vmc run in normal MPI mode\n";
-    }
-    mpirun_vmc(inputs, mpi_comm, working_procs, proc_samples, 
-      run_mode::normal);
-    if (mpi_comm.is_master()) {
-      vmc.print_results();
+
+    // Optimizing run
+    if (optimization_mode_) {
+      if (mpi_comm.is_master()) {
+        if (!inputs.have_option_quiet()) std::cout << " starting optimizing run\n";
+      }
+      int num_vparms = vmc.num_varp();
+      Eigen::VectorXd grad(num_vparms);
+      Eigen::MatrixXd sr_matrix(num_vparms,num_vparms);
+      // start vmc in sr_function mode in all procs
+      vmc.start(inputs, run_mode::sr_function, true);
+      for (int n=0; n<sreconf.num_opt_samples(); ++n) {
+        // starting parameters for each sample
+        var::parm_vector vparms = vmc.varp_values();
+        if (mpi_comm.is_master()) sreconf.start(vmc, n);
+        while (true) {
+          mpi_comm.barrier(); // for safety
+          bool with_psi_grad = true;
+          vmc.build_config(vparms, with_psi_grad);
+          mpirun_vmc(mpi_comm,working_procs,proc_samples); 
+          if (mpi_comm.is_master()) {
+            // quantities needed for optimization
+            double energy = vmc.observable().energy().mean();
+            double energy_err = vmc.observable().energy().stddev();
+            grad = vmc.observable().energy_grad().mean_data();
+            vmc.observable().sr_matrix().get_matrix(sr_matrix);
+            // iterate
+            exit_stat status;
+            bool done=sreconf.iterate(vparms,energy,energy_err,grad,sr_matrix,
+              status);
+            if (done) {
+              sreconf.finalize();
+              for (const mpi::proc& p : working_procs) {
+                mpi_comm.send(p, mpi::MP_stop_simulation);
+              }
+              break;
+            }
+            else {
+              for (const mpi::proc& p : working_procs) {
+                mpi_comm.send(p, mpi::MP_variational_parms, vparms);
+              }
+            }
+          }
+          else {
+            mpi::mpi_status msg = mpi_comm.probe();
+            if (msg.tag() == mpi::MP_variational_parms) {
+              mpi_comm.recv(msg.source(), msg.tag(), vparms);
+            }
+            else if (msg.tag() == mpi::MP_stop_simulation) {
+              mpi_comm.recv(msg.source(), msg.tag());
+              break;
+            }
+            else {
+              std::cout << "Simulator::run: unexpected message in optimizing run\n";
+            }
+          }
+        } // while each sample
+      }// all samples
+
+    }// optimizing run
+
+    // VMC run
+    else {
+      if (mpi_comm.is_master()) {
+        if (!inputs.have_option_quiet()) std::cout << " starting vmc run in normal MPI mode\n";
+      }
+      vmc.start(inputs, run_mode::normal);
+      mpirun_vmc(mpi_comm, working_procs, proc_samples); 
+      if (mpi_comm.is_master()) {
+        vmc.print_results();
+      }
     }
     return 0;
   }
@@ -172,60 +243,15 @@ int Simulator::run(const input::Parameters& inputs,
     //  vmc.print_results();
     //}
   }
-
   return 0;
 
-
-  // disordered system
-  if (vmc.disordered_system()) {
-    int num_proc = mpi_comm.size();
-    int num_dconf = vmc.num_disorder_configs();
-    int n1, n2;
-    if (num_proc==num_dconf) {
-      n1 = mpi_comm.rank();
-      n2 = mpi_comm.rank();
-    }
-    else if (num_proc > num_dconf) {
-      n1 = mpi_comm.rank();
-      n2 = mpi_comm.rank();
-      if (n1 >= num_dconf) return 0; // no job for you
-    }
-    else {
-      int n = std::nearbyint(static_cast<double>(num_dconf)/num_proc);
-      n1 = n * mpi_comm.rank();
-      n2 = n1 + n;
-      if (n1 >= num_dconf) return 0; // no job for you
-      if (mpi_comm.rank()==(num_proc-1)) {
-        n2 = num_dconf;
-      }
-    }
-    // optimizing run
-    if (optimization_mode_) {
-      for (unsigned n=n1; n<n2; ++n) {
-        if (vmc.optimal_parms_exists(n)) continue;
-        std::cout << " optimizing disorder config " << n;
-        std::cout << " of " << vmc.num_disorder_configs() << "\n";
-        vmc.start(inputs, run_mode::sr_function, true);
-        vmc.set_disorder_config(n);
-        if (sreconf.optimize(vmc)) {
-          vmc.save_optimal_parms(sreconf.optimal_parms());
-          //vmc.run_simulation(sreconf.optimal_parms());
-          //vmc.print_results();
-        }
-      }
-    }
-  }
-  return 0;
 }
 
 // one run in parallel
-int Simulator::mpirun_vmc(const input::Parameters& inputs, 
-  const mpi::mpi_communicator& mpi_comm, 
-  const std::set<mpi::proc>& working_procs,
-  const int& proc_samples, const run_mode& mode) 
+int Simulator::mpirun_vmc(const mpi::mpi_communicator& mpi_comm, 
+  const std::set<mpi::proc>& working_procs, const int& proc_samples) 
 {
-  //std::cout << "starting in p = " << mpi_comm.rank() << "\n";
-  vmc.start(inputs, mode);
+  vmc.reset_observables();
   //std::cout << "warming in p = " << mpi_comm.rank() << "\n";
   vmc.do_warmup_run();
   //std::cout << "measuring "<< proc_samples<<" in p = " << mpi_comm.rank() << "\n";

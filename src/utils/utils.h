@@ -31,6 +31,7 @@ public:
   const MK_Statistic& add_data(const data_t& x);
   const MK_Statistic& operator<<(const double& x) { return add_data(x); }
   const MK_Statistic& operator<<(const data_t& x) { return add_data(x); }
+  const std::deque<data_t>& data_series(void) const { return time_series_; }
   void get_series_avg(data_t& mean) const;
   const double& elem_max_trend(void) const { return mk_trend_max_; }
   const bool& is_full(void) const { return is_full_; }

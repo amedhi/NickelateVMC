@@ -12,10 +12,12 @@
 #include <fstream>
 #include <iomanip>
 #include <deque>
-//#include "../utils/utils.h"
+#include "../utils/utils.h"
 #include "./vmc.h"
 
 namespace vmc {
+
+enum class exit_stat {converged, maxiter, terminated};
 
 class StochasticReconf 
 {
@@ -24,9 +26,15 @@ public:
   StochasticReconf(const input::Parameters& parms); 
   ~StochasticReconf() {}
   int init(const input::Parameters& parms, const VMC& vmc);
+  int print_info(const VMC& vmc);
   int optimize(VMC& vmc);
   const var::parm_vector& optimal_parms(void) const { return vparms_; }
-  //const var::parm_vector& vp(void) { return varparms; }
+  const int& num_opt_samples(void) const { return num_opt_samples_; }
+  int start(const VMC& vmc, const int& sample);
+  int iterate(var::parm_vector& vparms, const double& energy,
+    const double& energy_err, const Eigen::VectorXd& grad, 
+    Eigen::MatrixXd& sr_matrix, exit_stat& status);
+  int finalize(void);
 private:
   int num_parms_;
   mcdata::MC_Observable optimal_parms_;
@@ -34,6 +42,7 @@ private:
   mcdata::MC_Observable energy_error_bar_;
   var::parm_vector vparms_;
   var::parm_vector vparms_start_;
+  var::parm_vector search_dir_;
   var::parm_vector lbound_;
   var::parm_vector ubound_;
   var::parm_vector range_;
@@ -41,30 +50,43 @@ private:
   Eigen::VectorXd grad_;
   std::vector<double> xvar_values_;
   // Mann-Kendall trend test for converegence
-  // util::MK_Statistic mk_statistic_;
+  util::MK_Statistic mk_statistic_;
+
+  // series energy values
+  std::deque<double> iter_energy_;
+  std::deque<double> iter_energy_err_;
+
+  int refinement_cycle_{50};
+  int refinement_level_{0};
+  int mk_series_len_{30};
+  double mk_thresold_{0.30};
   // optimization parameters
   int num_sim_samples_{1000};
   int num_sim_samples2_{5000};
-  int num_opt_samples_{30};
+  int num_opt_samples_{20};
+  int sample_{0};
+  int iter_{0};
   int max_iter_{200};
   int flat_tail_len_{20};
   int random_start_{true};
+  bool ln_search_{false};
+  bool SA_steps_{true};
   bool dir_cutoff_{false};
   double lambda_cut_{1.0E-3};
   double stabilizer_{0.001};
   double grad_tol_{5.0E-3};
   double ftol_{5.0E-5};
-  //int refinement_cycle_{100};
-  //int mk_series_len_{40};
   double lnsearch_mu_{1.0E-2};
   double lnsearch_beta_{0.5};
   double lnsearch_step_{0.5};
   double start_tstep_{0.1};
+  double search_tstep_{0.1};
   //double rslope_tol_{1.0E-2};
   //double aslope_tol_{1.0E-5};
-  //double mk_thresold_{0.30};
   bool print_progress_{false};
   bool print_log_{true};
+  Eigen::VectorXi converged_;
+
 
   // progress file
   std::ofstream logfile_;

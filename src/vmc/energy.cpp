@@ -195,7 +195,7 @@ void EnergyGradient::finalize(void)
   }
   //-------------------------------------------------
   //std::cout << mean_energy << "\n";
-  //std::cout << energy_grad2_ << "\n";
+  //std::cout << config_value_.transpose() << "\n";
   //for (int i=0; i<energy_grad_.size(); ++i) std::cout << energy_grad_[i] << "\n";
   //-------------------------------------------------
   *this << energy_grad;

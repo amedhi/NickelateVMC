@@ -24,6 +24,7 @@ Scheduler::Scheduler(const mpi::mpi_communicator& mpi_comm, const AbstractTask& 
 int Scheduler::run(const mpi::mpi_communicator& mpi_comm) 
 {
   bool task_exist = false;
+  theWorker->start(mpi_comm);
   while (true) {
     mpi::mpi_status msg = mpi_comm.probe();
     switch (msg.tag()) {

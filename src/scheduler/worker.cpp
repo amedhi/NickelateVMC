@@ -18,7 +18,7 @@ Worker::~Worker()
 {
 }
 
-int Worker::start(const input::Parameters& p)
+int Worker::start(const mpi::mpi_communicator& mpi_comm)
 {
   started_ = true;
   return 0;

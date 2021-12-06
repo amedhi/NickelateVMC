@@ -6,11 +6,11 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-optimizing_run = "NO" 
+mpi_mode = "NORMAL"
+optimizing_run = "YES" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
-prefix=""
-
+prefix="hub"
 #---------------------------------------------
 # Lattice:
 #---------------------------------------------
@@ -19,16 +19,13 @@ lsize1 = 10
 lsize2 = 10
 bc1 = "periodic"
 bc2 = "antiperiodic"
-#bc1_twists = 10
-#bc2_twists = 10
-
+bc1_twists = 1
+bc2_twists = 1
 #---------------------------------------------
 # Model:
 #---------------------------------------------
-#model = "tJ"
 model = "HUBBARD"
 t = 1.0
-#J = 0.35
 U = 8.0
 
 #---------------------------------------------
@@ -38,17 +35,19 @@ wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.16
-gfactor = 0.3037
-delta_sc = 0.08
-mu = -0.4263000
-#mu_variational = "YES"
+gfactor = 1.0 # 0.3037
+delta_sc = 1.0 # 0.08
+mu = 0.0 #  -0.4263000
+mu_default = "NO"
+mu_variational = "YES"
 as_func_of = "hole_doping"
+#as_func_of = "gfactor"
 
 #---------------------------------------------
 # List of observable to calculate:
 #---------------------------------------------
 Energy = "YES"
-EnergyGradient = "NO"
+EnergyGradient = "YES"
 Magnetization = "NO"
 SC_Correlation = "NO"
 SiteOccupancy = "NO"
@@ -57,8 +56,8 @@ SiteOccupancy = "NO"
 #---------------------------------------------
 # Monte Carlo parameters
 #---------------------------------------------
-rng_seed = 0
-measure_steps = 10000
+rng_seed = 1
+measure_steps = 5000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10
@@ -68,12 +67,14 @@ max_interval = 10
 #---------------------------------------------
 sr_progress_stdout = "YES"
 sr_progress_log = "YES"
-sr_opt_samples = 6
-sr_max_iter = 100
+sr_random_start = "NO"
+sr_opt_samples = 3
+sr_max_iter = 200
+sr_start_tstep = 0.05
+sr_refinement_cycle = 40
+sr_mkseries_len = 20
+sr_mkfluct_tol = 0.3
 sr_flat_tail_len = 10
-sr_random_start = "YES"
-sr_ftol = 0.000050
-sr_gradtol = 0.005000
-
-
+sr_rslope_tol =   0.010000
+sr_aslope_tol =   0.000010
 

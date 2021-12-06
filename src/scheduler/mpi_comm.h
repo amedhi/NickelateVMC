@@ -19,7 +19,7 @@
 namespace mpi {
 
 enum {MP_make_task, MP_task_params, MP_run_task, MP_task_finished,
-  MP_quit_tasks, MP_data_samples};
+  MP_quit_tasks, MP_data_samples, MP_variational_parms, MP_stop_simulation};
 
 //const int MP_task_params = 0;
 //const int MP_run_task = 1;

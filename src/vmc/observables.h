@@ -44,6 +44,10 @@ public:
   inline EnergyGradient& energy_grad(void) { return energy_grad_; }
   inline SC_Correlation& sc_corr(void) { return sc_corr_; }
   inline SR_Matrix& sr_matrix(void) { return sr_matrix_; }
+  const Energy& energy(void) const { return energy_; }
+  const EnergyGradient& energy_grad(void) const { return energy_grad_; }
+  const SR_Matrix& sr_matrix(void) const { return sr_matrix_; }
+
   void finalize(void);
   void print_heading(void);
   void print_results(const std::vector<double>& xvals=std::vector<double>()); 

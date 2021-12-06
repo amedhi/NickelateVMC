@@ -150,6 +150,12 @@ int VMC::energy_function(const Eigen::VectorXd& varp, double& en_mean,
   return 0;
 }
 
+int VMC::build_config(const Eigen::VectorXd& varp, const bool& with_psi_grad) 
+{
+  config.rng().seed(rng_seed_);
+  return config.build(graph, varp, with_psi_grad);
+}
+
 int VMC::sr_function(const Eigen::VectorXd& varp, double& en_mean, 
   double& en_stddev, Eigen::VectorXd& grad, Eigen::MatrixXd& sr_matrix, 
   const int& sample_size, const int& rng_seed)
@@ -383,6 +389,12 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
   return 0;
 }
 */
+
+int VMC::reset_observables(void) 
+{
+  observables.reset();
+  return 0;
+}
 
 int VMC::do_warmup_run(void) 
 {

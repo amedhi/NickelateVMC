@@ -4,20 +4,20 @@
 #---------------------------------------
 #---------------------------------------
 job = "VMC Simulation"
-optimizing_run = "NO"
+optimizing_run = "YES"
 mode = "NEW"
 print_level = -2
 prefix = "swave"
-mpi_mode = "BC_TWIST" 
-#mpi_mode = "NORMAL" 
+#mpi_mode = "BC_TWIST" 
+mpi_mode = "NORMAL" 
 #---------------------------------------
 lattice = "NICKELATE_2L"
 lsize1 = 10
 lsize2 = 10
 bc1 = "periodic"
 bc2 = "periodic"
-bc1_twists = 4
-bc2_twists = 4
+bc1_twists = 1
+bc2_twists = 1
 #---------------------------------------
 model = "HUBBARD"
 e_R   =  -2.500000
@@ -55,7 +55,7 @@ max_interval = 10
 sr_progress_stdout = "YES"
 sr_progress_log = "YES"
 sr_measure_steps = 10000
-sr_opt_samples = 6
+sr_opt_samples = 3
 sr_max_iter = 200
 sr_start_tstep =   0.080000
 sr_flat_tail_len = 20
