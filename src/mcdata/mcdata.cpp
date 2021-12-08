@@ -244,13 +244,13 @@ void MC_Data::MPI_add_data(const mpi::mpi_communicator& mpi_comm,
 #else
 
 void MC_Data::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
-  const mpi::proc& p)
+  const mpi::proc& p, const int& msg_tag)
 {
   throw std::logic_error("MC_Data::MPI_send_data: this is not an mpi program");
 }
 
 void MC_Data::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
-  const mpi::proc& p)
+  const mpi::proc& p, const int& msg_tag)
 {
   throw std::logic_error("MC_Data::MPI_add_data: this is not an mpi program");
 }

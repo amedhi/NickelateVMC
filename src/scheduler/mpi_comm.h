@@ -25,11 +25,11 @@ enum {MP_make_task, MP_task_params, MP_run_task, MP_task_finished,
 //const int MP_run_task = 1;
 //const int MP_quit_tasks = 2;
 
-#ifdef HAVE_BOOST_MPI
-
-using mpi_status = boost::mpi::status;
 using proc = int;
 using plist = std::list<int>;
+
+#ifdef HAVE_BOOST_MPI
+using mpi_status = boost::mpi::status;
 //  using mpi_environment = boost::mpi::environment;
 //  using mpi_communicator = boost::mpi::communicator;
 class mpi_environment : public boost::mpi::environment
@@ -54,7 +54,6 @@ private:
 
 #else
 
-using plist = std::list<int>;
 
 class mpi_status
 {
@@ -93,6 +92,8 @@ public:
   template<typename T> void isend(int dest, int tag, const T & value) const
     { throw_exception(); }
   void isend(int dest, int tag) const { throw_exception(); }
+  void barrier(void) const
+    { throw_exception(); }
   mpi_status recv(int dest, int tag) const 
     { throw_exception(); return mpi_status(); }
   template<typename T> mpi_status recv(int dest, int tag, const T & value) const
