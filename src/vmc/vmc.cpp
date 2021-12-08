@@ -280,6 +280,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
       }
       // finalization needed only for "Energy Gradient"
       observables.finalize();
+      std::cout << observables.energy().result_str(-1) << "\n";
     }
     //std::cout << observables.energy().result_str(-1) << "\n";
     //getchar();

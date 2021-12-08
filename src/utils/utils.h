@@ -33,7 +33,8 @@ public:
   const MK_Statistic& operator<<(const data_t& x) { return add_data(x); }
   const std::deque<data_t>& data_series(void) const { return time_series_; }
   void get_series_avg(data_t& mean) const;
-  const double& elem_max_trend(void) const { return mk_trend_max_; }
+  const double& elem_max_trend(int& trend_elem) const 
+  { trend_elem=mk_trend_elem_; return mk_trend_max_; }
   const bool& is_full(void) const { return is_full_; }
 private:
   unsigned data_size_{1};
@@ -43,6 +44,7 @@ private:
   Eigen::VectorXi mk_statistic_;
   Eigen::VectorXd mk_trend_;
   double mk_trend_max_{0};
+  int mk_trend_elem_{0};
 };
 
 

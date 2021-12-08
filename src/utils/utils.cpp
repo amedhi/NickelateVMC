@@ -100,7 +100,7 @@ const MK_Statistic& MK_Statistic::add_data(const data_t& y)
     } 
   }
   else mk_trend_.setZero();
-  mk_trend_max_ = mk_trend_.maxCoeff();
+  mk_trend_max_ = mk_trend_.maxCoeff(&mk_trend_elem_);
   return *this;
 }
 

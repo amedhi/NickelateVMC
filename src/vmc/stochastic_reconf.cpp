@@ -276,20 +276,23 @@ int StochasticReconf::iterate(var::parm_vector& vparms, const double& energy,
       iter_energy_err_.pop_front();
     }
   }
-  double mk_trend = mk_statistic_.elem_max_trend();
+  int trend_elem;
+  double mk_trend = mk_statistic_.elem_max_trend(trend_elem);
   if (print_progress_) {
     std::ios state(NULL);
     state.copyfmt(std::cout);
     std::cout <<std::fixed<<std::setprecision(6)<<std::right;
-    std::cout <<" MK trend   = "<<std::setw(10)<<mk_trend <<"\n"; 
+    std::cout <<" MK trend   = "<<std::setw(10)<<mk_trend;
+    std::cout << " ("<<trend_elem<<")"<<"\n"; 
     std::cout.copyfmt(state);
   }
   if (print_log_) {
     logfile_ <<std::fixed<<std::setprecision(6)<<std::right;
-    logfile_ <<" MK trend   = "<<std::setw(10)<<mk_trend <<"\n"; 
+    logfile_ <<" MK trend   = "<<std::setw(10)<<mk_trend; 
+    logfile_ << " ("<<trend_elem<<")"<<"\n"; 
   }
   // convergence criteria
-  if (mk_statistic_.is_full() && mk_trend<mk_thresold_) {
+  if (mk_statistic_.is_full() && mk_trend<=mk_thresold_) {
     // converged, add data point to store
     mk_statistic_.get_series_avg(vparms);
     converged_[sample_] = 1;

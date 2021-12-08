@@ -25,10 +25,18 @@ Simulator::Simulator(const input::Parameters& inputs) : vmc(inputs)
     //nlopt_.init(inputs, vmc);
   }
   // mpi mode
+  /*
   int nowarn;
   std::string mode = inputs.set_value("mpi_mode","NORMAL",nowarn);
   boost::to_upper(mode);
   if (mode=="BC_TWIST") {
+    mpi_mode_ = mpi_mode::BC_TWIST; 
+  }
+  else {
+    mpi_mode_ = mpi_mode::NORMAL; 
+  }
+  */
+  if (vmc.num_boundary_twists() > 1) {
     mpi_mode_ = mpi_mode::BC_TWIST; 
   }
   else {
@@ -170,7 +178,6 @@ int Simulator::run(const input::Parameters& inputs,
           }
         } // while each sample
       }// all samples
-
     }// optimizing run
 
     // VMC run
@@ -228,23 +235,80 @@ int Simulator::run(const input::Parameters& inputs,
         }
       }
     }
-    // do one MPI run
-    if (mpi_comm.is_master()) {
-      if (!inputs.have_option_quiet()) std::cout << " starting vmc run in BC_TWIST MPI mode\n";
+
+    // Optimizing run
+    if (optimization_mode_) {
+      if (mpi_comm.is_master()) {
+        if (!inputs.have_option_quiet()) std::cout << " starting optimizing run\n";
+      }
+      int num_vparms = vmc.num_varp();
+      Eigen::VectorXd grad(num_vparms);
+      Eigen::MatrixXd sr_matrix(num_vparms,num_vparms);
+      // start vmc in sr_function mode in all procs
+      vmc.start(inputs,run_mode::sr_function,true);
+      for (int n=0; n<sreconf.num_opt_samples(); ++n) {
+        // starting parameters for each sample
+        var::parm_vector vparms = vmc.varp_values();
+        if (mpi_comm.is_master()) sreconf.start(vmc, n);
+        while (true) {
+          mpi_comm.barrier(); // for safety
+          bool with_psi_grad = true;
+          vmc.build_config(vparms, with_psi_grad);
+          mpirun_vmc(mpi_comm,working_procs,bc_list,true);
+          if (mpi_comm.is_master()) {
+            // quantities needed for optimization
+            double energy = vmc.observable().energy().mean();
+            double energy_err = vmc.observable().energy().stddev();
+            grad = vmc.observable().energy_grad().mean_data();
+            vmc.observable().sr_matrix().get_matrix(sr_matrix);
+            // iterate
+            exit_stat status;
+            bool done=sreconf.iterate(vparms,energy,energy_err,grad,sr_matrix,
+              status);
+            if (done) {
+              sreconf.finalize();
+              for (const mpi::proc& p : working_procs) {
+                mpi_comm.send(p, mpi::MP_stop_simulation);
+              }
+              break;
+            }
+            else {
+              for (const mpi::proc& p : working_procs) {
+                mpi_comm.send(p, mpi::MP_variational_parms, vparms);
+              }
+            }
+          }
+          else {
+            mpi::mpi_status msg = mpi_comm.probe();
+            if (msg.tag() == mpi::MP_variational_parms) {
+              mpi_comm.recv(msg.source(), msg.tag(), vparms);
+            }
+            else if (msg.tag() == mpi::MP_stop_simulation) {
+              mpi_comm.recv(msg.source(), msg.tag());
+              break;
+            }
+            else {
+              std::cout << "Simulator::run: unexpected message in optimizing run\n";
+            }
+          }
+        } // while each sample
+      }// all samples
+    }// optimizing run
+
+    // VMC run
+    else {
+      if (mpi_comm.is_master()) {
+        if (!inputs.have_option_quiet()) std::cout << " starting vmc run in BC_TWIST MPI mode\n";
+      }
+      vmc.start(inputs,run_mode::normal,true);
+      mpirun_vmc(mpi_comm,working_procs,bc_list,inputs.have_option_quiet());
+      if (mpi_comm.is_master()) {
+        vmc.print_results();
+      }
+      return 0;
     }
-    mpirun_vmc(inputs, mpi_comm, working_procs, bc_list, run_mode::normal);
-    if (mpi_comm.is_master()) {
-      vmc.print_results();
-    }
-    return 0;
-    //vmc.start(inputs, run_mode::normal);
-    //vmc.run_simulation();
-    //if (mpi_comm.is_master()) {
-    //  vmc.print_results();
-    //}
   }
   return 0;
-
 }
 
 // one run in parallel
@@ -258,18 +322,6 @@ int Simulator::mpirun_vmc(const mpi::mpi_communicator& mpi_comm,
   vmc.do_measure_run(proc_samples);
   // collect samples
   if (mpi_comm.is_master()) {
-    /*
-    while (true) {
-      mpi::mpi_status msg = mpi_comm.probe();
-      switch (msg.tag()) {
-        case mpi::MP_data_samples:
-          vmc.MPI_recv_results(mpi_comm, msg.source(), msg.tag());
-          break;
-        default:
-          std::cout << "Simulator::run: unexpected message\n";
-          return 1;
-      }
-    }*/
     for (const mpi::proc& p : working_procs) {
       //std::cout << "reciving results from p = " << p << "\n";
       vmc.MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
@@ -283,12 +335,11 @@ int Simulator::mpirun_vmc(const mpi::mpi_communicator& mpi_comm,
   return 0;
 }
 
-int Simulator::mpirun_vmc(const input::Parameters& inputs, const mpi::mpi_communicator& 
-  mpi_comm, const std::set<mpi::proc>& working_procs, 
-  const std::vector<int>& bc_list, const run_mode& mode) 
+int Simulator::mpirun_vmc(const mpi::mpi_communicator& mpi_comm, 
+  const std::set<mpi::proc>& working_procs, const std::vector<int>& bc_list,
+  const bool& quiet) 
 {
-  vmc.start(inputs, mode, true);
-  if (!inputs.have_option_quiet()) {
+  if (!quiet) {
     std::cout << " running BC_TWISTS: "<<bc_list.front()+1<<"-"
       <<bc_list.back()+1<<" in p"<<mpi_comm.rank()<<"\n";
   } 

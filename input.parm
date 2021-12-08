@@ -6,8 +6,8 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-mpi_mode = "NORMAL"
-optimizing_run = "YES" 
+#mpi_mode = "BC_TWIST" # "NORMAL"
+optimizing_run = "NO" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 prefix="hub"
@@ -15,12 +15,12 @@ prefix="hub"
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 10
-lsize2 = 10
+lsize1 = 20
+lsize2 = 20
 bc1 = "periodic"
 bc2 = "antiperiodic"
-bc1_twists = 1
-bc2_twists = 1
+bc1_twists = 2
+bc2_twists = 2
 #---------------------------------------------
 # Model:
 #---------------------------------------------
@@ -35,9 +35,9 @@ wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.16
-gfactor = 1.0 # 0.3037
-delta_sc = 1.0 # 0.08
-mu = 0.0 #  -0.4263000
+gfactor = 0.3037
+delta_sc = 0.08
+mu = -0.4263000
 mu_default = "NO"
 mu_variational = "YES"
 as_func_of = "hole_doping"
@@ -56,7 +56,7 @@ SiteOccupancy = "NO"
 #---------------------------------------------
 # Monte Carlo parameters
 #---------------------------------------------
-rng_seed = 1
+rng_seed = 0
 measure_steps = 5000
 warmup_steps = 5000
 min_interval = 3
@@ -70,10 +70,10 @@ sr_progress_log = "YES"
 sr_random_start = "NO"
 sr_opt_samples = 3
 sr_max_iter = 200
-sr_start_tstep = 0.05
+sr_start_tstep = 0.06
 sr_refinement_cycle = 40
 sr_mkseries_len = 20
-sr_mkfluct_tol = 0.3
+sr_mkfluct_tol = 0.2
 sr_flat_tail_len = 10
 sr_rslope_tol =   0.010000
 sr_aslope_tol =   0.000010
