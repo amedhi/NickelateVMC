@@ -88,9 +88,17 @@ MUPARSER_LIB = $(PROJECT_ROOT)/src/expression/muparserx/libmuparserx.a
 #-------------------------------------------------------------
 # Target
 ifeq ($(WAVEFUNC), REAL)
-  TAGT=a.out
+  ifeq ($(MPI), HAVE_BOOST_MPI)
+    TAGT=rvmc_mpi.x
+  else
+    TAGT=rvmc.x
+  endif
 else
-  TAGT=c.out
+  ifeq ($(MPI), HAVE_BOOST_MPI)
+    TAGT=cvmc_mpi.x
+  else
+    TAGT=cvmc.x
+  endif
 endif
 #ifeq ($(MPI), HAVE_BOOST_MPI)
 #  TAGT=v.out

@@ -8,19 +8,19 @@
 job = "VMC Simulation" 
 #mpi_mode = "BC_TWIST" # "NORMAL"
 optimizing_run = "NO" 
-mode = "NEW" # ("NEW"/"APPEND")
+mode = "APPEND" # ("NEW"/"APPEND")
 print_level = -2 #-2
 prefix="hub"
 #---------------------------------------------
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 20
-lsize2 = 20
+lsize1 = 10
+lsize2 = 10
 bc1 = "periodic"
 bc2 = "antiperiodic"
-bc1_twists = 2
-bc2_twists = 2
+bc1_twists = 1
+bc2_twists = 1
 #---------------------------------------------
 # Model:
 #---------------------------------------------

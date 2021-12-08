@@ -139,7 +139,7 @@ int Simulator::run(const input::Parameters& inputs,
           mpi_comm.barrier(); // for safety
           bool with_psi_grad = true;
           vmc.build_config(vparms, with_psi_grad);
-          mpirun_vmc(mpi_comm,working_procs,proc_samples); 
+          mpirun_vmc(mpi_comm,working_procs,proc_samples,true); 
           if (mpi_comm.is_master()) {
             // quantities needed for optimization
             double energy = vmc.observable().energy().mean();
@@ -185,8 +185,8 @@ int Simulator::run(const input::Parameters& inputs,
       if (mpi_comm.is_master()) {
         if (!inputs.have_option_quiet()) std::cout << " starting vmc run in normal MPI mode\n";
       }
-      vmc.start(inputs, run_mode::normal);
-      mpirun_vmc(mpi_comm, working_procs, proc_samples); 
+      vmc.start(inputs,run_mode::normal,true);
+      mpirun_vmc(mpi_comm,working_procs,proc_samples); 
       if (mpi_comm.is_master()) {
         vmc.print_results();
       }
@@ -313,12 +313,17 @@ int Simulator::run(const input::Parameters& inputs,
 
 // one run in parallel
 int Simulator::mpirun_vmc(const mpi::mpi_communicator& mpi_comm, 
-  const std::set<mpi::proc>& working_procs, const int& proc_samples) 
+  const std::set<mpi::proc>& working_procs, const int& proc_samples,
+  const bool& quiet)
 {
+  if (!quiet) {
+    std::cout << " running "<<proc_samples<<" samples in p"<<mpi_comm.rank()<<"\n";
+  } 
+
   vmc.reset_observables();
-  //std::cout << "warming in p = " << mpi_comm.rank() << "\n";
+  //std::cout << "warming up in p" << mpi_comm.rank() << "\n";
   vmc.do_warmup_run();
-  //std::cout << "measuring "<< proc_samples<<" in p = " << mpi_comm.rank() << "\n";
+  //std::cout << "measuring "<<proc_samples<<" in p" << mpi_comm.rank() << "\n";
   vmc.do_measure_run(proc_samples);
   // collect samples
   if (mpi_comm.is_master()) {
