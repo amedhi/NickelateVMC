@@ -91,8 +91,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     // site operators
     cc.create(2);
     cc.add_type(0, "-mu_N");
-    //cc.add_type(1, "e_R-mu_R");
-    cc.add_type(1, "e_R-mu_N");
+    cc.add_type(1, "e_R-mu_R");
+    //cc.add_type(1, "e_R-mu_N");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
 
     // bond operators

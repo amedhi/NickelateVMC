@@ -85,9 +85,14 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   xvar_values_ = vmc.xvar_values();
 
   // iteration related file names
-  life_fname_ = vmc.prefix_dir()+"ALIVE.d";
-  iter_efile_ = vmc.prefix_dir()+"iter_energy";
-  iter_vfile_ = vmc.prefix_dir()+"iter_params";
+  //life_fname_ = vmc.prefix_dir()+"ALIVE.d";
+  //iter_efile_ = vmc.prefix_dir()+"iter_energy";
+  //iter_vfile_ = vmc.prefix_dir()+"iter_params";
+  boost::filesystem::path iter_prefix(vmc.prefix_dir()+"/iterations");
+  boost::filesystem::create_directory(iter_prefix);
+  life_fname_ = vmc.prefix_dir()+"/iterations/ALIVE.d";
+  iter_efile_ = vmc.prefix_dir()+"/iterations/iter_energy";
+  iter_vfile_ = vmc.prefix_dir()+"/iterations/iter_params";
 
   return 0;
 }
