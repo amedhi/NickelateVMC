@@ -73,7 +73,8 @@ private:
   bool SA_steps_{true};
   bool dir_cutoff_{false};
   double lambda_cut_{1.0E-3};
-  double stabilizer_{0.001};
+  double stabilizer_{0.1};
+  double w_svd_cut_{0.001};
   double grad_tol_{5.0E-3};
   double ftol_{5.0E-5};
   double lnsearch_mu_{1.0E-2};

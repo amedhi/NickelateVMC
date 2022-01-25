@@ -37,10 +37,11 @@ int StochasticReconf::init(const input::Parameters& inputs, const VMC& vmc)
   num_opt_samples_ = inputs.set_value("sr_opt_samples", 10, nowarn);
   max_iter_ = inputs.set_value("sr_max_iter", 100, nowarn);
   start_tstep_ = inputs.set_value("sr_start_tstep", 0.1, nowarn);
+  stabilizer_ = inputs.set_value("sr_stabilizer", 0.2, nowarn);
+  w_svd_cut_ = inputs.set_value("sr_svd_cut", 0.001, nowarn);
   random_start_ = inputs.set_value("sr_random_start", false, nowarn);
   dir_cutoff_ = inputs.set_value("sr_dir_cutoff", false, nowarn);
   lambda_cut_ = inputs.set_value("sr_lambda_cut", 1.0E-3, nowarn);
-  stabilizer_ = inputs.set_value("sr_stabilizer", 0.2, nowarn);
   flat_tail_len_ = inputs.set_value("sr_flat_tail_len", 10, nowarn);
   ftol_ = inputs.set_value("sr_ftol", 5.0E-5, nowarn);
   grad_tol_ = inputs.set_value("sr_gradtol", 5.0E-3, nowarn);
@@ -110,6 +111,8 @@ int StochasticReconf::print_info(const VMC& vmc)
     logfile_ << "max_iter = " << max_iter_ << std::endl;
     logfile_ << "random_start = " << random_start_ << std::endl;
     logfile_ << "stabilizer = " << stabilizer_ << std::endl;
+    logfile_ << "start_tstep = " << start_tstep_ << std::endl;
+    logfile_ << "w_svd_cut = " << w_svd_cut_ << std::endl;
     logfile_ << "flat_tail_len = " << flat_tail_len_ << std::endl;
     logfile_ << "grad_tol = " << grad_tol_ << std::endl;
     logfile_ << "ftol = " << ftol_ << std::endl;
@@ -122,6 +125,8 @@ int StochasticReconf::print_info(const VMC& vmc)
     std::cout << "max_iter = " << max_iter_ << std::endl;
     std::cout << "random_start = " << random_start_ << std::endl;
     std::cout << "stabilizer = " << stabilizer_ << std::endl;
+    std::cout << "start_tstep = " << start_tstep_ << std::endl;
+    std::cout << "w_svd_cut = " << w_svd_cut_ << std::endl;
     std::cout << "flat_tail_len = " << flat_tail_len_<< std::endl;
     std::cout << "grad_tol = " << grad_tol_ << std::endl;
     std::cout << "ftol = " << ftol_ << std::endl;
@@ -203,12 +208,34 @@ int StochasticReconf::iterate(var::parm_vector& vparms, const double& energy,
   bool iter_last = false;
   // next search direaction
   //std::cout << sr_matrix << "\n"; getchar();
+  /*
   for (int i=0; i<num_parms_; ++i) sr_matrix(i,i) *= (1.0+stabilizer_);
-  search_dir_ = sr_matrix.fullPivLu().solve(-grad);
+  search_dir_ = search_tstep_*sr_matrix.fullPivLu().solve(-grad);
+  */
+
+  // find search dir after cutting off redundant directions
+  Eigen::MatrixXd sr_inv(num_parms_,num_parms_);
+  for (int i=0; i<num_parms_; ++i) sr_matrix(i,i) *= (1.0+stabilizer_);
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(sr_matrix, Eigen::ComputeThinU | Eigen::ComputeThinV); 
+  double lmax = svd.singularValues()(0);
+  for (int i=0; i<num_parms_; ++i) {
+    for (int j=0; j<num_parms_; ++j) {
+      double sum = 0.0;
+      for (int m=0; m<num_parms_; ++m) {
+        double sval = svd.singularValues()(m);
+        if (sval/lmax < w_svd_cut_) break;
+        sum += svd.matrixV()(i,m)*svd.matrixU()(j,m)/sval;
+      }
+      sr_inv(i,j) = sum;
+    }
+  }
+  search_dir_ = -search_tstep_*sr_inv*grad;
+
   // max_norm (of components not hitting boundary) 
   double gnorm = grad.squaredNorm();
   double proj_norm = proj_grad_norm(vparms,grad,lbound_,ubound_);
   gnorm = std::min(gnorm, proj_norm);
+
 
   // file outs
   iter_++;
@@ -268,7 +295,7 @@ int StochasticReconf::iterate(var::parm_vector& vparms, const double& energy,
   }
 
   // iteration step with box constraint 
-  vparms += search_tstep_ * search_dir_;
+  vparms += search_dir_;
   vparms = lbound_.cwiseMax(vparms.cwiseMin(ubound_));
 
   // MK test: add data to Mann-Kendall statistic
