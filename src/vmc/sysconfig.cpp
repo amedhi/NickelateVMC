@@ -214,6 +214,10 @@ int SysConfig::update_state(void)
   for (int n=0; n<num_exchange_moves_; ++n) do_spin_exchange();
   num_updates_++;
   num_iterations_++;
+
+  //auto psi = psi_mat.determinant();
+  //std::cout<<psi.real()<<"   "<<psi.imag()<<"\n";
+
   if (num_iterations_ == refresh_cycle_) {
     psi_inv = psi_mat.inverse();
     num_iterations_ = 0;

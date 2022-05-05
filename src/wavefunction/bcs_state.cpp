@@ -75,6 +75,50 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
     add_chemical_potential(inputs);
   }
+  //---------------------------------------------------------------------------
+
+  else if (graph.lattice().id()==lattice::lattice_id::SQUARE_2SITE) {
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+    mf_model_.add_parameter(name="tp", defval=0.0, inputs);
+    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+    mf_model_.add_parameter(name="delta_af", defval=1.0, inputs);
+
+    // bond operator terms
+    cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    // site operator terms
+    cc.create(2);
+    cc.add_type(0, "-delta_af");
+    cc.add_type(1, "delta_af");
+    mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
+    cc.create(2);
+    cc.add_type(0, "delta_af");
+    cc.add_type(1, "-delta_af");
+    mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+
+    if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
+      order_name_ = "SC-DWAVE";
+      cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"}, {3,"0"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    }
+    else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
+      order_name_ = "SC-Extended_S";
+      cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"}, {3,"0"});
+      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
+    }
+
+    // variational parameters
+    defval = mf_model_.get_parameter_value("delta_sc");
+    varparms_.add("delta_sc", defval,lb=1.0E-3,ub=2.0,dh=0.02);
+    defval = mf_model_.get_parameter_value("delta_af");
+    varparms_.add("delta_af",defval,lb=0.0,ub=2.0,dh=0.02);
+    add_chemical_potential(inputs);
+  }
+
 //---------------------------------------------------------------------------
   else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
@@ -836,15 +880,21 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
 
     // pairing part 
     delta_k_ = mf_model_.pairing_part();
+    //std::cout << "delta_ck =\n" << delta_k_ << "\n";
+
     //-------------'-k block'-------------
     mf_model_.construct_kspace_block(-kvec);
     es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+
     // assuming 'singlet pairing', see notes
     work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
+
     // transform pairing part
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
       es_minusk_up.eigenvectors().conjugate();
-    //std::cout << "delta_k = " << delta_k_ << "\n"; getchar();
+    //std::cout << "delta_dk =\n" << delta_k_ << "\n"; getchar();
+
+
     // bcs ampitudes in rotated basis (assuming INTRABAND pairing only)
     dphi_k_.setZero();
     for (int i=0; i<kblock_dim_; ++i) {

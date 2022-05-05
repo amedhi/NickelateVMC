@@ -54,9 +54,9 @@ int Lattice::define_lattice(void)
     add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(-1,1,0));
   }
 
-  else if (lname == "SQUARE_IONIC") {
+  else if (lname == "SQUARE_2SITE") {
     // type
-    lid = lattice_id::SQUARE_IONIC;
+    lid = lattice_id::SQUARE_2SITE;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
     double a = 1.0;
@@ -67,6 +67,17 @@ int Lattice::define_lattice(void)
     add_basis_site(type=1, coord=vec(0.5*b,0.5*b,0));
     // add bonds
     add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,0));
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,-1,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,0));
+
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+
+    /*
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
     add_bond(type=0,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
     add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
     add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
@@ -75,6 +86,7 @@ int Lattice::define_lattice(void)
     add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
     add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
     add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    */
   }
 
   else if (lname == "SIMPLE_CUBIC") {

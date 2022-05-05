@@ -42,10 +42,10 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
 
-    if (lattice.id() == lattice::lattice_id::SQUARE_IONIC) {
+    if (lattice.id() == lattice::lattice_id::SQUARE_2SITE) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
-      add_parameter(name="W", defval=0.0, inputs);
+      //add_parameter(name="W", defval=0.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       // bond operator terms
       cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
@@ -53,10 +53,10 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
 
       // site operator terms
-      cc.create(2);
-      cc.add_type(0, "W");
-      cc.add_type(1, "-W");
-      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      //cc.create(2);
+      //cc.add_type(0, "W");
+      //cc.add_type(1, "-W");
+      //add_siteterm(name="ni_sigma", cc, op::ni_sigma());
     }
 
     else if (lattice.id() == lattice::lattice_id::SIMPLECUBIC) {

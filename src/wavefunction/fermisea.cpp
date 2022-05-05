@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2021-08-01 23:20:27
+* @Last Modified time: 2022-05-05 12:53:27
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -44,6 +44,27 @@ int Fermisea::init(const input::Parameters& inputs,
     cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
   }
+
+  else if (graph.lattice().id()==lattice::lattice_id::SQUARE_2SITE) {
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+    mf_model_.add_parameter(name="tp", defval=1.0, inputs);
+    mf_model_.add_parameter(name="delta_af", defval=1.0, inputs);
+
+    // bond operator terms
+    cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    // site operator terms
+    cc.create(2);
+    cc.add_type(0, "-delta_af");
+    cc.add_type(1, "delta_af");
+    mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
+    cc.create(2);
+    cc.add_type(0, "delta_af");
+    cc.add_type(1, "-delta_af");
+    mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+  }
+
   else if (graph.lattice().id()==lattice::lattice_id::SIMPLECUBIC) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
