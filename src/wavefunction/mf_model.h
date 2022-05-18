@@ -84,6 +84,7 @@ public:
   void update_site_parameter(const std::string& pname, const double& pvalue);
   void construct_kspace_block(const Vector3d& kvec);
   const ComplexMatrix& quadratic_spinup_block(void) const { return quadratic_block_up_; }
+  const ComplexMatrix& quadratic_spindn_block(void) const { return quadratic_block_dn_; }
   const ComplexMatrix& pairing_part(void) const { return pairing_block_; }
 
 private:

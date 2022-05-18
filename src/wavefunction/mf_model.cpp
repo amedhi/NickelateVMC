@@ -128,6 +128,26 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
   //pairing_block_ += work2.adjoint();
   // site terms
   //std::cout << "ek = " << quadratic_block_(0,0) << "\n";
+
+  // quadratic 'dn'-spin block
+  work.setZero(); 
+  for (const auto& term : ubond_terms_) {
+    if (term.qn_operator().is_quadratic() && term.qn_operator().spin_dn()) {
+      for (int i=0; i<term.num_out_bonds(); ++i) {
+        Vector3d delta = term.bond_vector(i);
+        work += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
+      }
+    }
+  }
+  // add hermitian conjugate part
+  quadratic_block_dn_ = work + work.adjoint();
+  // site terms 
+  for (const auto& term : usite_terms_) {
+    if (term.qn_operator().spin_dn()) {
+      quadratic_block_dn_ += term.coeff_matrix();
+    }
+  }
+
 }
 
 /*

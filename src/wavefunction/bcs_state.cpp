@@ -20,6 +20,7 @@ BCS_State::BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& 
 int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
 {
   name_ = "BCS";
+  lattice_id_ = graph.lattice().id();
   // sites & bonds
   num_sites_ = graph.num_sites();
   num_bonds_ = graph.num_bonds();
@@ -48,6 +49,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   bool mf_model_finalized = false;
   int info;
   bool mu_default = inputs.set_value("mu_default", false);
+  wf_analytical_form_ = inputs.set_value("wf_analytical_form", false);
 //---------------------------------------------------------------------------
   if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -120,6 +122,31 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
 
 //---------------------------------------------------------------------------
+  else if (graph.lattice().id()==lattice::lattice_id::HONEYCOMB) {
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+    mf_model_.add_parameter(name="theta1", defval=0.0, inputs);
+    mf_model_.add_parameter(name="theta2", defval=0.0, inputs);
+    // bond operators
+    mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+    // site operators
+    //mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+    // pairing term
+    cc = CouplingConstant({0,"delta_sc"}, {1,"delta_sc*exp(i*theta1)"}, 
+        {2,"delta_sc*exp(i*theta2)"});
+    mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+    // variational parameters
+    defval = mf_model_.get_parameter_value("delta_sc");
+    varparms_.add("delta_sc", defval, lb=1.0E-3, ub=2.0, dh=0.01);
+    defval = mf_model_.get_parameter_value("theta1");
+    varparms_.add("theta1", defval, lb=0.0, ub=two_pi(), dh=0.2);
+    defval = mf_model_.get_parameter_value("theta2");
+    varparms_.add("theta2", defval, lb=0.0, ub=two_pi(), dh=0.2);
+
+    add_chemical_potential(inputs);
+  }
+
+//---------------------------------------------------------------------------
   else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -172,6 +199,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       cc.add_type(6, "0");
       mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
     }
+
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
     }
@@ -752,18 +780,42 @@ void BCS_State::update(const var::parm_vector& pvector, const unsigned& start_po
 void BCS_State::get_wf_amplitudes(Matrix& psi) 
 {
   // k-space pair amplitudes
-  if (kblock_dim_==1) {
-    get_pair_amplitudes_oneband(phi_k_);
+  if (wf_analytical_form_) {
+    if (lattice_id_==lattice::lattice_id::NICKELATE_2L) {
+      analytical_amplitudes_NICKELATE2L(phi_k_);
+    }
+    else {
+      throw std::range_error("BCS_State: analytical wf not defined for this lattice");
+    }
   }
   else {
-    get_pair_amplitudes_multiband(phi_k_);
+    if (kblock_dim_==1) {
+      get_pair_amplitudes_oneband(phi_k_);
+    }
+    else {
+      get_pair_amplitudes_multiband(phi_k_);
+    }
   }
+
   // 'lattice space' pair amplitudes
   get_pair_amplitudes_sitebasis(phi_k_, psi);
 }
 
 void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
 {
+  // k-space pair amplitudes
+  if (wf_analytical_form_) {
+    if (lattice_id_==lattice::lattice_id::NICKELATE_2L) {
+      analytical_gradient_NICKELATE2L(psi_gradient);
+    }
+    else {
+      throw std::range_error("BCS_State: analytical wf not defined for this lattice");
+    }
+    return;
+  }
+
+  std::cout << "Numerical gradient\n";
+  // numerical gradient
   int i=0; 
   for (const auto& p : varparms_) {
     double h = p.diff_h();
@@ -880,18 +932,19 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
 
     // pairing part 
     delta_k_ = mf_model_.pairing_part();
-    //std::cout << "delta_ck =\n" << delta_k_ << "\n";
 
     //-------------'-k block'-------------
     mf_model_.construct_kspace_block(-kvec);
-    es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+    es_minusk_up.compute(mf_model_.quadratic_spindn_block());
 
     // assuming 'singlet pairing', see notes
     work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
+    //std::cout << "delta_ck =\n" << work_ << "\n\n";
 
     // transform pairing part
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
       es_minusk_up.eigenvectors().conjugate();
+    //std::cout << "Uk_up =\n" << es_k_up.eigenvectors() << "\n\n";
     //std::cout << "delta_dk =\n" << delta_k_ << "\n"; getchar();
 
 
@@ -968,6 +1021,219 @@ double BCS_State::get_mf_energy(void)
   mf_energy += num_bonds_*delta*delta/(2.0*J);  
   //std::cout << delta << " ";
   return mf_energy/num_sites_;
+}
+
+void BCS_State::analytical_amplitudes_NICKELATE2L(std::vector<ComplexMatrix>& phi_k)
+{
+  // BCS pair amplitudes, lattice NICKELATE_2L (INTRABAND pairing only)
+  if (pair_symm()!=pairing_t::DWAVE) {
+    throw std::range_error("BCS_State: analytical wf not defined for this pairing symmetry");
+  }
+  // read parameters
+  double t = mf_model_.get_parameter_value("t");
+  double tp = mf_model_.get_parameter_value("tp");
+  double th = mf_model_.get_parameter_value("th");
+  double eR = mf_model_.get_parameter_value("e_R");
+  double DeltaN = mf_model_.get_parameter_value("delta_N");
+  double DeltaR = mf_model_.get_parameter_value("delta_R");
+  double muN = mf_model_.get_parameter_value("mu_N");
+  double muR = mf_model_.get_parameter_value("mu_R");
+
+  for (int k=0; k<num_kpoints_; ++k) {
+    Vector3d kvec = blochbasis_.kvector(k);
+    double kx = kvec[0];
+    double ky = kvec[1];
+    double ek = -2.0*t*(std::cos(kx)+std::cos(ky))-4.0*tp*std::cos(kx)*std::cos(ky); 
+    double eps1k = ek - muN;
+    double eps2k = ek + eR - muR;
+    double e1k = eps2k + eps1k;
+    double e2k = eps2k - eps1k;
+    double exk = std::sqrt(e2k*e2k + 4.0*th*th);
+    double ak = (e2k + exk)/(2.0*th);
+    double xk = std::sqrt(1.0+ak*ak);
+    double w1k = ak/xk;
+    double w2k = 1.0/xk;
+    double DeltaN_k = DeltaN*(std::cos(kx)-std::cos(ky));
+    double DeltaR_k = DeltaR*(std::cos(kx)-std::cos(ky));
+    double Delta1k = w1k*w1k*DeltaN_k + w2k*w2k*DeltaR_k;
+    double Delta2k = w1k*w1k*DeltaR_k + w2k*w2k*DeltaN_k;
+    double E1k = 0.5*(e1k - exk);
+    double E2k = 0.5*(e1k + exk);
+    // phi_k(1) & phi_k(2)
+    double Delta1k_sq = Delta1k*Delta1k;
+    double Delta2k_sq = Delta2k*Delta2k;
+    double Eqp1k = std::sqrt(E1k*E1k + Delta1k_sq);
+    double Eqp2k = std::sqrt(E2k*E2k + Delta2k_sq);
+    dphi_k_.setZero();
+    if (std::sqrt(Delta1k_sq)<1.0E-12 && E1k<0.0) {
+      dphi_k_(0,0) = large_number_;
+    }
+    else {
+      dphi_k_(0,0) = Delta1k/(E1k + Eqp1k);
+    }
+    if (std::sqrt(Delta2k_sq)<1.0E-12 && E2k<0.0) {
+      dphi_k_(1,1) = large_number_;
+    }
+    else {
+      dphi_k_(1,1) = Delta2k/(E2k + Eqp2k);
+    }
+
+    // bcs ampitudes in original basis 
+    ComplexMatrix Uk(2,2);
+    Uk(0,0) = w1k; Uk(0,1) = -w2k;
+    Uk(1,0) = w2k; Uk(1,1) =  w1k;
+    phi_k[k] = Uk * dphi_k_ * Uk.transpose();
+  }
+}
+
+void  BCS_State::analytical_gradient_NICKELATE2L(std::vector<Matrix>& psi_gradient)
+{
+  // BCS pair amplitudes, lattice NICKELATE_2L (INTRABAND pairing only)
+  if (pair_symm()!=pairing_t::DWAVE) {
+    throw std::range_error("BCS_State: analytical gradient not defined for this pairing symmetry");
+  }
+  std::cout << "Analytical gradient\n";
+  // read parameters
+  double t = mf_model_.get_parameter_value("t");
+  double tp = mf_model_.get_parameter_value("tp");
+  double th = mf_model_.get_parameter_value("th");
+  double eR = mf_model_.get_parameter_value("e_R");
+  double DeltaN = mf_model_.get_parameter_value("delta_N");
+  double DeltaR = mf_model_.get_parameter_value("delta_R");
+  double muN = mf_model_.get_parameter_value("mu_N");
+  double muR = mf_model_.get_parameter_value("mu_R");
+
+  // storage
+  std::vector<ComplexMatrix> Dphik_deltaN(num_kpoints_);
+  std::vector<ComplexMatrix> Dphik_deltaR(num_kpoints_);
+  std::vector<ComplexMatrix> Dphik_muN(num_kpoints_);
+  std::vector<ComplexMatrix> Dphik_muR(num_kpoints_);
+  for (int k=0; k<num_kpoints_; ++k) {
+    Dphik_deltaN[k].resize(kblock_dim_,kblock_dim_);
+    Dphik_deltaR[k].resize(kblock_dim_,kblock_dim_); 
+    Dphik_muN[k].resize(kblock_dim_,kblock_dim_);
+    Dphik_muR[k].resize(kblock_dim_,kblock_dim_);
+  } 
+
+  for (int k=0; k<num_kpoints_; ++k) {
+    Vector3d kvec = blochbasis_.kvector(k);
+    double kx = kvec[0];
+    double ky = kvec[1];
+    double ek = -2.0*t*(std::cos(kx)+std::cos(ky))-4.0*tp*std::cos(kx)*std::cos(ky); 
+    double eps1k = ek - muN;
+    double eps2k = ek + eR - muR;
+    double e1k = eps2k + eps1k;
+    double e2k = eps2k - eps1k;
+    double exk = std::sqrt(e2k*e2k + 4.0*th*th);
+    double ak = (e2k + exk)/(2.0*th);
+    double xk = std::sqrt(1.0+ak*ak);
+    double w1k = ak/xk;
+    double w2k = 1.0/xk;
+    double coskx_minus_cosky = (std::cos(kx)-std::cos(ky));
+    double DeltaN_k = DeltaN * coskx_minus_cosky;
+    double DeltaR_k = DeltaR * coskx_minus_cosky;
+    double Delta1k = w1k*w1k*DeltaN_k + w2k*w2k*DeltaR_k;
+    double Delta2k = w1k*w1k*DeltaR_k + w2k*w2k*DeltaN_k;
+    double E1k = 0.5*(e1k - exk);
+    double E2k = 0.5*(e1k + exk);
+    // phi_k(1) & phi_k(2)
+    double Delta1k_sq = Delta1k*Delta1k;
+    double Delta2k_sq = Delta2k*Delta2k;
+    double Eqp1k = std::sqrt(E1k*E1k + Delta1k_sq);
+    double Eqp2k = std::sqrt(E2k*E2k + Delta2k_sq);
+    dphi_k_.setZero();
+    if (std::sqrt(Delta1k_sq)<1.0E-12 && E1k<0.0) {
+      dphi_k_(0,0) = large_number_;
+    }
+    else {
+      dphi_k_(0,0) = Delta1k/(E1k + Eqp1k);
+    }
+    if (std::sqrt(Delta2k_sq)<1.0E-12 && E2k<0.0) {
+      dphi_k_(1,1) = large_number_;
+    }
+    else {
+      dphi_k_(1,1) = Delta2k/(E2k + Eqp2k);
+    }
+
+    // simplifying
+    double phi1k = std::real(dphi_k_(0,0));
+    double phi2k = std::real(dphi_k_(1,1));
+
+    double Dphi_delta1 = phi1k*E1k/(Delta1k*Eqp1k);
+    double Dphi_delta2 = phi2k*E2k/(Delta2k*Eqp2k);
+    double w1k_sq = w1k*w1k;
+    double w2k_sq = w2k*w2k;
+    double Ddelta1_deltaN = w1k_sq * coskx_minus_cosky;
+    double Ddelta2_deltaN = w2k_sq * coskx_minus_cosky;
+    double Ddelta1_deltaR = Ddelta2_deltaN;
+    double Ddelta2_deltaR = Ddelta1_deltaN;
+
+    // For ampitudes in original basis 
+    ComplexMatrix Uk(2,2);
+    Uk(0,0) = w1k; Uk(0,1) = -w2k;
+    Uk(1,0) = w2k; Uk(1,1) =  w1k;
+
+    // Derivatives wrt 'Delta_N'
+    dphi_k_(0,0) = Dphi_delta1 * Ddelta1_deltaN;
+    dphi_k_(1,1) = Dphi_delta2 * Ddelta2_deltaN;
+    Dphik_deltaN[k] = Uk * dphi_k_ * Uk.transpose();
+
+    // Derivatives wrt 'Delta_R'
+    dphi_k_(0,0) = Dphi_delta1 * Ddelta1_deltaR;
+    dphi_k_(1,1) = Dphi_delta2 * Ddelta2_deltaR;
+    Dphik_deltaR[k] = Uk * dphi_k_ * Uk.transpose();
+
+    // Derivatives wrt 'mu_N'
+    double Dphi_E1 = -phi1k/Eqp1k;
+    double Dphi_E2 = -phi2k/Eqp2k;
+    double DE1_muN = -0.5*(1.0+e2k/exk);
+    double DE2_muN = -0.5*(1.0-e2k/exk);
+
+    double Dw1_a = w2k/(1.0+ak*ak); 
+    double Dw2_a = -ak*w2k/(1.0+ak*ak); 
+    double Da_muN = ak/exk;
+    double Dw1_muN = Dw1_a * Da_muN;
+    double Dw2_muN = Dw2_a * Da_muN;
+    double Ddelta1_muN = 2.0*w1k*DeltaN_k*Dw1_muN + 2.0*w2k*DeltaR_k*Dw2_muN;
+    double Ddelta2_muN = 2.0*w2k*DeltaN_k*Dw2_muN + 2.0*w1k*DeltaR_k*Dw1_muN;
+
+    dphi_k_(0,0) = Dphi_delta1*Ddelta1_muN + Dphi_E1*DE1_muN;
+    dphi_k_(1,1) = Dphi_delta2*Ddelta2_muN + Dphi_E2*DE2_muN;
+    Dphik_muN[k] = Uk * dphi_k_ * Uk.transpose();
+
+    // Derivatives wrt 'mu_R'
+    double DE1_muR = -0.5*(1.0-e2k/exk);
+    double DE2_muR = -0.5*(1.0+e2k/exk);
+
+    double Da_muR = 1.0/(ak*exk);
+    double Dw1_muR = Dw1_a * Da_muR;
+    double Dw2_muR = Dw2_a * Da_muR;
+    double Ddelta1_muR = 2.0*w1k*DeltaN_k*Dw1_muR + 2.0*w2k*DeltaR_k*Dw2_muR;
+    double Ddelta2_muR = 2.0*w2k*DeltaN_k*Dw2_muR + 2.0*w1k*DeltaR_k*Dw1_muR;
+
+    dphi_k_(0,0) = Dphi_delta1*Ddelta1_muR + Dphi_E1*DE1_muR;
+    dphi_k_(1,1) = Dphi_delta2*Ddelta2_muR + Dphi_E2*DE2_muR;
+    Dphik_muR[k] = Uk * dphi_k_ * Uk.transpose();
+  }
+
+  // for all the variational parameters
+  for (int p=0; p<varparms_.size(); ++p) {
+    if (varparms_[p].name() == "delta_N") {
+      get_pair_amplitudes_sitebasis(Dphik_deltaN, psi_gradient[p]);
+    }
+    else if (varparms_[p].name() == "delta_R") {
+      get_pair_amplitudes_sitebasis(Dphik_deltaR, psi_gradient[p]);
+    }
+    else if (varparms_[p].name() == "mu_N") {
+      get_pair_amplitudes_sitebasis(Dphik_muN, psi_gradient[p]);
+    }
+    else if (varparms_[p].name() == "mu_R") {
+      get_pair_amplitudes_sitebasis(Dphik_muR, psi_gradient[p]);
+    }
+    else {
+      throw std::range_error("BCS_State::analytical_gradient:: internal error");
+    }
+  }
 }
 
 

@@ -38,8 +38,10 @@ public:
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:
   std::string order_name_;
+  bool wf_analytical_form_{false};
   bool noninteracting_mu_{true};
   double large_number_{1.0E+2};
+  lattice::lattice_id lattice_id_;
   // matrices
   ComplexMatrix work_;
   ComplexMatrix delta_k_;
@@ -51,6 +53,8 @@ private:
   void get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, Matrix& psi);
+  void analytical_amplitudes_NICKELATE2L(std::vector<ComplexMatrix>& phi_k);
+  void analytical_gradient_NICKELATE2L(std::vector<Matrix>& psi_gradient);
   double get_mf_energy(void);
 };
 
