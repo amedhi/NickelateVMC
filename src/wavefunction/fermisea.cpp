@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-05-18 11:28:03
+* @Last Modified time: 2022-08-01 12:00:55
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -34,15 +34,19 @@ int Fermisea::init(const input::Parameters& inputs,
   varparms_.clear();
   mf_model_.init(graph.lattice());
   std::string name;
-  double defval;
+  double defval, lb, ub, dh;
   using namespace model;
   model::CouplingConstant cc;
+
+  // chemical potential
+  noninteracting_mu_ = true;
 
   if (graph.lattice().id()==lattice::lattice_id::SQUARE_NNN) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
     cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+    add_chemical_potential(inputs);
   }
 
   else if (graph.lattice().id()==lattice::lattice_id::SQUARE_2SITE) {
@@ -63,6 +67,39 @@ int Fermisea::init(const input::Parameters& inputs,
     cc.add_type(0, "delta_af");
     cc.add_type(1, "-delta_af");
     mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+
+    // variational parameters
+    defval = mf_model_.get_parameter_value("delta_af");
+    varparms_.add("delta_af",defval,lb=0,ub=2.0,dh=0.02);
+
+    add_chemical_potential(inputs);
+  }
+
+  else if (graph.lattice().id()==lattice::lattice_id::CHAIN_2SITE) {
+    mf_model_.add_parameter(name="t", defval=1.0, inputs);
+
+    // bond operator terms
+    cc = CouplingConstant({0,"-t"},{1,"-t"});
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    if (order()==order_t::AF) {
+      order_name_ = "AF";
+      mf_model_.add_parameter(name="delta_af", defval=1.0, inputs);
+      // site operator terms
+      cc.create(2);
+      cc.add_type(0, "-delta_af");
+      cc.add_type(1, "delta_af");
+      mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
+      cc.create(2);
+      cc.add_type(0, "delta_af");
+      cc.add_type(1, "-delta_af");
+      mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("delta_af");
+      varparms_.add("delta_af",defval,lb=0,ub=2.0,dh=0.02);
+    }
+    add_chemical_potential(inputs);
   }
 
   else if (graph.lattice().id()==lattice::lattice_id::SIMPLECUBIC) {
@@ -71,6 +108,7 @@ int Fermisea::init(const input::Parameters& inputs,
     mf_model_.add_parameter(name="th", defval=1.0, inputs);
     cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+    add_chemical_potential(inputs);
   }
   else if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
     mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
@@ -180,8 +218,6 @@ int Fermisea::init(const input::Parameters& inputs,
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
   }
 
-  // chemical potential
-  noninteracting_mu_ = true;
   // finalize MF Hamiltonian
   mf_model_.finalize(graph);
   num_varparms_ = varparms_.size();
@@ -216,6 +252,23 @@ int Fermisea::init(const input::Parameters& inputs,
   return 0;
 }
 
+void Fermisea::add_chemical_potential(const input::Parameters& inputs)
+{
+  // default handling
+  int info;
+  double defval, lb, ub, dh;
+  std::string name;
+  model::CouplingConstant cc;
+  using namespace model;
+  mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
+  mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+  if (info == 0) noninteracting_mu_ = false;
+  else noninteracting_mu_ = true;
+  if (inputs.set_value("mu_variational", false, info)) {
+    varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
+  }
+}
+
 void Fermisea::update(const lattice::LatticeGraph& graph)
 {
   // update for change in lattice BC (same structure & size)
@@ -228,7 +281,8 @@ void Fermisea::update(const lattice::LatticeGraph& graph)
 std::string Fermisea::info_str(void) const
 {
   std::ostringstream info;
-  info << "# Ground State: '"<<name_<<"'\n";
+  //info << "# Ground State: '"<<name_<<"'\n";
+  info << "# Ground State: '"<<name_<<" ("<<order_name_<<")'\n";
   info << "# Hole doping = "<<hole_doping()<<"\n";
   info << "# Particles = "<< num_upspins()+num_dnspins();
   info << " (Nup = "<<num_upspins()<<", Ndn="<<num_dnspins()<<")\n";
@@ -274,7 +328,9 @@ void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k)
     mf_model_.construct_kspace_block(kvec);
     es_k_up.compute(mf_model_.quadratic_spinup_block());
     mf_model_.construct_kspace_block(-kvec);
-    es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+
+    //es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+    es_minusk_up.compute(mf_model_.quadratic_spindn_block());
     phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
       		 * es_minusk_up.eigenvectors().transpose().block(0,0,m,kblock_dim_);
     /*

@@ -30,8 +30,8 @@ const unsigned MAX_BOND_TYPES = 40;
 /*---------------lattice types-----------------*/
 enum class lattice_id {
   UNDEFINED, SQUARE, SQUARE_NNN, 
-  SQUARE_2SITE, CHAIN, HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, 
-  NICKELATE, NICKELATE_2D, NICKELATE_2L
+  SQUARE_2SITE, CHAIN, CHAIN_2SITE, HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, 
+  NICKELATE, NICKELATE_2D, NICKELATE_2L, SQUARE_4SITE
 };
 
 /*---------------Lattice site class-----------------*/

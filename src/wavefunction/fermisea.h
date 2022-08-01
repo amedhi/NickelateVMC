@@ -30,6 +30,7 @@ public:
   void get_wf_amplitudes(Matrix& psi) override;
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:
+  std::string order_name_{"NULL"};
   bool noninteracting_mu_{true};
   // ground state
   bool have_TP_symmetry_{true};
@@ -53,6 +54,7 @@ private:
   Eigen::MatrixXcd corr_ab_;
   Eigen::MatrixXcd corr_fs_;
 
+  void add_chemical_potential(const input::Parameters& inputs);
   void construct_groundstate(void);
   void get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, Matrix& psi);

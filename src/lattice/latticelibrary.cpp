@@ -89,6 +89,43 @@ int Lattice::define_lattice(void)
     */
   }
 
+  else if (lname == "SQUARE_4SITE") {
+    // type
+    lid = lattice_id::SQUARE_4SITE;
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
+    // basis vectors
+    double a = 2.0;
+    double b = 2.0;
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,b,0), a3=vec(0,0,0));
+    // add sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(0.5*a,0,0));
+    add_basis_site(type=1, coord=vec(0.5*a,0,0));
+    add_basis_site(type=0, coord=vec(0.5*a,0.5*b,0));
+    // add bonds
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,0));
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,-1,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,0));
+
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+
+    /*
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+    add_bond(type=0,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    */
+  }
+
   else if (lname == "SIMPLE_CUBIC") {
     // type
     lid = lattice_id::SIMPLECUBIC;
@@ -115,6 +152,20 @@ int Lattice::define_lattice(void)
     add_basis_site(type=0, coord=vec(0,0,0));
     // add bonds
     add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
+  }
+
+  else if (lname == "CHAIN_2SITE") {
+    lid = lattice_id::CHAIN_2SITE;
+    extent[dim2] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
+    extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
+    // basis vectors
+    set_basis_vectors(a1=vec(2,0,0), a2=vec(0,0,0), a3=vec(0,0,0));
+    // add sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(1,0,0));
+    // add bonds
+    add_bond(type=0, ngb=1, src=0, src_offset=pos(0,0,0), tgt=1, tgt_offset=pos(0,0,0));
+    add_bond(type=1, ngb=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(1,0,0));
   }
 
   else if (lname == "HONEYCOMB") {

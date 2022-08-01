@@ -22,6 +22,9 @@ Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
   if (name_ == "FERMISEA") {
     groundstate_.reset(new Fermisea(order_t::null,inputs,graph));
   }
+  else if (name_ == "AF") {
+    groundstate_.reset(new Fermisea(order_t::AF,inputs,graph));
+  }
   else if (name_ == "SC_SWAVE") {
     groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,graph));
   }

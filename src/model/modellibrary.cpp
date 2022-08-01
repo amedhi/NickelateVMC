@@ -59,6 +59,14 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       //add_siteterm(name="ni_sigma", cc, op::ni_sigma());
     }
 
+    if (lattice.id() == lattice::lattice_id::CHAIN_2SITE) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      cc = CouplingConstant({0,"-t"},{1,"-t"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+
     else if (lattice.id() == lattice::lattice_id::SIMPLECUBIC) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
