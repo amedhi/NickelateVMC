@@ -298,6 +298,10 @@ private:
   int num_total_twists_{1};
   RealMatrix twist_angles_;
 
+  // sites & bonds
+  std::vector<Site> sites_;
+  std::vector<Bond> bonds_;
+
   // for lattices with impurities
   std::vector<Site> impurity_sites_;
   std::vector<Bond> impurity_bonds_;
@@ -306,7 +310,7 @@ private:
   int define_lattice(void); 
   int finalize_lattice(void); 
   int symmetrize_lattice(void);
-  //int construct_graph(void); 
+  int construct_graph(void); 
   boundary_type boundary_condition(std::string& bc) const;
   Eigen::Matrix3d rotation_matrix(const Eigen::Vector3d& r, const Eigen::Vector3d& r_prime);
 };
