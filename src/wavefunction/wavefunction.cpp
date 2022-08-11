@@ -11,37 +11,37 @@
 
 namespace var {
 
-Wavefunction::Wavefunction(const lattice::LatticeGraph& graph,
+Wavefunction::Wavefunction(const lattice::Lattice& lattice,
   const input::Parameters& inputs, const bool& site_disorder)
-  : num_sites_(graph.num_sites())
+  : num_sites_(lattice.num_sites())
 {
   name_ = inputs.set_value("wavefunction", "NONE");
   boost::to_upper(name_);
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
   if (name_ == "FERMISEA") {
-    groundstate_.reset(new Fermisea(order_t::null,inputs,graph));
+    groundstate_.reset(new Fermisea(order_t::null,inputs,lattice));
   }
   else if (name_ == "AF") {
-    groundstate_.reset(new Fermisea(order_t::AF,inputs,graph));
+    groundstate_.reset(new Fermisea(order_t::AF,inputs,lattice));
   }
   else if (name_ == "SC_SWAVE") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,lattice));
   }
   else if (name_ == "SC_EXTENDED_S") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::EXTENDED_S,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::EXTENDED_S,inputs,lattice));
   }
   else if (name_ == "SC_DWAVE") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,lattice));
   }
   else if (name_ == "SC_D+ID") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,lattice));
   }
   else if (name_ == "CUSTOM_SC") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,graph));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,lattice));
   }
   else if (name_ == "DISORDERED_SC") {
-    groundstate_.reset(new DisorderedSC(order_t::SC,pairing_t::DWAVE,inputs,graph));
+    groundstate_.reset(new DisorderedSC(order_t::SC,pairing_t::DWAVE,inputs,lattice));
   }
   else {
     throw std::range_error("Wavefunction::Wavefunction: unidefined wavefunction");
@@ -64,7 +64,7 @@ std::string Wavefunction::signature_str(void) const
   return signature.str();
 }
 
-int Wavefunction::compute(const lattice::LatticeGraph& graph, 
+int Wavefunction::compute(const lattice::Lattice& lattice, 
   const input::Parameters& inputs, const bool& psi_gradient)
 {
   groundstate_->update(inputs);
@@ -77,7 +77,7 @@ int Wavefunction::compute(const lattice::LatticeGraph& graph,
   return 0;
 }
 
-int Wavefunction::compute(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
+int Wavefunction::compute(const lattice::Lattice& lattice, const var::parm_vector& pvector,
   const unsigned& start_pos, const bool& psi_gradient)
 {
   groundstate_->update(pvector,start_pos);
@@ -91,10 +91,10 @@ int Wavefunction::compute(const lattice::LatticeGraph& graph, const var::parm_ve
 }
 
 // recompute for change in lattice BC 
-int Wavefunction::recompute(const lattice::LatticeGraph& graph)
+int Wavefunction::recompute(const lattice::Lattice& lattice)
 {
   //std::cout << "recomputing\n"; 
-  groundstate_->update(graph);
+  groundstate_->update(lattice);
   groundstate_->get_wf_amplitudes(psi_up_);
   if (have_gradient_) {
     groundstate_->get_wf_gradient(psi_gradient_);
@@ -187,7 +187,7 @@ void Wavefunction::get_vparm_ubound(var::parm_vector& vparm_ub,
 }
 
 /*
-int Wavefunction::compute_gradients(const lattice::LatticeGraph& graph, 
+int Wavefunction::compute_gradients(const lattice::Lattice& lattice, 
   const var::parm_vector& pvector, const unsigned& start_pos)
 {
   // Gradient of amplitudes wrt the variational parameters 
@@ -204,9 +204,9 @@ int Wavefunction::compute_gradients(const lattice::LatticeGraph& graph,
     double inv_2h = 0.5/h;
     double x = pvector[start_pos+i];
     mf_model_.update_parameter(p.name(), x+h);
-    compute_amplitudes(psi_gradient_[i], graph);
+    compute_amplitudes(psi_gradient_[i], lattice);
     mf_model_.update_parameter(p.name(), x-h);
-    compute_amplitudes(work_mat, graph);
+    compute_amplitudes(work_mat, lattice);
     // model to original state
     mf_model_.update_parameter(p.name(), x);
     // derivative
@@ -216,39 +216,39 @@ int Wavefunction::compute_gradients(const lattice::LatticeGraph& graph,
   }
   return 0;
 }
-int Wavefunction::compute_amplitudes(Matrix& psi_mat, const lattice::LatticeGraph& graph)
+int Wavefunction::compute_amplitudes(Matrix& psi_mat, const lattice::Lattice& lattice)
 {
   switch (type_) {
     case wf_type::bcs_oneband: 
       bcs_oneband(); 
-      pair_amplitudes(graph, psi_mat);
+      pair_amplitudes(lattice, psi_mat);
       break;
     case wf_type::bcs_multiband: 
       bcs_multiband(); 
-      pair_amplitudes(graph, psi_mat);
+      pair_amplitudes(lattice, psi_mat);
       break;
     case wf_type::bcs_disordered: 
-      bcs_disordered(graph); 
-      pair_amplitudes(graph, psi_mat);
+      bcs_disordered(lattice); 
+      pair_amplitudes(lattice, psi_mat);
       break;
     case wf_type::normal: 
       fermisea(); 
-      fermisea_amplitudes(graph); 
+      fermisea_amplitudes(lattice); 
       break;
   }
   return 0;
 }
-void Wavefunction::pair_amplitudes(const lattice::LatticeGraph& graph, Matrix& psi_mat)
+void Wavefunction::pair_amplitudes(const lattice::Lattice& lattice, Matrix& psi_mat)
 {
   double one_by_nk = 1.0/static_cast<double>(num_kpoints_);
   for (unsigned i=0; i<num_sites_; ++i) {
-    //unsigned m = graph.site_uid(i);
+    //unsigned m = lattice.site_uid(i);
     unsigned m = blochbasis_.representative_state_idx(i);
-    auto Ri = graph.site_cellcord(i);
+    auto Ri = lattice.site_cellcord(i);
     for (unsigned j=0; j<num_sites_; ++j) {
-      //unsigned n = graph.site_uid(j);
+      //unsigned n = lattice.site_uid(j);
       unsigned n = blochbasis_.representative_state_idx(j);
-      auto Rj = graph.site_cellcord(j);
+      auto Rj = lattice.site_cellcord(j);
       std::complex<double> ksum(0.0);
       for (unsigned k=0; k<num_kpoints_; ++k) {
         Vector3d kvec = blochbasis_.kvector(k);

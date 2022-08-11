@@ -9,7 +9,7 @@
 #define OBS_ENERGY_H
 
 #include "../mcdata/mc_observable.h"
-#include "../lattice/graph.h"
+#include "../lattice/lattice.h"
 #include "../model/model.h"
 #include "./sysconfig.h"
 #include "./disorder.h"
@@ -20,8 +20,8 @@ class Energy : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const lattice::LatticeGraph& graph, const model::Hamiltonian& model);
-  void measure(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+  void setup(const lattice::Lattice& lattice, const model::Hamiltonian& model);
+  void measure(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config, const SiteDisorder& site_disorder);
   const mcdata::data_t& config_value(void) const { return config_value_; }
 private:
@@ -57,7 +57,7 @@ class SR_Matrix : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const lattice::LatticeGraph& graph, const SysConfig& config);
+  void setup(const lattice::Lattice& lattice, const SysConfig& config);
   void measure(const RealVector& grad_logpsi);
   void get_matrix(Eigen::MatrixXd& sr_mat) const;
 private:

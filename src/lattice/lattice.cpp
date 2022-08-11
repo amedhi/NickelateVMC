@@ -554,6 +554,12 @@ unsigned Lattice::translation_mapped_site(const unsigned& uid,
   else return uid;
 }
 
+const Site& Lattice::translated_site(const Site& site, const Vector3i& translation_vec) const
+{
+  unsigned id = translation_mapped_site(site.uid(), site.bravindex(), translation_vec); 
+  return sites_[id];
+}
+
 Eigen::Matrix3d Lattice::rotation_matrix(const Vector3d& r, const Vector3d& rp)
 {
   /* Calculates rotation matrix which would rotate vector 'r' 

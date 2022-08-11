@@ -21,7 +21,7 @@ void GroundState::update(const var::parm_vector& pvector, const unsigned& start_
   throw std::runtime_error("GroundState::update_parameters: function must be overriden");
 }
 
-void GroundState::update(const lattice::LatticeGraph& graph)
+void GroundState::update(const lattice::Lattice& lattice)
 {
   throw std::runtime_error("GroundState::update: function must be overriden");
 }
@@ -122,14 +122,14 @@ double GroundState::get_noninteracting_mu(void)
   return mu;
 }
 
-void GroundState::set_ft_matrix(const lattice::LatticeGraph& graph)
+void GroundState::set_ft_matrix(const lattice::Lattice& lattice)
 {
   // matrix for transformation from site-basis to k-basis
   FTU_.resize(num_kpoints_,num_kpoints_);
   double one_by_sqrt_nk = 1.0/std::sqrt(static_cast<double>(num_kpoints_));
   unsigned i = 0;
   for (unsigned n=0; n<num_kpoints_; ++n) {
-    auto Ri = graph.site_cellcord(i);
+    auto Ri = lattice.site(i).cell_coord();
     //std::cout << Ri << "\n"; getchar();
     for (unsigned k=0; k<num_kpoints_; ++k) {
       Vector3d kvec = blochbasis_.kvector(k);

@@ -19,14 +19,13 @@ class Fermisea : public GroundState
 public:
   Fermisea() : GroundState() {}
   Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
-    const lattice::LatticeGraph& graph); 
+    const lattice::Lattice& lattice); 
   ~Fermisea() {} 
-  int init(const input::Parameters& inputs, 
-    const lattice::LatticeGraph& graph);
+  int init(const input::Parameters& inputs, const lattice::Lattice& lattice);
   std::string info_str(void) const override; 
   void update(const input::Parameters& inputs) override;
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;
-  void update(const lattice::LatticeGraph& graph) override;
+  void update(const lattice::Lattice& lattice) override;
   void get_wf_amplitudes(Matrix& psi) override;
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:

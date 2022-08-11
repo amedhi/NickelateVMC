@@ -439,7 +439,7 @@ int Lattice::construct(const input::Parameters& parms)
 
   define_lattice();
   finalize_lattice();
-  //construct_graph();
+  construct_graph();
 
   return 0;
 }
@@ -585,7 +585,110 @@ int Lattice::symmetrize_lattice(void)
   return 0;
 }
 
+int Lattice::construct_graph(void) 
+{
+  // all the sites and the bonds
+  sites_.clear();
+  bonds_.clear();
+  sitetype_set_.clear();
+  bondtype_set_.clear();
+  Unitcell translated_cell;
+  Vector3i bravindex(0,0,0);
+  int bond_id = 0;
+  for (unsigned i=0; i<num_unitcells(); ++i) {
+    translated_cell = get_translated_cell(bravindex);
+    // collect the sites
+    for (unsigned n=0; n<translated_cell.num_sites(); ++n) {
+      sites_.push_back(translated_cell.site(n));
+      // collect type value in a set
+      sitetype_set_.insert(sites_.back().type());
+    }
+    // collect the bonds
+    for (unsigned n=0; n<translated_cell.num_bonds(); ++n) {
+      auto bond = translated_cell.bond(n);
+      bond.reset_id(bond_id);
+      bonds_.push_back(bond);
+      bondtype_set_.insert(bond.type());
+      bond_id++;
+    }
+    bravindex = get_next_bravindex(bravindex);
+  }
 
+  // check consisency
+  if (sites_.size() != num_total_sites_) {
+    throw std::logic_error("Lattice::construct_graph: site count mismatch");
+  }
+  for (int i=0; i<sites_.size(); ++i) {
+    if (i != sites_[i].id()) {
+      throw std::logic_error("Lattice::construct_graph: site id mismatch");
+    }
+  }
+
+  // site connections
+  for (auto& s : sites_) s.clear_bonds();
+  for (const auto& b : bonds_) {
+    sites_[b.src_id()].add_out_bond(b.id());
+    sites_[b.tgt_id()].add_in_bond(b.id());
+  }
+
+  // Set boundary condition phase.
+  // Also redefine meaning of 'sign' ('-'ve mean boundary bond)
+  int id = 0;
+  for (auto& b : bonds_) {
+    int sign = 1;
+    std::complex<double> phase = 1.0;
+    if (b.bc_state()[0]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*bc1_twist());
+    }
+    if (b.bc_state()[1]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*bc2_twist());
+    } 
+    if (b.bc_state()[2]==-1) {
+      sign = -1;
+      phase *= std::exp(ii()*bc3_twist());
+    } 
+    b.reset_sign(sign);
+    b.reset_phase(phase);
+    // check consisency
+    if (b.id() != id++) {
+      throw std::logic_error("Lattice::construct_graph: bond id mismatch");
+    }
+  }
+  num_bonds_ = bonds_.size();
+
+  return 0;
+}
+
+int Lattice::reset_boundary_twist(const int& twist_id)
+{
+  // twist angle 
+  for (unsigned dim=dim1; dim<=dim3; ++dim) {
+    extent[dim].bc_twist = twist_angles_(twist_id,dim);
+    //std::cout << "twist = " << extent[dim].bc_twist << "\n";
+  }
+  //std::cout << "\n";
+
+  // reset bond phase values
+  for (Bond& b : bonds_) {
+    if (b.sign() == -1) {
+      std::complex<double> phase = 1.0;
+      if (b.bc_state()[0]==-1) {
+        phase *= std::exp(ii()*bc1_twist());
+      }
+      if (b.bc_state()[1]==-1) {
+        phase *= std::exp(ii()*bc2_twist());
+      } 
+      if (b.bc_state()[2]==-1) {
+        phase *= std::exp(ii()*bc3_twist());
+      } 
+      b.reset_phase(phase);
+    }
+  }
+
+  return 0;
+}
 
 
 

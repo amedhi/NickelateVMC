@@ -16,14 +16,13 @@
 #include "../scheduler/task.h"
 #include "../model/quantum_op.h"
 #include "../model/model.h"
-#include "../lattice/graph.h"
 #include "./varparm.h"
 #include "./blochbasis.h"
 #include "./matrix.h"
 
 enum class mf_order {none, af, fm, ssc, dsc, pplusip, af_dsc, disordered_sc};
 
-constexpr std::complex<double> ii(void) { return std::complex<double>{0.0,static_cast<double>(1.0)}; }
+//constexpr std::complex<double> ii(void) { return std::complex<double>{0.0,static_cast<double>(1.0)}; }
 
 namespace var {
 using vparm_t = std::pair<std::string,double>;
@@ -35,8 +34,8 @@ class Unitcell_Term
 public:
   Unitcell_Term() {}
   ~Unitcell_Term() {}
-  void build_bondterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
-  void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
+  void build_bondterm(const model::HamiltonianTerm& sterm, const lattice::Lattice& lattice);
+  void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::Lattice& lattice);
   const unsigned& num_out_bonds(void) const { return num_out_bonds_; } 
   const Vector3d& bond_vector(const unsigned& i) const { return bond_vectors_[i]; }
   const ComplexMatrix& coeff_matrix(const unsigned& i=0) const { return coeff_matrices_[i]; }
@@ -54,8 +53,8 @@ class UnitcellTerm
 public:
   UnitcellTerm() {}
   ~UnitcellTerm() {}
-  void build_bondterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
-  void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::LatticeGraph& graph);
+  void build_bondterm(const model::HamiltonianTerm& sterm, const lattice::Lattice& lattice);
+  void build_siteterm(const model::HamiltonianTerm& sterm, const lattice::Lattice& lattice);
   void eval_coupling_constant(const model::ModelParams& cvals, const model::ModelParams& pvals);
   const int& num_out_bonds(void) const { return num_out_bonds_; } 
   const Vector3d& bond_vector(const int& i) const { return bond_vectors_[i]; }
@@ -78,7 +77,7 @@ public:
   MF_Model() {}
   ~MF_Model() {}
   int init(const lattice::Lattice& lattice) override;
-  int finalize(const lattice::LatticeGraph& graph);
+  int finalize(const lattice::Lattice& lattice);
   void update(const input::Parameters& inputs);
   void update_terms(void) override;
   void update_site_parameter(const std::string& pname, const double& pvalue);
@@ -98,7 +97,7 @@ private:
   ComplexMatrix pairing_block_;
   ComplexMatrix work, work2;
 
-  void build_unitcell_terms(const lattice::LatticeGraph& graph);
+  void build_unitcell_terms(const lattice::Lattice& lattice);
   void update_unitcell_terms(void);
 };
 

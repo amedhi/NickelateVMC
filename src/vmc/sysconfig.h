@@ -10,7 +10,6 @@
 
 #include "../scheduler/worker.h"
 #include "../lattice/lattice.h"
-#include "../lattice/graph.h"
 #include "../model/model.h"
 #include "../wavefunction/wavefunction.h"
 #include "../wavefunction/projector.h"
@@ -25,15 +24,15 @@ constexpr double gfactor_cutoff(void) { return 1.0E-8; }
 class SysConfig : public BasisState
 {
 public:
-  SysConfig(const input::Parameters& parms, const lattice::LatticeGraph& graph, 
+  SysConfig(const input::Parameters& parms, const lattice::Lattice& lattice, 
     const model::Hamiltonian& model);
   ~SysConfig() {}
   std::string info_str(void) const; 
-  int build(const lattice::LatticeGraph& graph, const input::Parameters& inputs, 
+  int build(const lattice::Lattice& lattice, const input::Parameters& inputs, 
     const bool& with_gradient=false);
-  int build(const lattice::LatticeGraph& graph, const var::parm_vector& vparms, 
+  int build(const lattice::Lattice& lattice, const var::parm_vector& vparms, 
     const bool& need_psi_grad=false);
-  int rebuild(const lattice::LatticeGraph& graph);
+  int rebuild(const lattice::Lattice& lattice);
   std::string signature_str(void) const { return wf.signature_str(); } 
   const unsigned& num_varparms(void) const { return num_varparms_; } 
   int num_particles(void) const { return num_upspins_+num_dnspins_; } 

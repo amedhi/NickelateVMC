@@ -49,7 +49,7 @@ public:
   virtual ~GroundState() {} 
   virtual void update(const input::Parameters& inputs);
   virtual void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
-  virtual void update(const lattice::LatticeGraph& graph);
+  virtual void update(const lattice::Lattice& lattice);
   virtual void get_wf_amplitudes(Matrix& psi);
   virtual void get_wf_gradient(std::vector<Matrix>& psi_gradient); 
   virtual std::string info_str(void) const; 
@@ -77,7 +77,7 @@ protected:
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_up;
   void set_nonmagnetic(const bool& yesno) { nonmagnetic_=yesno; }
   void set_particle_num(const input::Parameters& inputs);
-  void set_ft_matrix(const lattice::LatticeGraph& graph);
+  void set_ft_matrix(const lattice::Lattice& lattice);
   double get_noninteracting_mu(void);
 private:
   bool nonmagnetic_{true};

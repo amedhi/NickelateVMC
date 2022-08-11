@@ -87,6 +87,7 @@ public:
 private:
   run_mode run_mode_{run_mode::normal};
   lattice::LatticeGraph graph;
+  lattice::Lattice lattice;
   model::Hamiltonian model;
   SysConfig config;
   SiteDisorder site_disorder_;

@@ -14,7 +14,7 @@
 #include <iomanip>
 #include <vector>
 #include <Eigen/Core>
-#include "../lattice/graph.h"
+#include "../lattice/lattice.h"
 #include "../model/model.h"
 #include "./random.h"
 #include "./sysconfig.h"
@@ -26,13 +26,13 @@ class SiteDisorder
 public:
   SiteDisorder() {}
   /*SiteDisorder(const input::Parameters& inputs);
-  SiteDisorder(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
+  SiteDisorder(const input::Parameters& inputs, const lattice::Lattice& lattice,
     const model::Hamiltonian& model, RandomGenerator& rng)
   { init(inputs, graph, model, rng); }
   */
   ~SiteDisorder() {}
   const bool& check(const input::Parameters& inputs);
-  int init(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
+  int init(const input::Parameters& inputs, const lattice::Lattice& lattice,
     const model::Hamiltonian& model, const SysConfig& config,
     RandomGenerator& rng); 
   void set_current_config(const unsigned& current_config); 

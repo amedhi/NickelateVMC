@@ -15,17 +15,17 @@
 namespace var {
 
 DisorderedSC::DisorderedSC(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
-    const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+    const input::Parameters& inputs, const lattice::Lattice& lattice)
   : GroundState(order, pair_symm)
 {
-  init(inputs, graph);
+  init(inputs, lattice);
 }
 
-int DisorderedSC::init(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+int DisorderedSC::init(const input::Parameters& inputs, const lattice::Lattice& lattice)
 {
   // sites & bonds
-  num_sites_ = graph.num_sites();
-  num_bonds_ = graph.num_bonds();
+  num_sites_ = lattice.num_sites();
+  num_bonds_ = lattice.num_bonds();
   // particle number
   set_particle_num(inputs);
   // infinity limit
@@ -78,18 +78,22 @@ int DisorderedSC::init(const input::Parameters& inputs, const lattice::LatticeGr
   unsigned it = t_start_;
   unsigned id = delta_start_;
   //std::cout << "** DisorderedSC::init: ---TEMPORARY HACK-----\n";
-  for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
-    int site_i = graph.source(b);
-    int site_j = graph.target(b);
+  //for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
+  for (const auto& b : lattice.bonds()) {
+    int site_i = b.src_id(); // graph.source(b);
+    int site_j = b.tgt_id(); // graph.target(b);
     // t-values
     double t = varparms_[it++].value();
     if (site_i >= site_j) 
-      quadratic_coeffs_[i++] = MatrixElem(site_i,site_j,t,graph.bond_sign(b));
+      //quadratic_coeffs_[i++] = MatrixElem(site_i,site_j,t,graph.bond_sign(b));
+      quadratic_coeffs_[i++] = MatrixElem(site_i,site_j,t,b.sign());
     else 
-      quadratic_coeffs_[i++] = MatrixElem(site_j,site_i,t,graph.bond_sign(b));
+      //quadratic_coeffs_[i++] = MatrixElem(site_j,site_i,t,graph.bond_sign(b));
+      quadratic_coeffs_[i++] = MatrixElem(site_j,site_i,t,b.sign());
     // delta values (assuming DWAVE SC order)
     double delta = varparms_[id++].value();
-    switch (graph.bond_type(b)) {
+    //switch (graph.bond_type(b)) {
+    switch (b.type()) {
       case 0:
         pairing_coeffs_[j++] = MatrixElem(site_i,site_j,delta,+1);
         break;

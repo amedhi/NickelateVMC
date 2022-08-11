@@ -11,7 +11,6 @@
 #include <stdexcept>
 #include "../scheduler/task.h"
 #include "../lattice/lattice.h"
-#include "../lattice/graph.h"
 #include "../model/model.h"
 #include "./sysconfig.h"
 #include "./energy.h"
@@ -27,9 +26,9 @@ public:
   ~ObservableSet() {}
   std::stringstream& headstream(void) { return headstream_; }
   //void init(const input::Parameters& inputs, 
-  //  void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
+  //  void (&print_copyright)(std::ostream& os), const lattice::Lattice& lattice, 
   //  const model::Hamiltonian& model, const SysConfig& config);
-  void init(const input::Parameters& inputs, const lattice::LatticeGraph& graph, 
+  void init(const input::Parameters& inputs, const lattice::Lattice& lattice, 
     const model::Hamiltonian& model, const SysConfig& config, const std::string& prefix);
   void as_functions_of(const std::vector<std::string>& xvars=std::vector<std::string>());
   void as_functions_of(const std::string& xvar);
@@ -38,7 +37,7 @@ public:
   void reset_grand_data(void); 
   void save_results(void); 
   void avg_grand_data(void); 
-  int do_measurement(const lattice::LatticeGraph& graph, 
+  int do_measurement(const lattice::Lattice& lattice, 
     const model::Hamiltonian& model, const SysConfig& config, const SiteDisorder& site_disorder);
   inline Energy& energy(void) { return energy_; }
   inline EnergyGradient& energy_grad(void) { return energy_grad_; }

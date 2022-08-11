@@ -9,12 +9,12 @@
 
 namespace basis {
 
-BlochBasis::BlochBasis(const lattice::LatticeGraph& graph) 
+BlochBasis::BlochBasis(const lattice::Lattice& lattice) 
 {
-  construct(graph);
+  construct(lattice);
 }
 
-int BlochBasis::construct(const lattice::LatticeGraph& graph)
+int BlochBasis::construct(const lattice::Lattice& lattice)
 {
   /*
   if (disorded_system) {
@@ -39,8 +39,8 @@ int BlochBasis::construct(const lattice::LatticeGraph& graph)
     return 0;
   }
   */
-  make_kpoints(graph.lattice());
-  make_subspace_basis(graph);
+  make_kpoints(lattice);
+  make_subspace_basis(lattice);
   return 0;
 }
 
@@ -137,25 +137,25 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   }
 }
 
-void BlochBasis::make_subspace_basis(const lattice::LatticeGraph& graph)
+void BlochBasis::make_subspace_basis(const lattice::Lattice& lattice)
 {
-  subspace_dimension_ = graph.lattice().num_basis_sites();
+  subspace_dimension_ = lattice.num_basis_sites();
   subspace_basis_.resize(subspace_dimension_);
   for (unsigned i=0; i<subspace_dimension_; ++i) {
-    basis_state s = graph.site(i);
-    unsigned uid = graph.site_uid(i);
-    if (s != graph.site(uid))
-      throw std::logic_error("BlochBasis::make_site_basis: unexpected graph property.");
+    basis_state s = lattice.site(i).id();
+    unsigned uid = lattice.site(i).uid();
+    if (s != lattice.site(uid).id())
+      throw std::logic_error("BlochBasis::make_site_basis: unexpected property.");
     subspace_basis_[i] = s; 
   }
   null_idx_ = subspace_basis_.size();
   // index of the 'representative state' of a site
-  representative_state_idx_.resize(graph.num_sites());
+  representative_state_idx_.resize(lattice.num_sites());
   //translation_vectors_.resize(graph.num_sites());
   for (auto& idx : representative_state_idx_) idx = null_idx_;
-  for (unsigned i=0; i<graph.num_sites(); ++i) {
-    basis_state s = graph.site(i);
-    unsigned uid = graph.site_uid(i);
+  for (unsigned i=0; i<lattice.num_sites(); ++i) {
+    basis_state s = lattice.site(i).id();
+    unsigned uid = lattice.site(i).uid();
     representative_state_idx_[s] = uid;
     //translation_vectors_[s] = graph.site_cellcord(i);
     //std::cout << translation_vectors_[s] << "\n"; getchar();

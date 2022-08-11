@@ -33,18 +33,18 @@ class Wavefunction
 {
 public:
   //Wavefunction() {}
-  Wavefunction(const lattice::LatticeGraph& graph, const input::Parameters& inputs,
+  Wavefunction(const lattice::Lattice& lattice, const input::Parameters& inputs,
     const bool& site_disorder=false);
   ~Wavefunction() {}
   const MF_Order::pairing_t& pair_symmetry(void) const { return groundstate_->pair_symm(); }
   const VariationalParms& varparms(void) const { return groundstate_->varparms(); }
   std::string info_str(void) const { return groundstate_->info_str(); } 
-  int compute(const lattice::LatticeGraph& graph, const input::Parameters& inputs, 
+  int compute(const lattice::Lattice& lattice, const input::Parameters& inputs, 
     const bool& psi_gradient=false);
-  int compute(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
+  int compute(const lattice::Lattice& lattice, const var::parm_vector& pvector,
     const unsigned& start_pos, const bool& psi_gradient=false);
-  int recompute(const lattice::LatticeGraph& graph);
-  //int compute_gradients(const lattice::LatticeGraph& graph);
+  int recompute(const lattice::Lattice& lattice);
+  //int compute_gradients(const lattice::Lattice& lattice);
   const int& num_upspins(void) const { return groundstate_->num_upspins(); }
   const int& num_dnspins(void) const { return groundstate_->num_dnspins(); }
   const double& hole_doping(void) const { return groundstate_->hole_doping(); }

@@ -8,7 +8,7 @@
 *----------------------------------------------------------------------------*/
 #include "graph.h"
 
-constexpr std::complex<double> ii(void) { return std::complex<double>(0.0, 1.0); }
+//constexpr std::complex<double> ii(void) { return std::complex<double>(0.0, 1.0); }
 
 namespace lattice {
 //namespace graph {

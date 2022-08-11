@@ -11,30 +11,26 @@
 namespace vmc {
 
 SysConfig::SysConfig(const input::Parameters& inputs, 
-  const lattice::LatticeGraph& graph, const model::Hamiltonian& model)
-  : BasisState(graph.num_sites(), model.double_occupancy())
-  , wf(graph, inputs)
+  const lattice::Lattice& lattice, const model::Hamiltonian& model)
+  : BasisState(lattice.num_sites(), model.double_occupancy())
+  , wf(lattice, inputs)
   , pj(inputs)
-  , num_sites_(graph.num_sites())
+  , num_sites_(lattice.num_sites())
 {
   // set hubbard sites 
-  if (graph.lattice().id()==lattice::lattice_id::NICKELATE ||
-      graph.lattice().id()==lattice::lattice_id::NICKELATE_2D ||
-      graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+  if (lattice.id()==lattice::lattice_id::NICKELATE ||
+      lattice.id()==lattice::lattice_id::NICKELATE_2D ||
+      lattice.id()==lattice::lattice_id::NICKELATE_2L) {
     if (model.id()==model::model_id::HUBBARD) {
-      for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-        int site = graph.site(s);
-        int type = graph.site_type(s);
-        if (type == 1) set_projection(site, proj_t::null);
-        else set_projection(site, proj_t::partial);
+      for (const auto& s : lattice.sites()) {
+        if (s.type() == 1) set_projection(s.id(), proj_t::null);
+        else set_projection(s.id(), proj_t::partial);
       }
     }
     else if (model.id()==model::model_id::TJ) {
-      for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-        int site = graph.site(s);
-        int type = graph.site_type(s);
-        if (type == 1) set_projection(site, proj_t::null);
-        else set_projection(site, proj_t::full);
+      for (const auto& s : lattice.sites()) {
+        if (s.type() == 1) set_projection(s.id(), proj_t::null);
+        else set_projection(s.id(), proj_t::full);
       }
     }
     else {
@@ -95,29 +91,29 @@ std::string SysConfig::info_str(void) const
   return info.str();
 }
 
-int SysConfig::build(const lattice::LatticeGraph& graph, const input::Parameters& inputs,
+int SysConfig::build(const lattice::Lattice& lattice, const input::Parameters& inputs,
     const bool& with_gradient)
 {
   if (num_sites_==0) return -1;
   pj.update(inputs);
-  wf.compute(graph, inputs, with_gradient);
+  wf.compute(lattice, inputs, with_gradient);
   return init_config();
 }
 
-int SysConfig::build(const lattice::LatticeGraph& graph, const var::parm_vector& pvector,
+int SysConfig::build(const lattice::Lattice& lattice, const var::parm_vector& pvector,
   const bool& need_psi_grad)
 {
   if (num_sites_==0) return -1;
   pj.update(pvector, 0);
   unsigned start_pos = pj.varparms().size();
-  wf.compute(graph, pvector, start_pos, need_psi_grad);
+  wf.compute(lattice, pvector, start_pos, need_psi_grad);
   return init_config();
 }
 
 // rebuild for new lattice boundary twist
-int SysConfig::rebuild(const lattice::LatticeGraph& graph)
+int SysConfig::rebuild(const lattice::Lattice& lattice)
 {
-  wf.recompute(graph);
+  wf.recompute(lattice);
   return init_config();
 }
 

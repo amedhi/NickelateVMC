@@ -11,12 +11,12 @@
 
 namespace vmc {
 
-void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Order::pairing_t& pairsymm)
+void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm)
 {
   pair_symm_ = pairsymm;
-  lattice::LatticeGraph::out_edge_iterator ei, ei_end;
-  max_dist_ = graph.lattice().size1()/2+1;
-  num_basis_sites_ = graph.lattice().num_basis_sites();
+  //lattice::LatticeGraph::out_edge_iterator ei, ei_end;
+  max_dist_ = lattice.size1()/2+1;
+  num_basis_sites_ = lattice.num_basis_sites();
   // for each basis site, pairs of sites connected by translational symmetry
   //std::cout << "--SC_Correlation::setup: HACK--\n";
   symm_list_.clear();
@@ -44,17 +44,22 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
   }
   */
 
-  for (auto s1=graph.sites_begin(); s1!=graph.sites_end(); ++s1) {
-    Vector3d rs1 = graph.site_cellcord(s1);
+
+  //for (auto s1=graph.sites_begin(); s1!=graph.sites_end(); ++s1) {
+    //Vector3d rs1 = graph.site_cellcord(s1);
+  for (const auto& s1 : lattice.sites()) { 
+    Vector3d rs1 = s1.cell_coord();
     //if (rs1[0]>0) continue;
     Vector3i bravindex(0,0,0);
     for (int d=1; d<max_dist_; ++d) {
       bravindex += Vector3i(1,0,0);
-      auto s2 = graph.translated_site(graph.site(s1), bravindex);    
-      int n = graph.site_uid(s2);
+      //auto s2 = graph.translated_site(graph.site(s1), bravindex);    
+      //int n = graph.site_uid(s2);
+      auto s2 = lattice.translated_site(s1, bravindex);   
+      int n = s2.uid();
       //std::cout << n << ":  ";
       //std::cout << graph.site(s1) << " -- " << graph.site(s2) << "\n"; getchar();
-      symm_list_[n].pairs_at_dist(d).push_back({graph.site(s1), graph.site(s2)});
+      symm_list_[n].pairs_at_dist(d).push_back({s1.id(), s2.id()});
     }
   }
 
@@ -74,15 +79,15 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
   */
 
   // bond pair types for this lattice
-  if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
+  if (lattice.id()==lattice::lattice_id::NICKELATE) {
     bondpair_types_.resize(4);
     bondpair_types_[0] = std::make_pair(0,0);
     bondpair_types_[1] = std::make_pair(0,1);
     bondpair_types_[2] = std::make_pair(5,5);
     bondpair_types_[3] = std::make_pair(5,6);
   }
-  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2D ||
-           graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2D ||
+           lattice.id()==lattice::lattice_id::NICKELATE_2L) {
     bondpair_types_.resize(4);
     bondpair_types_[0] = std::make_pair(0,0);
     bondpair_types_[1] = std::make_pair(0,1);
@@ -110,24 +115,24 @@ void SC_Correlation::setup(const lattice::LatticeGraph& graph, const var::MF_Ord
   this->resize(corr_data_.size(), elem_names);
 }
 
-void SC_Correlation::measure(const lattice::LatticeGraph& graph, 
+void SC_Correlation::measure(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
   if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
-    measure_swave(graph, model, config);
+    measure_swave(lattice, model, config);
   }
   else if (pair_symm_==var::MF_Order::pairing_t::DWAVE) {
-    measure_dwave(graph, model, config);
+    measure_dwave(lattice, model, config);
   }
   else if (pair_symm_==var::MF_Order::pairing_t::null) {
-    measure_dwave(graph, model, config);
+    measure_dwave(lattice, model, config);
   }
   else {
     throw std::range_error("SC_Correlation::measure: not implemented for this symmetry");
   }
 }
 
-void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph, 
+void SC_Correlation::measure_swave(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
   corr_data_.setZero();
@@ -160,27 +165,36 @@ void SC_Correlation::measure_swave(const lattice::LatticeGraph& graph,
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
 }
 
-void SC_Correlation::measure_dwave(const lattice::LatticeGraph& graph, 
+void SC_Correlation::measure_dwave(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
-  lattice::LatticeGraph::out_bond_iterator b1, b1_end, b2, b2_end;
+  //lattice::LatticeGraph::out_bond_iterator b1, b1_end, b2, b2_end;
   corr_data_.setZero();
   int i_cdag, ia_cdag, j_c, ja_c, i_phase, j_phase;
   for (int d=1; d<max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
-        for (std::tie(b1,b1_end)=graph.out_bonds(p.first); b1!=b1_end; ++b1) {
-          int t1 = graph.bond_type(b1);
-          for (std::tie(b2,b2_end)=graph.out_bonds(p.second); b2!=b2_end; ++b2) {
-            int t2 = graph.bond_type(b2);
+        //for (std::tie(b1,b1_end)=graph.out_bonds(p.first); b1!=b1_end; ++b1) {
+          //int t1 = graph.bond_type(b1);
+          for (const auto& id1 : lattice.site(p.first).outbond_ids()) {
+            int t1 = lattice.bond(id1).type();
+          //for (std::tie(b2,b2_end)=graph.out_bonds(p.second); b2!=b2_end; ++b2) {
+            //int t2 = graph.bond_type(b2);
+          for (const auto& id2 : lattice.site(p.second).outbond_ids()) {
+            int t2 = lattice.bond(id2).type();
             for (int m=0;  m<bondpair_types_.size(); ++m) {
               if (t1==bondpair_types_[m].first && t2==bondpair_types_[m].second) {
                 i_cdag = p.first;
-                ia_cdag = graph.target(b1);
-                i_phase = graph.bond_sign(b1);
+                //ia_cdag = graph.target(b1);
+                //i_phase = graph.bond_sign(b1);
+                ia_cdag = lattice.bond(id1).tgt_id();
+                i_phase = lattice.bond(id1).sign();
+
                 j_c = p.second;
-                ja_c = graph.target(b2);
-                j_phase = graph.bond_sign(b2);
+                //ja_c = graph.target(b2);
+                //j_phase = graph.bond_sign(b2);
+                ja_c = lattice.bond(id2).tgt_id();
+                j_phase = lattice.bond(id2).sign();
                 double term = std::real(config.apply_bondsinglet_hop(i_cdag,ia_cdag,
                               i_phase,j_c,ja_c,j_phase));
                 corr_data_(d,m) += term;
@@ -197,9 +211,9 @@ void SC_Correlation::measure_dwave(const lattice::LatticeGraph& graph,
     }
   }
   // average over number of bonds
-  if (graph.lattice().id()==lattice::lattice_id::NICKELATE ||
-      graph.lattice().id()==lattice::lattice_id::NICKELATE_2D ||
-      graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+  if (lattice.id()==lattice::lattice_id::NICKELATE ||
+      lattice.id()==lattice::lattice_id::NICKELATE_2D ||
+      lattice.id()==lattice::lattice_id::NICKELATE_2L) {
     for (int d=1; d<max_dist_; ++d) {
       corr_data_(d,0) /= symm_list_[0].pairs_at_dist(d).size();
       corr_data_(d,1) /= symm_list_[0].pairs_at_dist(d).size();

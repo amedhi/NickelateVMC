@@ -11,34 +11,34 @@
 namespace var {
 
 BCS_State::BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
-    const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+    const input::Parameters& inputs, const lattice::Lattice& lattice)
   : GroundState(order,pair_symm)
 {
-  init(inputs, graph);
+  init(inputs, lattice);
 }
 
-int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph& graph)
+int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lattice)
 {
   name_ = "BCS";
-  lattice_id_ = graph.lattice().id();
+  lattice_id_ = lattice.id();
   // sites & bonds
-  num_sites_ = graph.num_sites();
-  num_bonds_ = graph.num_bonds();
+  num_sites_ = lattice.num_sites();
+  num_bonds_ = lattice.num_bonds();
   // particle number
   set_particle_num(inputs);
   // infinity limit
   large_number_ = 5.0E+4;
 
   // Bloch basis
-  blochbasis_.construct(graph);
+  blochbasis_.construct(lattice);
   num_kpoints_ = blochbasis_.num_kpoints();
   kblock_dim_ = blochbasis_.subspace_dimension();
   // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(graph);
+  set_ft_matrix(lattice);
 
   // build MF Hamiltonian
   varparms_.clear();
-  mf_model_.init(graph.lattice());
+  mf_model_.init(lattice);
   std::string name;
   double defval, lb, ub, dh;
   using namespace model;
@@ -51,7 +51,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   bool mu_default = inputs.set_value("mu_default", false);
   wf_analytical_form_ = inputs.set_value("wf_analytical_form", false);
 //---------------------------------------------------------------------------
-  if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
+  if (lattice.id()==lattice::lattice_id::SQUARE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
     mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
@@ -79,7 +79,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
   //---------------------------------------------------------------------------
 
-  else if (graph.lattice().id()==lattice::lattice_id::SQUARE_2SITE) {
+  else if (lattice.id()==lattice::lattice_id::SQUARE_2SITE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=0.0, inputs);
     mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
@@ -122,7 +122,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
 
 //---------------------------------------------------------------------------
-  else if (graph.lattice().id()==lattice::lattice_id::HONEYCOMB) {
+  else if (lattice.id()==lattice::lattice_id::HONEYCOMB) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
     mf_model_.add_parameter(name="theta1", defval=0.0, inputs);
@@ -147,7 +147,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
 
 //---------------------------------------------------------------------------
-  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=0.0, inputs);
@@ -213,7 +213,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
     noninteracting_mu_ = false;
     if (inputs.set_value("mu_default", false)) {
       // starting with non-interacting mu
-      mf_model_.finalize(graph);
+      mf_model_.finalize(lattice);
       mf_model_.update_site_parameter("mu_N", 0.0);
       mf_model_.update_site_parameter("mu_R", 0.0);
       double mu_0 = get_noninteracting_mu();
@@ -235,7 +235,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   // finalize MF Hamiltonian
   num_varparms_ = varparms_.size();
   if (!mf_model_finalized) {
-    mf_model_.finalize(graph);
+    mf_model_.finalize(lattice);
   }
 
 
@@ -244,7 +244,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
 
   if (order_type_==bcs::swave) {
     order_name_ = "s-wave";
-    if (graph.lattice().id()==lattice::lattice_id::SQUARE) {
+    if (lattice.id()==lattice::lattice_id::SQUARE) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
@@ -256,7 +256,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
     }
 
-    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+    else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
       mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=0.0, inputs);
@@ -307,7 +307,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
   else if (order_type_==bcs::extended_swave) {
     order_name_ = "extended_s-wave";
-    if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE) {
+    if (lattice.id()==lattice::lattice_id::SW_GRAPHENE) {
       mf_model_.add_parameter(name="t0", defval=1.0, inputs);
       mf_model_.add_parameter(name="t1", defval=1.0, inputs);
       mf_model_.add_parameter(name="t2", defval=1.0, inputs);
@@ -340,7 +340,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
   else if (order_type_==bcs::dwave) {
     order_name_ = "d-wave";
-    if (graph.lattice().id()==lattice::lattice_id::SQUARE_NNN) {
+    if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
@@ -352,7 +352,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       double delta_sc = mf_model_.get_parameter_value("delta_sc");
       varparms_.add("delta_sc", defval=delta_sc, lb=0.0, ub=2.0, 0.01);
     }
-    else if (graph.lattice().id()==lattice::lattice_id::SIMPLECUBIC) {
+    else if (lattice.id()==lattice::lattice_id::SIMPLECUBIC) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=1.0, inputs);
       mf_model_.add_parameter(name="tv", defval=1.0, inputs);
@@ -380,7 +380,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
   else if (order_type_==bcs::d_plus_id) {
     order_name_ = "d+id";
-    if (graph.lattice().id()==lattice::lattice_id::SQUARE_NNN) {
+    if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
@@ -401,7 +401,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
   else if (order_type_==bcs::custom_sc) {
     order_name_ = "custom_sc";
-    if (graph.lattice().id()==lattice::lattice_id::SQUARE_IONIC) {
+    if (lattice.id()==lattice::lattice_id::SQUARE_IONIC) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_d", defval=1.0, inputs);
@@ -437,7 +437,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
       defval = mf_model_.get_parameter_value("m");
       varparms_.add("m", defval,lb=0.0,ub=+1.0,dh=0.1);
     }
-    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
+    else if (lattice.id()==lattice::lattice_id::NICKELATE) {
         mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
         mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
         mf_model_.add_parameter(name="t_NN_100", defval=0.0, inputs);
@@ -518,7 +518,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
         varparms_.add("tv_RN_202",defval,lb=-1.0,ub=+1.0,dh=0.01);
         noninteracting_mu_ = false;
     }
-    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2D) {
+    else if (lattice.id()==lattice::lattice_id::NICKELATE_2D) {
         mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
         mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
         mf_model_.add_parameter(name="t_NN_100", defval=1.0, inputs);
@@ -571,7 +571,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
         varparms_.add("mu_R", defval,lb=-2.0,ub=+1.0,dh=0.1);
         noninteracting_mu_ = false;
     }
-    else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+    else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
         mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
         mf_model_.add_parameter(name="t", defval=1.0, inputs);
         mf_model_.add_parameter(name="tp", defval=0.0, inputs);
@@ -621,7 +621,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
         varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
         noninteracting_mu_ = false;
     }
-    else if (graph.lattice().id()==lattice::lattice_id::HONEYCOMB) {
+    else if (lattice.id()==lattice::lattice_id::HONEYCOMB) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       mf_model_.add_parameter(name="theta1", defval=0.0, inputs);
@@ -651,8 +651,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   }
 
   // chemical potential
-  if (graph.lattice().id()==lattice::lattice_id::NICKELATE ||
-      graph.lattice().id()==lattice::lattice_id::NICKELATE_2D ) {
+  if (lattice.id()==lattice::lattice_id::NICKELATE ||
+      lattice.id()==lattice::lattice_id::NICKELATE_2D ) {
     // do nothing
   }
   else {
@@ -683,13 +683,13 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::LatticeGraph
   return 0;
 }
 
-void BCS_State::update(const lattice::LatticeGraph& graph)
+void BCS_State::update(const lattice::Lattice& lattice)
 {
   // update for change in lattice BC (same structure & size)
   // bloch basis
-  blochbasis_.construct(graph);
+  blochbasis_.construct(lattice);
   // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(graph);
+  set_ft_matrix(lattice);
 }
 
 void BCS_State::add_chemical_potential(const input::Parameters& inputs)

@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include "../lattice/graph.h"
+#include "../lattice/lattice.h"
 #include "../model/model.h"
 #include "../mcdata/mc_observable.h"
 #include "./sysconfig.h"
@@ -21,7 +21,7 @@ namespace vmc {
 class symmetry_site_pairs
 {
 public:
-  using site_t = lattice::LatticeGraph::site_descriptor;
+  using site_t = unsigned;
   using site_pair_t = std::pair<site_t,site_t>;
   using site_pair_list = std::vector<site_pair_t>;
   symmetry_site_pairs() { data_.clear(); }
@@ -37,10 +37,10 @@ private:
 class SC_Correlation : public mcdata::MC_Observable
 {
 public:
-  using site_t = lattice::LatticeGraph::site_descriptor;
+  using site_t = unsigned;
   using MC_Observable::MC_Observable;
-  void setup(const lattice::LatticeGraph& graph, const var::MF_Order::pairing_t& pairsymm);
-  void measure(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+  void setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm);
+  void measure(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
   //const unsigned& num_site_pairs(void) const { return src_pairs_size_; }
   //const std::pair<site_t,site_t>& site_pair(const unsigned& i) const 
@@ -67,9 +67,9 @@ private:
   std::vector<Eigen::MatrixXd> bond_pair_corr_;
   std::vector<Eigen::MatrixXi> num_symm_pairs_;
   */
-  void measure_swave(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+  void measure_swave(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
-  void measure_dwave(const lattice::LatticeGraph& graph, const model::Hamiltonian& model,
+  void measure_dwave(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
 };
 

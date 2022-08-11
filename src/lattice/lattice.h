@@ -41,6 +41,8 @@ using BC_state = std::array<int,3>; // boundary crossing state of a bond
 
 //using BrvaisIdx = Eigen::Matrix<unsigned, 3, 1>;
 
+class Bond; // advance declaration
+
 class Site 
 {
 public:
@@ -57,6 +59,9 @@ public:
   void reset_coord(const Vector3d& v) { coord_=v; }
   void reset_cell_coord(const Vector3d& v) { cell_coord_=v; }
   void translate_by(const int& id_offset, const Vector3i& bravindex_offset, const Vector3d& coord_offset); 
+  void clear_bonds(void) { out_bonds_.clear(); in_bonds_.clear(); }
+  void add_out_bond(const unsigned& bond_id) { out_bonds_.push_back(bond_id); }
+  void add_in_bond(const unsigned& bond_id) { in_bonds_.push_back(bond_id); }
 
   // getter functions
   const int& id(void) const {return id_;}
@@ -66,6 +71,8 @@ public:
   const Vector3i& bravindex(void) const { return bravindex_; }
   const Vector3d& coord(void) const {return coord_;}
   const Vector3d& cell_coord(void) const {return cell_coord_;}
+  const std::vector<unsigned>& outbond_ids(void) const { return out_bonds_; }
+  const std::vector<unsigned>& inbond_ids(void) const { return out_bonds_; }
   // friends
   friend std::ostream& operator<<(std::ostream& os, const Site& site);
 private:
@@ -77,6 +84,9 @@ private:
   Vector3i bravindex_ {Vector3i(0, 0, 0)};
   Vector3d coord_ {Vector3d(0.0, 0.0, 0.0)};
   Vector3d cell_coord_ {Vector3d(0.0, 0.0, 0.0)};
+  std::vector<unsigned> out_bonds_;
+  std::vector<unsigned> in_bonds_;
+  //std::vector<Bond*> outbonds_;
 };
 
 /*---------------Lattice bond class-----------------*/
@@ -94,6 +104,8 @@ public:
   static void reset_count(void) { num_bond=0; }
   void reset_id(const unsigned& id) { id_=id; }
   void reset_type(const unsigned& t) { type_=t; }
+  void reset_sign(const int& s) { sign_=s; }
+  void reset_phase(const std::complex<double>& ph) { phase_=ph; }
   //void reset_src_offset(const Vector3i& idx) { src_offset_=idx; }
   //void reset_tgt_offset(const Vector3i& idx) { tgt_offset_=idx; }
   void reset_bravindex(const Vector3i& idx) { bravindex_=idx; }
@@ -116,8 +128,9 @@ public:
   const Site& tgt(void) const { return second; }
   const unsigned& vector_id(void) const { return vector_id_; }
   const Vector3d& vector(void) const { return vector_; }
-  int sign(void) const { return sign_; }
   const BC_state& bc_state(void) const { return bc_state_; }
+  const int& sign(void) const { return sign_; }
+  const std::complex<double>& phase(void) const { return phase_; }
   Vector3i bravindex(void) const { return bravindex_; }
   //Vector3i src_offset(void) const { return src_offset_; }
   //Vector3i tgt_offset(void) const { return tgt_offset_; }
@@ -132,9 +145,10 @@ private:
   Vector3d vector_{Vector3d(0,0,0)}; // coordinate of 'tgt cell' wrt 'src cell'
   //unsigned src_ {0}; 
   //unsigned tgt_ {0}; 
-  int sign_ {1}; // = -1 if across an antiperiodic boundary
+  int sign_{1}; // = -1 if across an antiperiodic boundary
   BC_state bc_state_; // bc_state_[dim]=1 for normal bond, 
                     // bc_state_[dim]=-1 for bond crossing 'dim' boundary
+  std::complex<double> phase_; // bc phase
   Vector3i bravindex_ {Vector3i(0, 0, 0)};
   //Vector3i src_offset_ {Vector3i(0, 0, 0)};
   //Vector3i tgt_offset_ {Vector3i(0, 0, 0)};
@@ -226,6 +240,7 @@ public:
     }
     //std::cout << "\n";
   }
+  int reset_boundary_twist(const int& twist_id);
 
   // getter functions
   std::string name(void) const { return lname; }
@@ -235,6 +250,7 @@ public:
   const unsigned& dimension(void) const { return spatial_dim; }
   const unsigned& num_sites(void) const { return num_total_sites_; }
   const unsigned& num_unitcells(void) const { return num_total_cells_; }
+  const unsigned& num_bonds(void) const { return num_bonds_; }
   Vector3d basis_vector_a1(void) const { return Unitcell::vector_a1(); }
   Vector3d basis_vector_a2(void) const { return Unitcell::vector_a2(); }
   Vector3d basis_vector_a3(void) const { return Unitcell::vector_a3(); }
@@ -253,6 +269,10 @@ public:
   boundary_type bc1_periodicity(void) const { return extent[dim1].periodicity; }
   boundary_type bc2_periodicity(void) const { return extent[dim2].periodicity; }
   boundary_type bc3_periodicity(void) const { return extent[dim3].periodicity; }
+  const Site& site(const int& i) const { return sites_[i]; }
+  const Bond& bond(const int& i) const { return bonds_[i]; }
+  const std::vector<Site>& sites(void) const { return sites_; }
+  const std::vector<Bond>& bonds(void) const { return bonds_; }
 
   // other methods 
   //Vector3i boundary_wrap(const Vector3i& cell_idx) const;
@@ -263,6 +283,7 @@ public:
   int mapped_site_id(const unsigned& local_id, const Vector3i& bravindex) const;
   unsigned translation_mapped_site(const unsigned& uid, const Vector3i& bravindex,
     const Vector3i& translation_vec) const;
+  const Site& translated_site(const Site& site, const Vector3i& translation_vec) const;
   //bool connect_bond(Bond& bond, const std::vector<Site>& sites) const;
   bool connect_bond2(Bond& bond, const std::vector<Site>& sites) const;
   const Site& basis_site(const unsigned& i) const { return Unitcell::site(i); }
@@ -290,10 +311,11 @@ private:
                         };
   
   // number of unit cells in total and in one layer (for symmetrized lattice)
-  unsigned num_total_cells_ {1};
-  unsigned num_layer_cells_ {1};
-  unsigned num_total_sites_ {0};
-  unsigned num_basis_sites_ {0};
+  unsigned num_total_cells_{1};
+  unsigned num_layer_cells_{1};
+  unsigned num_total_sites_{0};
+  unsigned num_basis_sites_{0};
+  unsigned num_bonds_{0};
 
   int num_total_twists_{1};
   RealMatrix twist_angles_;
@@ -301,6 +323,10 @@ private:
   // sites & bonds
   std::vector<Site> sites_;
   std::vector<Bond> bonds_;
+
+  // set of type values
+  std::set<unsigned> sitetype_set_;
+  std::set<unsigned> bondtype_set_;
 
   // for lattices with impurities
   std::vector<Site> impurity_sites_;

@@ -8,7 +8,7 @@
 job = "VMC Simulation" 
 #mpi_mode = "BC_TWIST" # "NORMAL"
 optimizing_run = "NO" 
-mode = "APPEND" # ("NEW"/"APPEND")
+mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 prefix="hub"
 #---------------------------------------------

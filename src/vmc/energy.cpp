@@ -10,12 +10,12 @@
 namespace vmc {
 
 //-------------------ENERGY--------------------------------
-void Energy::setup(const lattice::LatticeGraph& graph, 
+void Energy::setup(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model)
 {
   MC_Observable::switch_on();
   if (setup_done_) return;
-  num_sites_ = graph.num_sites();
+  num_sites_ = lattice.num_sites();
   std::vector<std::string> elem_names;
   model.get_term_names(elem_names);
   this->resize(elem_names.size(), elem_names);
@@ -24,7 +24,7 @@ void Energy::setup(const lattice::LatticeGraph& graph,
   setup_done_ = true;
 }
   
-void Energy::measure(const lattice::LatticeGraph& graph, 
+void Energy::measure(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config, 
   const SiteDisorder& site_disorder)
 {
@@ -33,23 +33,28 @@ void Energy::measure(const lattice::LatticeGraph& graph,
   config_value_.setZero();
   // bond energies
   if (model.have_bondterm()) {
-    Matrix matrix_elem(model.num_bondterms(),graph.num_bond_types());
+    Matrix matrix_elem(model.num_bondterms(),lattice.num_bond_types());
     matrix_elem.setZero();
-    for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
-      unsigned type = graph.bond_type(b);
-      unsigned site_i = graph.source(b);
-      unsigned site_j = graph.target(b);
+    //for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
+    for (const auto& b : lattice.bonds()) {
+      //unsigned type = graph.bond_type(b);
+      //unsigned site_i = graph.source(b);
+      //unsigned site_j = graph.target(b);
+      unsigned type = b.type();
+      unsigned site_i = b.src_id();
+      unsigned site_j = b.tgt_id();
+
       // matrix elements each term & bond type
       unsigned term = 0;
       for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
         matrix_elem(term,type) += config.apply(it->qn_operator(),site_i,site_j,
-          graph.bond_sign(b),graph.bond_phase(b));
+          b.sign(),b.phase());
         term++;
       }
     }
     unsigned i = 0;
     for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
-      for (unsigned btype=0; btype<graph.num_bond_types(); ++btype) {
+      for (unsigned btype=0; btype<lattice.num_bond_types(); ++btype) {
         config_value_(i) += std::real(it->coupling(btype)*matrix_elem(i,btype));
       }
       i++;
@@ -58,25 +63,31 @@ void Energy::measure(const lattice::LatticeGraph& graph,
 
   // site energies
   if (model.have_siteterm()) {
-    Matrix matrix_elem(model.num_siteterms(),graph.num_site_types());
+    Matrix matrix_elem(model.num_siteterms(),lattice.num_site_types());
     matrix_elem.setZero();
-    Eigen::VectorXi hubbard_nd(graph.num_site_types());
+    Eigen::VectorXi hubbard_nd(lattice.num_site_types());
     hubbard_nd.setZero();
     // do it little differently
     int term = 0;
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
-        for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-          unsigned site = graph.site(s);
-          unsigned type = graph.site_type(s);
+        //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
+        for (const auto& s : lattice.sites()) {
+          //unsigned site = graph.site(s);
+          //unsigned type = graph.site_type(s);
+          unsigned site = s.id();
+          unsigned type = s.type();
           hubbard_nd(type) += config.apply_niup_nidn(site);
         }
       }
       else {
-        for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-          unsigned site = graph.site(s);
-          unsigned type = graph.site_type(s);
+        //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
+          //unsigned site = graph.site(s);
+          //unsigned type = graph.site_type(s);
+        for (const auto& s : lattice.sites()) {
+          unsigned site = s.id();
+          unsigned type = s.type();
           matrix_elem(term,type) += config.apply(it->qn_operator(), site);
           //std::cout << config.apply(it->qn_operator(),site) << "\n"; getchar();
         }
@@ -88,12 +99,12 @@ void Energy::measure(const lattice::LatticeGraph& graph,
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
-        for (int stype=0; stype<graph.num_site_types(); ++stype) {
+        for (int stype=0; stype<lattice.num_site_types(); ++stype) {
           config_value_(n+sterm) += std::real(it->coupling(stype))*hubbard_nd(stype);
         }
       }
       else {
-        for (unsigned stype=0; stype<graph.num_site_types(); ++stype) {
+        for (unsigned stype=0; stype<lattice.num_site_types(); ++stype) {
           config_value_(n+sterm) += std::real(it->coupling(stype)*matrix_elem(sterm,stype));
         }
       }
@@ -106,8 +117,10 @@ void Energy::measure(const lattice::LatticeGraph& graph,
     //std::cout << "\ndisorder energy\n"; 
     unsigned n = model.num_bondterms()+model.num_siteterms();
     double disorder_en = 0.0;
-    for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-      unsigned site = graph.site(s);
+    //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
+      //unsigned site = graph.site(s);
+    for (const auto& s : lattice.sites()) {
+      unsigned site = s.id();
       int n_i = config.apply(model::op::ni_sigma(), site);
       disorder_en += std::real(n_i * site_disorder.potential(site));
       //std::cout <<"site= "<<site<<" ni= "<<n_i;
@@ -205,11 +218,11 @@ void EnergyGradient::finalize(void)
 }
 
 //-------------------SR_Matrix (Stochastic Reconfiguration)---------------
-void SR_Matrix::setup(const lattice::LatticeGraph& graph, const SysConfig& config)
+void SR_Matrix::setup(const lattice::Lattice& lattice, const SysConfig& config)
 {
   MC_Observable::switch_on();
   if (setup_done_) return;
-  num_sites_ = graph.num_sites();
+  num_sites_ = lattice.num_sites();
   num_varp_ = config.num_varparms();
   // '\del(ln(psi))' plus upper triangular part of the sr_matrix 
   unsigned n = num_varp_ + num_varp_*(num_varp_+1)/2;

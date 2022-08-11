@@ -9,7 +9,7 @@
 #define OBS_PARTICLE_H
 
 #include "../mcdata/mc_observable.h"
-#include "../lattice/graph.h"
+#include "../lattice/lattice.h"
 #include "../model/model.h"
 #include "./sysconfig.h"
 
@@ -19,8 +19,8 @@ class SiteOccupancy : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const lattice::LatticeGraph& graph, const SysConfig& config);
-  void measure(const lattice::LatticeGraph& graph, const SysConfig& config);
+  void setup(const lattice::Lattice& lattice, const SysConfig& config);
+  void measure(const lattice::Lattice& lattice, const SysConfig& config);
   const mcdata::data_t& config_value(void) const { return config_value_; }
 private:
   bool setup_done_{false};

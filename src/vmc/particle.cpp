@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-09-26 13:53:41
-* @Last Modified by:   Amal Medhi, amedhi@mbpro
-* @Last Modified time: 2019-10-04 14:08:46
+* @Last Modified by:   Amal Medhi
+* @Last Modified time: 2022-08-11 12:49:54
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "./particle.h"
@@ -10,13 +10,12 @@
 namespace vmc {
 
 //-------------------Site Occupancy--------------------------------
-void SiteOccupancy::setup(const lattice::LatticeGraph& graph, 
-	const SysConfig& config)
+void SiteOccupancy::setup(const lattice::Lattice& lattice, const SysConfig& config)
 {
   MC_Observable::switch_on();
   if (setup_done_) return;
-  num_sites_ = graph.num_sites();
-  num_basis_sites_ = graph.lattice().num_basis_sites();
+  num_sites_ = lattice.num_sites();
+  num_basis_sites_ = lattice.num_basis_sites();
   num_particles_ = config.num_particles();
   std::vector<std::string> elem_names(num_basis_sites_);
   for (int i=0; i<num_basis_sites_; ++i) {
@@ -30,16 +29,18 @@ void SiteOccupancy::setup(const lattice::LatticeGraph& graph,
   setup_done_ = true;
 }
 
-void SiteOccupancy::measure(const lattice::LatticeGraph& graph, 
-	const SysConfig& config) 
+void SiteOccupancy::measure(const lattice::Lattice& lattice, const SysConfig& config) 
 {
   IntVector matrix_elem(num_basis_sites_);
   IntVector num_subsites(num_basis_sites_);
   matrix_elem.setZero();
   num_subsites.setZero();
-  for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-    int site = graph.site(s);
-    int basis = graph.site_uid(s);
+  //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
+  //  int site = graph.site(s);
+  //  int basis = graph.site_uid(s);
+  for (const auto& s : lattice.sites()) {
+    int site = s.id();
+    int basis = s.uid();
     matrix_elem(basis) += config.apply(model::op::ni_sigma(),site);
     num_subsites(basis) += 1;
   }

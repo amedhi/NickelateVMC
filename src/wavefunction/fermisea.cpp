@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-08-01 12:00:55
+* @Last Modified time: 2022-08-10 22:36:11
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -13,26 +13,25 @@
 namespace var {
 
 Fermisea::Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
-  const lattice::LatticeGraph& graph) 
+  const lattice::Lattice& lattice) 
   : GroundState(order, MF_Order::pairing_t::null)
 {
-  init(inputs, graph);
+  init(inputs, lattice);
 }
 
-int Fermisea::init(const input::Parameters& inputs, 
-  const lattice::LatticeGraph& graph)
+int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& lattice)
 {
   name_ = "Fermisea";
   // sites & bonds
-  num_sites_ = graph.num_sites();
-  num_bonds_ = graph.num_bonds();
+  num_sites_ = lattice.num_sites();
+  num_bonds_ = lattice.num_bonds();
   // particle number
   set_nonmagnetic(true);
   set_particle_num(inputs);
 
   // build MF Hamiltonian
   varparms_.clear();
-  mf_model_.init(graph.lattice());
+  mf_model_.init(lattice);
   std::string name;
   double defval, lb, ub, dh;
   using namespace model;
@@ -41,7 +40,7 @@ int Fermisea::init(const input::Parameters& inputs,
   // chemical potential
   noninteracting_mu_ = true;
 
-  if (graph.lattice().id()==lattice::lattice_id::SQUARE_NNN) {
+  if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
     cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
@@ -49,7 +48,7 @@ int Fermisea::init(const input::Parameters& inputs,
     add_chemical_potential(inputs);
   }
 
-  else if (graph.lattice().id()==lattice::lattice_id::SQUARE_2SITE) {
+  else if (lattice.id()==lattice::lattice_id::SQUARE_2SITE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
     mf_model_.add_parameter(name="delta_af", defval=1.0, inputs);
@@ -75,7 +74,7 @@ int Fermisea::init(const input::Parameters& inputs,
     add_chemical_potential(inputs);
   }
 
-  else if (graph.lattice().id()==lattice::lattice_id::CHAIN_2SITE) {
+  else if (lattice.id()==lattice::lattice_id::CHAIN_2SITE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
 
     // bond operator terms
@@ -102,7 +101,7 @@ int Fermisea::init(const input::Parameters& inputs,
     add_chemical_potential(inputs);
   }
 
-  else if (graph.lattice().id()==lattice::lattice_id::SIMPLECUBIC) {
+  else if (lattice.id()==lattice::lattice_id::SIMPLECUBIC) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
     mf_model_.add_parameter(name="th", defval=1.0, inputs);
@@ -110,7 +109,7 @@ int Fermisea::init(const input::Parameters& inputs,
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
     add_chemical_potential(inputs);
   }
-  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE) {
+  else if (lattice.id()==lattice::lattice_id::NICKELATE) {
     mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t_NN_100", defval=0.0, inputs);
@@ -153,7 +152,7 @@ int Fermisea::init(const input::Parameters& inputs,
     cc.add_type(1, "e_R");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
-  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2D) {
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2D) {
     mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t_NN_100", defval=1.0, inputs);
@@ -178,7 +177,7 @@ int Fermisea::init(const input::Parameters& inputs,
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
 
-  else if (graph.lattice().id()==lattice::lattice_id::NICKELATE_2L) {
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=0.0, inputs);
@@ -201,7 +200,7 @@ int Fermisea::init(const input::Parameters& inputs,
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
 
-  else if (graph.lattice().id()==lattice::lattice_id::SW_GRAPHENE) {
+  else if (lattice.id()==lattice::lattice_id::SW_GRAPHENE) {
     mf_model_.add_parameter(name="t0", defval=1.0, inputs);
     mf_model_.add_parameter(name="t1", defval=1.0, inputs);
     mf_model_.add_parameter(name="t2", defval=1.0, inputs);
@@ -219,15 +218,15 @@ int Fermisea::init(const input::Parameters& inputs,
   }
 
   // finalize MF Hamiltonian
-  mf_model_.finalize(graph);
+  mf_model_.finalize(lattice);
   num_varparms_ = varparms_.size();
 
   // bloch basis
-  blochbasis_.construct(graph);
+  blochbasis_.construct(lattice);
   num_kpoints_ = blochbasis_.num_kpoints();
   kblock_dim_ = blochbasis_.subspace_dimension();
   // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(graph);
+  set_ft_matrix(lattice);
   // work arrays
   work_.resize(kblock_dim_,kblock_dim_);
   phi_k_.resize(num_kpoints_);
@@ -236,9 +235,9 @@ int Fermisea::init(const input::Parameters& inputs,
   } 
 
   // for calculating SC correlations 
-  rmax_ =  graph.lattice().size1()/2+1;
-  alpha_ = graph.lattice().basis_vector_a1();
-  beta_ = graph.lattice().basis_vector_a2();
+  rmax_ =  lattice.size1()/2+1;
+  alpha_ = lattice.basis_vector_a1();
+  beta_ = lattice.basis_vector_a2();
   R_list_.resize(rmax_);
   corr_aa_.resize(kblock_dim_,rmax_);
   corr_ab_.resize(kblock_dim_,rmax_);
@@ -269,13 +268,13 @@ void Fermisea::add_chemical_potential(const input::Parameters& inputs)
   }
 }
 
-void Fermisea::update(const lattice::LatticeGraph& graph)
+void Fermisea::update(const lattice::Lattice& lattice)
 {
   // update for change in lattice BC (same structure & size)
   // bloch basis
-  blochbasis_.construct(graph);
+  blochbasis_.construct(lattice);
   // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(graph);
+  set_ft_matrix(lattice);
 }
 
 std::string Fermisea::info_str(void) const

@@ -11,12 +11,12 @@
 #include <vector>
 #include <set>
 #include <stdexcept>
-#include "../lattice/graph.h"
+#include "../lattice/lattice.h"
 #include "matrix.h"
 
 namespace basis {
 
-using basis_state = lattice::LatticeGraph::site_descriptor;
+using basis_state = unsigned;
 using kpoint = Vector3d;
 
 class BlochBasis : public std::vector<kpoint>
@@ -24,9 +24,9 @@ class BlochBasis : public std::vector<kpoint>
 public:
   // ctors
   BlochBasis() {}
-  BlochBasis(const lattice::LatticeGraph& graph);
+  BlochBasis(const lattice::Lattice& lattice);
   ~BlochBasis() {}
-  int construct(const lattice::LatticeGraph& graph);
+  int construct(const lattice::Lattice& lattice);
   const unsigned& num_kpoints(void) const { return num_kpoint_; }
   const unsigned& subspace_dimension(void) const { return subspace_dimension_; }
   kpoint kvector(const unsigned& k) const { return operator[](k); }
@@ -64,7 +64,7 @@ private:
 
   // helper functions
   void make_kpoints(const lattice::Lattice& lattice);
-  void make_subspace_basis(const lattice::LatticeGraph& graph);
+  void make_subspace_basis(const lattice::Lattice& lattice);
   //void make_site_basis(const lattice::Lattice& lattice, const lattice::LatticeGraph& graph);
 };
 

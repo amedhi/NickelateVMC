@@ -20,6 +20,7 @@ constexpr double pi(void) { return 3.1415926535897932384626433832795028841971693
 constexpr double two_pi(void) { return 2.0 * pi(); }
 constexpr double half_pi(void) { return 0.5 * pi(); }
 //constexpr std::complex<double> ii(void) { return std::complex<double>(0.0, 1.0); }
+constexpr std::complex<double> ii(void) { return std::complex<double>(0.0,1.0); }
 
 
 #endif

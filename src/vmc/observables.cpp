@@ -18,10 +18,10 @@ ObservableSet::ObservableSet()
 }
 
 //void ObservableSet::init(const input::Parameters& inputs, 
-//    void (&print_copyright)(std::ostream& os), const lattice::LatticeGraph& graph, 
+//    void (&print_copyright)(std::ostream& os), const lattice::Lattice& lattice, 
 //    const model::Hamiltonian& model, const SysConfig& config)
 void ObservableSet::init(const input::Parameters& inputs, 
-  const lattice::LatticeGraph& graph, const model::Hamiltonian& model, 
+  const lattice::Lattice& lattice, const model::Hamiltonian& model, 
   const SysConfig& config, const std::string& prefix)
 {
   // file open mode
@@ -52,11 +52,11 @@ void ObservableSet::init(const input::Parameters& inputs,
   site_occupancy_.check_on(inputs,replace_mode_);
 
   // set up observables
-  if (energy_) energy_.setup(graph,model);
+  if (energy_) energy_.setup(lattice,model);
   if (energy_grad_) energy_grad_.setup(config);
-  if (sc_corr_) sc_corr_.setup(graph,config.wavefunc().pair_symmetry());
-  if (sr_matrix_) sr_matrix_.setup(graph,config);
-  if (site_occupancy_) site_occupancy_.setup(graph,config);
+  if (sc_corr_) sc_corr_.setup(lattice,config.wavefunc().pair_symmetry());
+  if (sr_matrix_) sr_matrix_.setup(lattice,config);
+  if (site_occupancy_) site_occupancy_.setup(lattice,config);
 }
 
 void ObservableSet::reset(void)
@@ -96,22 +96,22 @@ void ObservableSet::avg_grand_data(void)
 }
 
 
-int ObservableSet::do_measurement(const lattice::LatticeGraph& graph, 
+int ObservableSet::do_measurement(const lattice::Lattice& lattice, 
     const model::Hamiltonian& model, const SysConfig& config, const SiteDisorder& site_disorder)
 {
-  if (energy_) energy_.measure(graph,model,config,site_disorder);
+  if (energy_) energy_.measure(lattice,model,config,site_disorder);
   if (energy_grad_) {
     if (!energy_) 
       throw std::logic_error("ObservableSet::measure: dependency not met for 'energy'");
     energy_grad_.measure(config, energy_.config_value().sum());
   }
-  if (sc_corr_) sc_corr_.measure(graph,model,config);
+  if (sc_corr_) sc_corr_.measure(lattice,model,config);
   if (sr_matrix_) {
     if (!energy_grad_) 
       throw std::logic_error("ObservableSet::measure: dependency not met for 'sr_matrix_'");
     sr_matrix_.measure(energy_grad_.grad_logpsi());
   }
-  if (site_occupancy_) site_occupancy_.measure(graph, config);
+  if (site_occupancy_) site_occupancy_.measure(lattice, config);
   return 0;
 }
 

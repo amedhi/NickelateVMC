@@ -19,17 +19,17 @@ const bool& SiteDisorder::check(const input::Parameters& inputs)
   return exists_;
 }
 
-int SiteDisorder::init(const input::Parameters& inputs, const lattice::LatticeGraph& graph,
+int SiteDisorder::init(const input::Parameters& inputs, const lattice::Lattice& lattice,
     const model::Hamiltonian& model, const SysConfig& config,
     RandomGenerator& rng)
 {
-  num_sites_ = graph.num_sites();
-  num_bonds_ = graph.num_bonds();
+  num_sites_ = lattice.num_sites();
+  num_bonds_ = lattice.num_bonds();
   num_configs_ = inputs.set_value("disorder_configs",1);
   bandwidth_ = inputs.set_value("disorder_bandwidth",1.0);
   disorder_pot_.resize(num_configs_);
   for (auto& v : disorder_pot_) v.resize(num_sites_);
-  num_opt_parms_ = graph.num_sites()+2*graph.num_bonds();
+  num_opt_parms_ = lattice.num_sites()+2*lattice.num_bonds();
   optimal_parms_.resize(num_opt_parms_);
   // init out-of-range current config
   current_config_ = -1;

@@ -12,16 +12,16 @@
 namespace vmc {
 
 VMC::VMC(const input::Parameters& inputs) 
-  : graph(inputs) 
-  , model(inputs, graph.lattice()) 
-  , config(inputs, graph, model)
+  : lattice(inputs) 
+  , model(inputs,lattice) 
+  , config(inputs,lattice,model)
   , num_varparms_{config.num_varparms()}
 {
   // seed random generator
   rng_seed_ = inputs.set_value("rng_seed", 1);
   config.rng().seed(rng_seed_);
   // mc parameters
-  num_sites_ = graph.num_sites();
+  num_sites_ = lattice.num_sites();
   num_measure_steps_ = inputs.set_value("measure_steps", 0);
   num_warmup_steps_ = inputs.set_value("warmup_steps", 0);
   min_interval_ = inputs.set_value("min_interval", 0);
@@ -30,9 +30,9 @@ VMC::VMC(const input::Parameters& inputs)
 
   // disorder
   if (site_disorder_.check(inputs)) {
-    site_disorder_.init(inputs,graph,model,config,config.rng());
+    site_disorder_.init(inputs,lattice,model,config,config.rng());
     model.add_disorder_term("disorder", model::op::ni_sigma());
-    model.finalize(graph.lattice());
+    model.finalize(lattice);
   }
   //if (model.have_disorder_term()) 
 
@@ -55,7 +55,7 @@ VMC::VMC(const input::Parameters& inputs)
   // observables
   make_info_str(inputs);
   observables.headstream() << info_str_.str();
-  observables.init(inputs,graph,model,config,prefix_);
+  observables.init(inputs,lattice,model,config,prefix_);
   observables.as_functions_of(xvar_names_);
 }
 
@@ -77,21 +77,21 @@ int VMC::disorder_start(const input::Parameters& inputs,
       break;
     case run_mode::energy_function:
       observables.switch_off();
-      observables.energy().setup(graph,model);
+      observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
       break;
     case run_mode::sr_function:
       observables.switch_off();
-      observables.energy().setup(graph,model);
+      observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
-      observables.sr_matrix().setup(graph,config);
+      observables.sr_matrix().setup(lattice,config);
       break;
   }
   silent_mode_ = silent;
   if (inputs.have_option_quiet()) silent_mode_ = true;
   //site_disorder_.get_optimal_parms();
-  //return config.build(graph, inputs, with_psi_grad);
-  return config.build(graph,site_disorder_.get_optimal_parms(),with_psi_grad);
+  //return config.build(lattice, inputs, with_psi_grad);
+  return config.build(lattice,site_disorder_.get_optimal_parms(),with_psi_grad);
 }
 
 
@@ -107,20 +107,20 @@ int VMC::start(const input::Parameters& inputs, const run_mode& mode,
       break;
     case run_mode::energy_function:
       observables.switch_off();
-      observables.energy().setup(graph,model);
+      observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
       break;
     case run_mode::sr_function:
       observables.switch_off();
-      observables.energy().setup(graph,model);
+      observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
-      observables.sr_matrix().setup(graph,config);
+      observables.sr_matrix().setup(lattice,config);
       break;
   }
   silent_mode_ = silent;
   if (inputs.have_option_quiet()) silent_mode_ = true;
   // build config
-  config.build(graph, inputs, with_psi_grad);
+  config.build(lattice, inputs, with_psi_grad);
 
   // xvariables
   if (xvar_names_[0] == "hole_doping") {
@@ -139,7 +139,7 @@ int VMC::energy_function(const Eigen::VectorXd& varp, double& en_mean,
   config.rng().seed(rng_seed);
   // build the config from the variational parameters
   bool with_psi_grad = true;
-  config.build(graph, varp, with_psi_grad);
+  config.build(lattice, varp, with_psi_grad);
   // run the simulation
   run_simulation();
   // results
@@ -153,7 +153,7 @@ int VMC::energy_function(const Eigen::VectorXd& varp, double& en_mean,
 int VMC::build_config(const Eigen::VectorXd& varp, const bool& with_psi_grad) 
 {
   config.rng().seed(rng_seed_);
-  return config.build(graph, varp, with_psi_grad);
+  return config.build(lattice, varp, with_psi_grad);
 }
 
 int VMC::sr_function(const Eigen::VectorXd& varp, double& en_mean, 
@@ -165,7 +165,7 @@ int VMC::sr_function(const Eigen::VectorXd& varp, double& en_mean,
   }
   // build the config from the variational parameters
   bool with_psi_grad = true;
-  config.build(graph, varp, with_psi_grad);
+  config.build(lattice, varp, with_psi_grad);
   // run the simulation
   run_simulation(sample_size);
   // energy
@@ -183,7 +183,7 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
 {
   observables.switch_off();
   observables.energy().switch_on();
-  config.build(graph, varp);
+  config.build(lattice, varp);
   run_simulation();
   return 0;
 }
@@ -193,7 +193,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
   // take care of default argument
   std::vector<int> bc_twists;
   if (bc_list.size()==1 && bc_list[0]==-1) {
-    for (int bc=0; bc<graph.num_boundary_twists(); ++bc) {
+    for (int bc=0; bc<lattice.num_boundary_twists(); ++bc) {
       bc_twists.push_back(bc);
     }
   }
@@ -239,9 +239,9 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
         std::cout << bc_twists.size() << std::endl;
         std::cout << "-------------------------------------\n" << std::flush;
       }
-      graph.update_boundary_twist(bc);
+      lattice.reset_boundary_twist(bc);
       config.rng().seed(rng_seed_);
-      config.rebuild(graph);
+      config.rebuild(lattice);
 
       // warmup run
       if (!silent_mode_) std::cout << " warming up... " << std::flush;
@@ -287,7 +287,7 @@ int VMC::do_measure_run(const int& num_samples)
       if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
         skip_count = 0;
         config.reset_accept_ratio();
-        observables.do_measurement(graph,model,config,site_disorder_);
+        observables.do_measurement(lattice,model,config,site_disorder_);
         ++measurement_count;
         if (!silent_mode_) print_progress(measurement_count, num_samples);
       }
@@ -341,7 +341,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
   // take care of default argument
   std::vector<int> bc_twists;
   if (bc_list.size()==1 && bc_list[0]==-1) {
-    for (int bc=0; bc<graph.num_boundary_twists(); ++bc) {
+    for (int bc=0; bc<lattice.num_boundary_twists(); ++bc) {
       bc_twists.push_back(bc);
     }
   }
@@ -372,7 +372,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
         if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
           skip_count = 0;
           config.reset_accept_ratio();
-          observables.do_measurement(graph,model,config,site_disorder_);
+          observables.do_measurement(lattice,model,config,site_disorder_);
           ++measurement_count;
           if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
         }
@@ -401,9 +401,9 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
         std::cout << bc_twists.size() << std::endl;
         std::cout << "-------------------------------------\n" << std::flush;
       }
-      graph.update_boundary_twist(bc);
+      lattice.reset_boundary_twist(bc);
       config.rng().seed(rng_seed_);
-      config.rebuild(graph);
+      config.rebuild(reset;
       //observables.reset();
 
       // warmup run
@@ -419,7 +419,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
           if (config.accept_ratio()>0.5 || skip_count==max_interval_) {
             skip_count = 0;
             config.reset_accept_ratio();
-            observables.do_measurement(graph,model,config,site_disorder_);
+            observables.do_measurement(lattice,model,config,site_disorder_);
             ++measurement_count;
             if (!silent_mode_) print_progress(measurement_count, num_measure_steps);
           }

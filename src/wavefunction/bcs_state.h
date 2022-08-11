@@ -26,14 +26,14 @@ class BCS_State : public GroundState
 public:
   BCS_State() {}
   BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
-    const input::Parameters& inputs, const lattice::LatticeGraph& graph); 
+    const input::Parameters& inputs, const lattice::Lattice& lattice); 
   virtual ~BCS_State() {} 
   int init(const input::Parameters& inputs, 
-    const lattice::LatticeGraph& graph);
+    const lattice::Lattice& lattice);
   std::string info_str(void) const override; 
   void update(const input::Parameters& inputs) override;
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;
-  void update(const lattice::LatticeGraph& graph) override;
+  void update(const lattice::Lattice& lattice) override;
   void get_wf_amplitudes(Matrix& psi) override;
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:

@@ -23,7 +23,7 @@ Scheduler::Scheduler(const mpi::mpi_communicator& mpi_comm, const AbstractTask& 
 
 int Scheduler::run(const mpi::mpi_communicator& mpi_comm) 
 {
-  bool task_exist = false;
+  //bool task_exist = false;
   theWorker->start(mpi_comm);
   while (true) {
     mpi::mpi_status msg = mpi_comm.probe();
@@ -36,7 +36,7 @@ int Scheduler::run(const mpi::mpi_communicator& mpi_comm)
         mpi_comm.recv(msg.source(),msg.tag(),input.task_params());
         theWorker->run(input.task_params(),mpi_comm);
         mpi_comm.send(msg.source(),mpi::MP_task_finished);
-        task_exist = false;
+        //task_exist = false;
         break;
       default:
         std::cout << "Scheduler::run: unexpected message\n";
