@@ -35,15 +35,10 @@ void Energy::measure(const lattice::Lattice& lattice,
   if (model.have_bondterm()) {
     Matrix matrix_elem(model.num_bondterms(),lattice.num_bond_types());
     matrix_elem.setZero();
-    //for (auto b=graph.bonds_begin(); b!=graph.bonds_end(); ++b) {
     for (const auto& b : lattice.bonds()) {
-      //unsigned type = graph.bond_type(b);
-      //unsigned site_i = graph.source(b);
-      //unsigned site_j = graph.target(b);
       unsigned type = b.type();
       unsigned site_i = b.src_id();
       unsigned site_j = b.tgt_id();
-
       // matrix elements each term & bond type
       unsigned term = 0;
       for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
@@ -72,23 +67,13 @@ void Energy::measure(const lattice::Lattice& lattice,
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
-        //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
         for (const auto& s : lattice.sites()) {
-          //unsigned site = graph.site(s);
-          //unsigned type = graph.site_type(s);
-          unsigned site = s.id();
-          unsigned type = s.type();
-          hubbard_nd(type) += config.apply_niup_nidn(site);
+          hubbard_nd(s.type()) += config.apply_niup_nidn(s.id());
         }
       }
       else {
-        //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-          //unsigned site = graph.site(s);
-          //unsigned type = graph.site_type(s);
         for (const auto& s : lattice.sites()) {
-          unsigned site = s.id();
-          unsigned type = s.type();
-          matrix_elem(term,type) += config.apply(it->qn_operator(), site);
+          matrix_elem(term,s.type()) += config.apply(it->qn_operator(), s.id());
           //std::cout << config.apply(it->qn_operator(),site) << "\n"; getchar();
         }
       }
@@ -117,12 +102,9 @@ void Energy::measure(const lattice::Lattice& lattice,
     //std::cout << "\ndisorder energy\n"; 
     unsigned n = model.num_bondterms()+model.num_siteterms();
     double disorder_en = 0.0;
-    //for (auto s=graph.sites_begin(); s!=graph.sites_end(); ++s) {
-      //unsigned site = graph.site(s);
     for (const auto& s : lattice.sites()) {
-      unsigned site = s.id();
-      int n_i = config.apply(model::op::ni_sigma(), site);
-      disorder_en += std::real(n_i * site_disorder.potential(site));
+      int n_i = config.apply(model::op::ni_sigma(), s.id());
+      disorder_en += std::real(n_i * site_disorder.potential(s.id()));
       //std::cout <<"site= "<<site<<" ni= "<<n_i;
       //std::cout <<" V= "<<site_disorder.potential(site)<<"\n";
       //std::cout << "E+ = " << disorder_en << "\n"; 
@@ -133,7 +115,7 @@ void Energy::measure(const lattice::Lattice& lattice,
 
   // energy per site
   config_value_ /= num_sites_;
-  //std::cout << "config_energy = " << config_value_ << "\n"; getchar();
+  // std::cout << "config_energy = " << config_value_ << "\n"; getchar();
   // add to databin
   *this << config_value_;
 }

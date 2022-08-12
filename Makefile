@@ -17,7 +17,6 @@ SRCS+= expression/complex_expression.cpp
 SRCS+= utils/utils.cpp 
 SRCS+= lattice/lattice.cpp
 SRCS+= lattice/latticelibrary.cpp
-SRCS+= lattice/graph.cpp
 SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
@@ -56,7 +55,7 @@ HDRS=    scheduler/mpi_comm.h \
          expression/complex_expression.h \
          utils/utils.h \
          utils/curve_fit.h \
-         lattice/constants.h lattice/lattice.h lattice/graph.h \
+         lattice/constants.h lattice/lattice.h \
 	 montecarlo/simulator.h \
          model/modelparams.h  model/quantum_op.h \
 	 model/hamiltonian_term.h \

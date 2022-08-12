@@ -45,16 +45,12 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
   */
 
 
-  //for (auto s1=graph.sites_begin(); s1!=graph.sites_end(); ++s1) {
-    //Vector3d rs1 = graph.site_cellcord(s1);
   for (const auto& s1 : lattice.sites()) { 
     Vector3d rs1 = s1.cell_coord();
     //if (rs1[0]>0) continue;
     Vector3i bravindex(0,0,0);
     for (int d=1; d<max_dist_; ++d) {
       bravindex += Vector3i(1,0,0);
-      //auto s2 = graph.translated_site(graph.site(s1), bravindex);    
-      //int n = graph.site_uid(s2);
       auto s2 = lattice.translated_site(s1, bravindex);   
       int n = s2.uid();
       //std::cout << n << ":  ";
@@ -174,25 +170,17 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
   for (int d=1; d<max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
-        //for (std::tie(b1,b1_end)=graph.out_bonds(p.first); b1!=b1_end; ++b1) {
-          //int t1 = graph.bond_type(b1);
-          for (const auto& id1 : lattice.site(p.first).outbond_ids()) {
-            int t1 = lattice.bond(id1).type();
-          //for (std::tie(b2,b2_end)=graph.out_bonds(p.second); b2!=b2_end; ++b2) {
-            //int t2 = graph.bond_type(b2);
+        for (const auto& id1 : lattice.site(p.first).outbond_ids()) {
+          int t1 = lattice.bond(id1).type();
           for (const auto& id2 : lattice.site(p.second).outbond_ids()) {
             int t2 = lattice.bond(id2).type();
             for (int m=0;  m<bondpair_types_.size(); ++m) {
               if (t1==bondpair_types_[m].first && t2==bondpair_types_[m].second) {
                 i_cdag = p.first;
-                //ia_cdag = graph.target(b1);
-                //i_phase = graph.bond_sign(b1);
                 ia_cdag = lattice.bond(id1).tgt_id();
                 i_phase = lattice.bond(id1).sign();
 
                 j_c = p.second;
-                //ja_c = graph.target(b2);
-                //j_phase = graph.bond_sign(b2);
                 ja_c = lattice.bond(id2).tgt_id();
                 j_phase = lattice.bond(id2).sign();
                 double term = std::real(config.apply_bondsinglet_hop(i_cdag,ia_cdag,

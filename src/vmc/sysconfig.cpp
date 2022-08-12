@@ -144,7 +144,7 @@ int SysConfig::init_config(void)
     BasisState::set_random();
     //BasisState::set_custom();
     wf.get_amplitudes(psi_mat,upspin_sites(),dnspin_sites());
-    //std::cout << "psi_mat = \n";getchar();
+    //std::cout << "psi_mat = \n";
     //std::cout << psi_mat << "\n"; getchar();
     // reciprocal conditioning number
     Eigen::JacobiSVD<Matrix> svd(psi_mat);

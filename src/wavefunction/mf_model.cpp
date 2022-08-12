@@ -215,7 +215,6 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
     }
   }
   num_out_bonds_++;
-
   //std::cout << "num_out_bonds_ = " << num_out_bonds_ << "\n";
   bond_vectors_.resize(num_out_bonds_);
   coeff_matrices_.resize(num_out_bonds_);
@@ -240,10 +239,11 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   op_ = hamterm.qn_operator();
   // build the matrices (for each 'bond vector')
   for (unsigned i=0; i<dim_; ++i) {
-    for (const auto& id : lattice.site(i).outbond_ids()) {
-      unsigned t = lattice.bond(id).tgt_id();
+    for (const auto& b : lattice.site(i).outbond_ids()) {
+      int id = lattice.bond(b).vector_id();
+      unsigned t = lattice.bond(b).tgt_id();
       unsigned j = lattice.site(t).uid();
-      int btype = lattice.bond(id).type();
+      int btype = lattice.bond(b).type();
     //for (std::tie(ei,ei_end)=graph.out_bonds(i); ei!=ei_end; ++ei) {
       //int id = graph.vector_id(ei);
       //unsigned t = graph.target(ei);

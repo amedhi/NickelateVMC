@@ -49,7 +49,7 @@ as_func_of = "hole_doping"
 Energy = "YES"
 EnergyGradient = "YES"
 Magnetization = "NO"
-SC_Correlation = "NO"
+SC_Correlation = "YES"
 SiteOccupancy = "NO"
 
 

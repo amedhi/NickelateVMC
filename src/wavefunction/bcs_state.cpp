@@ -49,7 +49,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   bool mf_model_finalized = false;
   int info;
   bool mu_default = inputs.set_value("mu_default", false);
-  wf_analytical_form_ = inputs.set_value("wf_analytical_form", false);
+  wf_analytical_form_ = inputs.set_value("wf_analytical_form",false,info);
 //---------------------------------------------------------------------------
   if (lattice.id()==lattice::lattice_id::SQUARE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -813,8 +813,7 @@ void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient)
     }
     return;
   }
-
-  std::cout << "Numerical gradient\n";
+  //std::cout << "Numerical gradient\n";
   // numerical gradient
   int i=0; 
   for (const auto& p : varparms_) {

@@ -4,7 +4,7 @@
 #---------------------------------------
 #---------------------------------------
 job = "VMC Simulation"
-optimizing_run = "YES"
+optimizing_run = "NO"
 mode = "NEW"
 print_level = -2
 prefix = "swave"

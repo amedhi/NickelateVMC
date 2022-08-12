@@ -588,53 +588,43 @@ int Lattice::symmetrize_lattice(void)
 int Lattice::construct_graph(void) 
 {
   // all the sites and the bonds
-  sites_.clear();
-  bonds_.clear();
-  sitetype_set_.clear();
-  bondtype_set_.clear();
   Unitcell translated_cell;
   Vector3i bravindex(0,0,0);
-  int bond_id = 0;
+  std::vector<Site> allsites;
+  std::vector<Bond> allbonds;
   for (unsigned i=0; i<num_unitcells(); ++i) {
     translated_cell = get_translated_cell(bravindex);
     // collect the sites
     for (unsigned n=0; n<translated_cell.num_sites(); ++n) {
-      sites_.push_back(translated_cell.site(n));
-      // collect type value in a set
-      sitetype_set_.insert(sites_.back().type());
+      allsites.push_back(translated_cell.site(n));
     }
     // collect the bonds
     for (unsigned n=0; n<translated_cell.num_bonds(); ++n) {
-      auto bond = translated_cell.bond(n);
-      bond.reset_id(bond_id);
-      bonds_.push_back(bond);
-      bondtype_set_.insert(bond.type());
-      bond_id++;
+      allbonds.push_back(translated_cell.bond(n));
     }
     bravindex = get_next_bravindex(bravindex);
   }
 
-  // check consisency
-  if (sites_.size() != num_total_sites_) {
-    throw std::logic_error("Lattice::construct_graph: site count mismatch");
-  }
-  for (int i=0; i<sites_.size(); ++i) {
-    if (i != sites_[i].id()) {
-      throw std::logic_error("Lattice::construct_graph: site id mismatch");
-    }
-  }
-
-  // site connections
-  for (auto& s : sites_) s.clear_bonds();
-  for (const auto& b : bonds_) {
-    sites_[b.src_id()].add_out_bond(b.id());
-    sites_[b.tgt_id()].add_in_bond(b.id());
+  // save the sites
+  sites_.clear();
+  sitetype_set_.clear();
+  for (const auto& s : allsites) {
+    sites_.push_back(s);
+    sites_.back().clear_bonds(); // to be added later
+    sitetype_set_.insert(s.type());
   }
 
-  // Set boundary condition phase.
-  // Also redefine meaning of 'sign' ('-'ve mean boundary bond)
+  // Save the bonds.
+  bonds_.clear();
+  bondtype_set_.clear();
   int id = 0;
-  for (auto& b : bonds_) {
+  for (auto& b : allbonds) {
+    // Connect the bond, discard if can't be connected 
+    // (for bonds across open boundaries) 
+    if (!connect_bond2(b, sites_)) continue;
+    b.reset_id(id++);
+    // Set boundary condition phase.
+    // Also redefine meaning of 'sign' ('-'ve mean boundary bond)
     int sign = 1;
     std::complex<double> phase = 1.0;
     if (b.bc_state()[0]==-1) {
@@ -651,12 +641,31 @@ int Lattice::construct_graph(void)
     } 
     b.reset_sign(sign);
     b.reset_phase(phase);
-    // check consisency
-    if (b.id() != id++) {
+
+    // site connections
+    sites_[b.src_id()].add_out_bond(b.id());
+    sites_[b.tgt_id()].add_in_bond(b.id());
+
+    // save the bond
+    bondtype_set_.insert(b.type());
+    bonds_.push_back(b);
+  }
+  num_bonds_ = bonds_.size();
+
+  // check consisency
+  if (sites_.size() != num_total_sites_) {
+    throw std::logic_error("Lattice::construct_graph: site count mismatch");
+  }
+  for (int i=0; i<sites_.size(); ++i) {
+    if (i != sites_[i].id()) {
+      throw std::logic_error("Lattice::construct_graph: site id mismatch");
+    }
+  }
+  for (int i=0; i<bonds_.size(); ++i) {
+    if (i != bonds_[i].id()) {
       throw std::logic_error("Lattice::construct_graph: bond id mismatch");
     }
   }
-  num_bonds_ = bonds_.size();
 
   return 0;
 }

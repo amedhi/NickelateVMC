@@ -41,8 +41,6 @@ using BC_state = std::array<int,3>; // boundary crossing state of a bond
 
 //using BrvaisIdx = Eigen::Matrix<unsigned, 3, 1>;
 
-class Bond; // advance declaration
-
 class Site 
 {
 public:
@@ -86,7 +84,6 @@ private:
   Vector3d cell_coord_ {Vector3d(0.0, 0.0, 0.0)};
   std::vector<unsigned> out_bonds_;
   std::vector<unsigned> in_bonds_;
-  //std::vector<Bond*> outbonds_;
 };
 
 /*---------------Lattice bond class-----------------*/
