@@ -210,7 +210,8 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
   // get number of unique 'cell bond vectors'
   num_out_bonds_ = 0;
   for (unsigned i=0; i<dim_; ++i) {
-    for (const auto& id : lattice.site(i).outbond_ids()) {
+    for (const auto& b : lattice.site(i).outbond_ids()) {
+      auto id = lattice.bond(b).vector_id();
       if (id > num_out_bonds_) num_out_bonds_ = id;
     }
   }
