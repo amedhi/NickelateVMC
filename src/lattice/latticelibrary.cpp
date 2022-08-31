@@ -478,6 +478,7 @@ int Lattice::finalize_lattice(void)
   }*/
 
   // 'vector' & 'vector_id' attributes of the bonds
+  /*
   std::map<int,unsigned> vecid_map;
   unsigned id=0;
   for (unsigned i=0; i<Unitcell::num_bonds(); ++i) {
@@ -493,6 +494,26 @@ int Lattice::finalize_lattice(void)
     Unitcell::bond(i).set_vector((ivec[0]*vector_a1()+ivec[1]*vector_a2()+ivec[2]*vector_a3()));
     //std::cout << "bond " << i << ": vector_id = " << bond(i).vector_id() << "\n";
   }
+  */
+  
+  // vector_id by making the cell-vector itself as a key
+  using triplet = std::tuple<int,int,int>;
+  std::map<triplet,unsigned> vecid_map;
+  unsigned id=0;
+  for (unsigned i=0; i<Unitcell::num_bonds(); ++i) {
+    Vector3i ivec = Unitcell::bond(i).tgt().bravindex()-Unitcell::bond(i).src().bravindex();
+    triplet key = std::make_tuple(ivec[0], ivec[1], ivec[2]);
+    auto it = vecid_map.find(key);
+    if (it != vecid_map.end()) Unitcell::bond(i).set_vector_id(it->second);
+    else {
+      vecid_map.insert({key, id});
+      Unitcell::bond(i).set_vector_id(id);
+      id++;
+    }
+    Unitcell::bond(i).set_vector((ivec[0]*vector_a1()+ivec[1]*vector_a2()+ivec[2]*vector_a3()));
+    //std::cout << "bond " << i << ": vector_id = " << Unitcell::bond(i).vector_id() << "\n";
+  }
+  //getchar();
 
   return 0;
 }
