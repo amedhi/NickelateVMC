@@ -261,7 +261,7 @@ void UnitcellTerm::build_bondterm(const model::HamiltonianTerm& hamterm,
       coeff_matrices_[id](i,j) += hamterm.coupling(btype);
       //std::cout << id << " " << coeff_matrices_[id](i,j) << "\n";
       //bond_vectors_[id] = graph.vector(ei);
-      bond_vectors_[id] = lattice.bond(id).vector();
+      bond_vectors_[id] = lattice.bond(b).vector();
     }
   }
 }
