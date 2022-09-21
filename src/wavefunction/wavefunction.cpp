@@ -40,6 +40,9 @@ Wavefunction::Wavefunction(const lattice::Lattice& lattice,
   else if (name_ == "CUSTOM_SC") {
     groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,lattice));
   }
+  else if (name_ == "SC_CDW_SDW") {
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SC_CDW_SDW,inputs,lattice));
+  }
   else if (name_ == "DISORDERED_SC") {
     groundstate_.reset(new DisorderedSC(order_t::SC,pairing_t::DWAVE,inputs,lattice));
   }

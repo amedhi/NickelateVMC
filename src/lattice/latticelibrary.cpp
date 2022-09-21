@@ -20,7 +20,7 @@ int Lattice::define_lattice(void)
   using vec = Eigen::Vector3d;
   unsigned type, ngb, src, tgt;
   vec a1, a2, a3, coord;
-  pos src_offset, tgt_offset, cell;
+  pos offset, src_offset, tgt_offset, cell;
 
   /*------------- 'SQUARE' lattice--------------*/
   if (lname == "SQUARE") {
@@ -89,41 +89,48 @@ int Lattice::define_lattice(void)
     */
   }
 
-  else if (lname == "SQUARE_4SITE") {
+  else if (lname == "SQUARE_STRIPE") {
     // type
-    lid = lattice_id::SQUARE_4SITE;
+    lid = lattice_id::SQUARE_STRIPE;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
+
     // basis vectors
-    double a = 2.0;
+    double a = 16.0;
     double b = 2.0;
     set_basis_vectors(a1=vec(a,0,0), a2=vec(0,b,0), a3=vec(0,0,0));
-    // add sites
-    add_basis_site(type=0, coord=vec(0,0,0));
-    add_basis_site(type=1, coord=vec(0.5*a,0,0));
-    add_basis_site(type=1, coord=vec(0.5*a,0,0));
-    add_basis_site(type=0, coord=vec(0.5*a,0.5*b,0));
-    // add bonds
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,0));
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,-1,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,0));
+    // add sites (row-1)
+    for (int n=0; n<16; ++n) {
+      add_basis_site(type=n, coord=vec(n,0,0));
+    }
+    // add sites (row-2)
+    for (int n=0; n<16; ++n) {
+      add_basis_site(type=16+n, coord=vec(n,1,0));
+    }
 
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    // add bonds (+x, row-1)
+    for (int n=0; n<15; ++n) {
+      add_bond(type=n, src=n, tgt=n+1, offset=pos(0,0,0));
+    }
+    add_bond(type=15, src=15, tgt=0, offset=pos(1,0,0));
 
-    /*
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
-    add_bond(type=0,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
-    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    // add bonds (+x, row-2)
+    int m = 16; 
+    for (int n=0; n<15; ++n) {
+      add_bond(type=n, src=m+n, tgt=m+n+1, offset=pos(0,0,0));
+    }
+    add_bond(type=15, src=31, tgt=16, offset=pos(1,0,0));
 
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-    */
+    // add bonds (+y, intracell)
+    int t = 16;
+    for (int n=0; n<16; ++n) {
+      add_bond(type=t, src=n, tgt=n+16, offset=pos(0,0,0));
+      t++;
+    }
+    // add bonds (+y, intercell)
+    for (int n=0; n<16; ++n) {
+      add_bond(type=t, src=n+16, tgt=n, offset=pos(0,1,0));
+      t++;
+    }
   }
 
   else if (lname == "SIMPLE_CUBIC") {

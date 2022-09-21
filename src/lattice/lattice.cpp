@@ -220,6 +220,20 @@ int Unitcell::add_bond(const unsigned& type, const unsigned& ngb, const unsigned
   return bonds.back().id();
 }
 
+int Unitcell::add_bond(const unsigned& type, const unsigned& src_id, 
+  const unsigned& tgt_id, const Vector3i& tgt_offset, const int& ngb)
+{
+  if (src_id >= sites.size()) throw std::range_error("*error: add_bond:: 'src' site does not exist");
+  if (tgt_id >= sites.size()) throw std::range_error("*error: add_bond:: 'tgt' site does not exist");
+  //bonds.push_back(Bond(type, ngb, bravindex(), src_id, src_offset, tgt_id, tgt_offset, 1));
+  Vector3i src_offset = Vector3i::Zero();
+  bonds.push_back(Bond(type, ngb, sites[src_id], src_offset, sites[tgt_id], tgt_offset));
+  if (max_bond_type_val < type) max_bond_type_val = type;
+  if (max_neighb_val < ngb) max_neighb_val = ngb;
+  return bonds.back().id();
+}
+
+
 /*int Unitcell::add_bond(const Bond& bond, const Vector3i& src_offset, const Vector3i& tgt_offset)
 {
   //bonds.push_back(Bond(bond.type(), bond.ngb(), bond.src_id(), src_offset, tgt_id, tgt_offset, vector));
@@ -334,6 +348,12 @@ int Lattice::add_bond(const unsigned& type, const unsigned& src_id, const Vector
     const unsigned& tgt_id, const Vector3i& tgt_offset)
 {
   return Unitcell::add_bond(type, 1, src_id, src_offset, tgt_id, tgt_offset);
+}
+
+int Lattice::add_bond(const unsigned& type, const unsigned& src_id, 
+    const unsigned& tgt_id, const Vector3i& tgt_offset, const int& ngb)
+{
+  return Unitcell::add_bond(type, src_id, tgt_id, tgt_offset, ngb);
 }
 
 int Lattice::add_bond(const Bond& b)
@@ -568,9 +588,9 @@ Eigen::Matrix3d Lattice::rotation_matrix(const Vector3d& r, const Vector3d& rp)
   ! see H. Goldstein, Classical Mechanics, Eq. 4-92 through 4-96. 
   */
 
-  double e1 = sqrt(r.dot(r));
-  double e2 = sqrt(rp.dot(rp));
-  double phi = acos(r.dot(rp)/(e1*e2));
+  double e1 = std::sqrt(r.dot(r));
+  double e2 = std::sqrt(rp.dot(rp));
+  double phi = std::acos(r.dot(rp)/(e1*e2));
   if (std::abs(phi) < dp_tol) return Eigen::Matrix<double,3,3>::Identity();
 
   // unit vector perpendicular to 'rp' and 'r' along \vec{r'} x \vec{r}

@@ -6,6 +6,8 @@
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <iomanip>
+#include "strmatrix.h"
+#include <boost/algorithm/string.hpp>
 #include "./bcs_state.h"
 
 namespace var {
@@ -39,7 +41,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   // build MF Hamiltonian
   varparms_.clear();
   mf_model_.init(lattice);
-  std::string name;
+  std::string name, path;
   double defval, lb, ub, dh;
   using namespace model;
   model::CouplingConstant cc;
@@ -48,8 +50,11 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   using pairing_t = MF_Order::pairing_t;
   bool mf_model_finalized = false;
   int info;
-  bool mu_default = inputs.set_value("mu_default", false);
+  // read parameter
+  strMatrix expr_mat;
+
   wf_analytical_form_ = inputs.set_value("wf_analytical_form",false,info);
+  interband_pairing_ = inputs.set_value("interband_pairing",false,info);
 //---------------------------------------------------------------------------
   if (lattice.id()==lattice::lattice_id::SQUARE) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -121,6 +126,153 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     add_chemical_potential(inputs);
   }
 
+  else if (lattice.id()==lattice::lattice_id::SQUARE_STRIPE) {
+    mf_model_.add_parameter(name="tx", defval=1.0, inputs);
+    mf_model_.add_parameter(name="ty1", defval=1.0, inputs);
+    mf_model_.add_parameter(name="ty2", defval=1.0, inputs);
+    mf_model_.add_parameter(name="lambda", defval=8, inputs);
+    // variational parameter
+    mf_model_.add_parameter(name="dSC_x", defval=1.0, inputs);
+    mf_model_.add_parameter(name="dSC_y1", defval=1.0, inputs);
+    mf_model_.add_parameter(name="dSC_y2", defval=1.0, inputs);
+    mf_model_.add_parameter(name="dCDW", defval=0.0, inputs);
+    mf_model_.add_parameter(name="dSDW", defval=0.0, inputs);
+
+    // hopping term 
+    cc.create(48);
+    for (int i=0; i<16; ++i) {
+      cc.add_type(i, "-tx");
+    }
+    for (int i=16; i<32; ++i) {
+      cc.add_type(i, "-ty1");
+    }
+    for (int i=32; i<48; ++i) {
+      cc.add_type(i, "-ty2");
+    }
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    if (order()==order_t::SC && pair_symm()==pairing_t::SC_CDW_SDW) {
+      std::ostringstream strval;
+      strval.precision(12);
+      strval.setf(std::ios_base::fixed);
+      int lambda = mf_model_.get_parameter_value("lambda");
+      // check commensurate or not
+      double Q;
+      if (lambda > 0) {
+        int m = 16/lambda;
+        if (16 != m*lambda) {
+          std::cout<<">> alert: BCS_State::init: incommensurate `lambda`\n";
+        }
+        Q = two_pi()/lambda;
+      }
+      else {
+        Q = 0.0;
+      }
+
+      // CDW term
+      cc.create(32);
+      for (int n=0; n<32; ++n) {
+        double ampl;
+        if (lambda > 0) ampl = std::cos(Q*(n+1-0.5));
+        else ampl = 1.0;
+        strval << ampl << "*dCDW";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      mf_model_.add_siteterm(name="CDW", cc, op::ni_sigma());
+
+      // SDW term (UP spin)
+      cc.create(32);
+      strval.str(std::string()); // clear
+      int sign = 1;
+      for (int n=0; n<32; ++n) {
+        if (n == 16) sign = -1;
+        double ampl;
+        if (lambda > 0) ampl = sign*std::sin(0.5*Q*(n+1-0.5));
+        else ampl = sign;
+        sign *= -1;
+        strval << ampl << "*dSDW";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      mf_model_.add_siteterm(name="SDW_UP", cc, op::ni_up());
+
+      // SDW term (DN spin)
+      cc.create(32);
+      strval.str(std::string()); // clear
+      sign = -1;
+      for (int n=0; n<32; ++n) {
+        if (n == 16) sign = 1;
+        double ampl;
+        if (lambda > 0) ampl = sign*std::sin(0.5*Q*(n+1-0.5));
+        else ampl = sign;
+        sign *= -1;
+        strval << ampl << "*dSDW";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      mf_model_.add_siteterm(name="SDW_DN", cc, op::ni_dn());
+
+      // pairing term
+      cc.create(48);
+      // x-bonds
+      for (int n=0; n<16; ++n) {
+        double ampl;
+        if (lambda > 0) ampl = std::abs(std::cos(0.5*Q*(n+0.5)));
+        else ampl = 1.0;
+        strval << ampl << "*dSC_x";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      // y-bonds (intracell)
+      for (int n=16; n<32; ++n) {
+        int m = n-16;
+        double ampl;
+        if (lambda > 0) ampl = -std::abs(std::cos(0.5*Q*(m+0.5)));
+        else ampl = -1.0;
+        strval << ampl << "*dSC_y1";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      // y-bonds (intercell)
+      for (int n=32; n<48; ++n) {
+        int m = n-32;
+        double ampl;
+        if (lambda>0) ampl = -std::abs(std::cos(0.5*Q*(m+0.5)));
+        else ampl = -1.0;
+        strval << ampl << "*dSC_y2";
+        cc.add_type(n, strval.str());
+        //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+        strval.str(std::string()); // clear
+      }
+      // pairing term
+      mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("dSC_x");
+      varparms_.add("dSC_x", defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("dSC_y1");
+      varparms_.add("dSC_y1", defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("dSC_y2");
+      varparms_.add("dSC_y2", defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("dCDW");
+      varparms_.add("dCDW", defval,lb=0,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("dSDW");
+      varparms_.add("dSDW", defval,lb=0,ub=2.0,dh=0.01);
+
+      add_chemical_potential(inputs);
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
+    }
+  }
+
+
 //---------------------------------------------------------------------------
   else if (lattice.id()==lattice::lattice_id::HONEYCOMB) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -148,6 +300,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
 
 //---------------------------------------------------------------------------
   else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
+    bool mu_default = inputs.set_value("mu_default", false);
     mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=0.0, inputs);
@@ -238,436 +391,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     mf_model_.finalize(lattice);
   }
 
-
-//******************************************************************************
-#ifdef DEPRECATED_STUFF
-
-  if (order_type_==bcs::swave) {
-    order_name_ = "s-wave";
-    if (lattice.id()==lattice::lattice_id::SQUARE) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      // s-wave site pairing
-      mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      // variational parameters
-      defval = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
-    }
-
-    else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
-      mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tp", defval=0.0, inputs);
-      mf_model_.add_parameter(name="th", defval=0.0, inputs);
-      mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
-      mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
-      mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
-
-      // bond operators
-      cc.create(7);
-      cc.add_type(0, "t");
-      cc.add_type(1, "t");
-      cc.add_type(2, "tp");
-      cc.add_type(3, "t");
-      cc.add_type(4, "t");
-      cc.add_type(5, "tp");
-      cc.add_type(6, "th");
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-      // site operators
-      cc.create(2);
-      cc.add_type(0, "-mu_N");
-      cc.add_type(1, "e_R-mu_R");
-      mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-
-      // pairing term
-      // s-wave paring on Ni & R sites
-      cc.create(2);
-      cc.add_type(0, "delta_N");
-      cc.add_type(1, "delta_R");
-      mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
-
-      // variational parameters
-      defval = mf_model_.get_parameter_value("delta_N");
-      varparms_.add("delta_N", defval,lb=1.0E-3,ub=6.0,dh=0.02);
-      defval = mf_model_.get_parameter_value("delta_R");
-      varparms_.add("delta_R",defval,lb=1.0E-3,ub=6.0,dh=0.02);
-      defval = mf_model_.get_parameter_value("mu_N");
-      varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
-      defval = mf_model_.get_parameter_value("mu_R");
-      varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
-      noninteracting_mu_ = false;
-    }
-    else {
-      throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
-    }
-  }
-  else if (order_type_==bcs::extended_swave) {
-    order_name_ = "extended_s-wave";
-    if (lattice.id()==lattice::lattice_id::SW_GRAPHENE) {
-      mf_model_.add_parameter(name="t0", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t1", defval=1.0, inputs);
-      mf_model_.add_parameter(name="t2", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      // bond operator terms
-      cc.create(3);
-      for (int i=0; i<3; ++i) {
-        cc.add_type(i, "-t"+std::to_string(i));
-      }
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-      // pairing
-      mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
-      // ch potemtial
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      // variational parameters
-      defval = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
-    }
-
-    else {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      // variational parameters
-      defval = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
-    }
-  }
-  else if (order_type_==bcs::dwave) {
-    order_name_ = "d-wave";
-    if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tp", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      cc = CouplingConstant({0,"delta_sc"},{1,"-delta_sc"},{2,"0"},{3,"0"});
-      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      double delta_sc = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc", defval=delta_sc, lb=0.0, ub=2.0, 0.01);
-    }
-    else if (lattice.id()==lattice::lattice_id::SIMPLECUBIC) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tp", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tv", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-tv"});
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      cc = CouplingConstant({0,"delta_sc"},{1,"-delta_sc"},{2,"0"},{3,"0"},{4,"0"});
-      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      double delta_sc = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc", defval=delta_sc, lb=0.0, ub=2.0,dh=0.01);
-      double tv = mf_model_.get_parameter_value("tv");
-      varparms_.add("tv", defval=tv, lb=-1.0, ub=1.0,dh=0.01);
-    }
-    else {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"});
-      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      // variational parameters
-      varparms_.add("delta_sc", defval=1.0,lb=0.0,ub=2.0,dh=0.01);
-    }
-  }
-  else if (order_type_==bcs::d_plus_id) {
-    order_name_ = "d+id";
-    if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      // pairing term
-      double theta = 2.0*pi()/3.0;
-      double theta2 = 2.0*theta;
-      mf_model_.add_constant("theta",theta);
-      mf_model_.add_constant("theta2",theta2);
-      cc = CouplingConstant({0,"delta_sc"}, {1,"exp(i*theta)*delta_sc"}, {2,"exp(i*theta2)*delta_sc"});
-      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      // variational parameters
-      varparms_.add("delta_sc", defval=1.0, lb=0.0, ub=2.0);
-    }
-    else {
-      throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
-    }
-  }
-  else if (order_type_==bcs::custom_sc) {
-    order_name_ = "custom_sc";
-    if (lattice.id()==lattice::lattice_id::SQUARE_IONIC) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tp", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_d", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_xy", defval=0.0, inputs);
-      mf_model_.add_parameter(name="P", defval=0.0, inputs);
-      mf_model_.add_parameter(name="m", defval=0.0, inputs);
-
-      // bond operator terms
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-      // SC pairing term
-      cc = CouplingConstant({0,"delta_d"},{1,"-delta_d"},
-        {2,"-delta_xy"},{3,"delta_xy"});
-      //mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      // site term
-      cc.create(2);
-      cc.add_type(0, "P-m");
-      cc.add_type(1, "m-P");
-      //mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
-      cc.create(2);
-      cc.add_type(0, "P+m");
-      cc.add_type(1, "-(P+m)");
-      //mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
-
-      // variational parameters
-      defval = mf_model_.get_parameter_value("delta_d");
-      varparms_.add("delta_d",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-      defval = mf_model_.get_parameter_value("delta_xy");
-      varparms_.add("delta_xy",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-      defval = mf_model_.get_parameter_value("P");
-      varparms_.add("P", defval,lb=-1.0,ub=+1.0,dh=0.1);
-      defval = mf_model_.get_parameter_value("m");
-      varparms_.add("m", defval,lb=0.0,ub=+1.0,dh=0.1);
-    }
-    else if (lattice.id()==lattice::lattice_id::NICKELATE) {
-        mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
-        mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_100", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_001", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_110", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_200", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_001", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_100", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_001", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_101", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_102", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_110", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_002", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_111", defval=0.0, inputs);
-        mf_model_.add_parameter(name="tv_RN_200", defval=0.0, inputs);
-        mf_model_.add_parameter(name="tv_RN_202", defval=0.0, inputs);
-        mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
-        mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
-        mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
-        mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
-
-        // bond operators
-        cc.create(15);
-        cc.add_type(0, "t_NN_100");
-        cc.add_type(1, "t_NN_100");
-        cc.add_type(2, "t_NN_110");
-        cc.add_type(3, "t_NN_200");
-        cc.add_type(4, "t_NN_001");
-        cc.add_type(5, "t_RR_100");
-        cc.add_type(6, "t_RR_100");
-        cc.add_type(7, "t_RR_001");
-        cc.add_type(8, "t_RR_101");
-        cc.add_type(9, "t_RR_102");
-        cc.add_type(10, "t_RR_110");
-        cc.add_type(11, "t_RR_002");
-        cc.add_type(12, "t_RR_111");
-        cc.add_type(13, "tv_RN_200");
-        cc.add_type(14, "tv_RN_202");
-        mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "e_N-mu_N");
-        cc.add_type(1, "e_R-mu_R");
-        mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-
-        // pairing term
-        // d-wave paring in Ni-layer
-        cc.create(15);
-        cc.add_type(0, "delta_N");
-        cc.add_type(1, "-delta_N");
-        cc.add_type(5, "delta_R");
-        cc.add_type(6, "-delta_R");
-        for (int i=2; i<5; ++i) cc.add_type(i, "0");
-        for (int i=7; i<15; ++i) cc.add_type(i, "0");
-        mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
-
-        // local s-wave at R-sites
-        /*
-        cc.create(2);
-        cc.add_type(0, "0");
-        cc.add_type(1, "delta_s");
-        mf_model_.add_siteterm(name="site_singlet", cc, op::pair_create());
-        */
-
-        // variational parameters
-        defval = mf_model_.get_parameter_value("delta_N");
-        varparms_.add("delta_N", defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("delta_R");
-        varparms_.add("delta_R",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("mu_N");
-        varparms_.add("mu_N", defval,lb=-2.0,ub=+1.0,dh=0.1);
-        defval = mf_model_.get_parameter_value("mu_R");
-        varparms_.add("mu_R", defval,lb=-2.0,ub=+1.0,dh=0.1);
-        defval = mf_model_.get_parameter_value("tv_RN_200");
-        varparms_.add("tv_RN_200",defval,lb=-1.0,ub=+1.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("tv_RN_202");
-        varparms_.add("tv_RN_202",defval,lb=-1.0,ub=+1.0,dh=0.01);
-        noninteracting_mu_ = false;
-    }
-    else if (lattice.id()==lattice::lattice_id::NICKELATE_2D) {
-        mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
-        mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_NN_100", defval=1.0, inputs);
-        mf_model_.add_parameter(name="t_NN_110", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RR_100", defval=1.0, inputs);
-        mf_model_.add_parameter(name="t_RR_110", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t_RN_200", defval=0.0, inputs);
-        mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
-        mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
-        mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
-        mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
-
-        // bond operators
-	      cc.create(7);
-        cc.add_type(0, "t_NN_100");
-        cc.add_type(1, "t_NN_100");
-        cc.add_type(2, "t_NN_110");
-        cc.add_type(3, "t_RR_100");
-        cc.add_type(4, "t_RR_100");
-        cc.add_type(5, "t_RR_110");
-        cc.add_type(6, "t_RN_200");
-        mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "e_N-mu_N");
-        cc.add_type(1, "e_R-mu_R");
-        mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-
-        // pairing term
-        // d-wave paring in Ni-layer
-        cc.create(7);
-        cc.add_type(0, "delta_N");
-        cc.add_type(1, "-delta_N");
-        cc.add_type(2, "0");
-        cc.add_type(3, "delta_R");
-        cc.add_type(4, "-delta_R");
-        cc.add_type(5, "0");
-        cc.add_type(6, "0");
-        mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
-
-        // variational parameters
-        defval = mf_model_.get_parameter_value("delta_N");
-        varparms_.add("delta_N", defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("delta_R");
-        varparms_.add("delta_R",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("mu_N");
-        varparms_.add("mu_N", defval,lb=-2.0,ub=+1.0,dh=0.1);
-        defval = mf_model_.get_parameter_value("mu_R");
-        varparms_.add("mu_R", defval,lb=-2.0,ub=+1.0,dh=0.1);
-        noninteracting_mu_ = false;
-    }
-    else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
-        mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-        mf_model_.add_parameter(name="t", defval=1.0, inputs);
-        mf_model_.add_parameter(name="tp", defval=0.0, inputs);
-        mf_model_.add_parameter(name="th", defval=0.0, inputs);
-        mf_model_.add_parameter(name="delta_N", defval=1.0, inputs);
-        mf_model_.add_parameter(name="delta_R", defval=1.0, inputs);
-        mf_model_.add_parameter(name="mu_N", defval=0.0, inputs);
-        mf_model_.add_parameter(name="mu_R", defval=0.0, inputs);
-
-        // bond operators
-        cc.create(7);
-        cc.add_type(0, "t");
-        cc.add_type(1, "t");
-        cc.add_type(2, "tp");
-        cc.add_type(3, "t");
-        cc.add_type(4, "t");
-        cc.add_type(5, "tp");
-        cc.add_type(6, "th");
-        mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-        // site operators
-        cc.create(2);
-        cc.add_type(0, "-mu_N");
-        cc.add_type(1, "e_R-mu_R");
-        mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-
-        // pairing term
-        // d-wave paring in Ni-layer
-        cc.create(7);
-        cc.add_type(0, "delta_N");
-        cc.add_type(1, "-delta_N");
-        cc.add_type(2, "0");
-        cc.add_type(3, "delta_R");
-        cc.add_type(4, "-delta_R");
-        cc.add_type(5, "0");
-        cc.add_type(6, "0");
-        mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
-
-        // variational parameters
-        defval = mf_model_.get_parameter_value("delta_N");
-        varparms_.add("delta_N", defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("delta_R");
-        varparms_.add("delta_R",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-        defval = mf_model_.get_parameter_value("mu_N");
-        varparms_.add("mu_N", defval,lb=-2.0,ub=+2.0,dh=0.1);
-        defval = mf_model_.get_parameter_value("mu_R");
-        varparms_.add("mu_R", defval,lb=-2.0,ub=+2.0,dh=0.1);
-        noninteracting_mu_ = false;
-    }
-    else if (lattice.id()==lattice::lattice_id::HONEYCOMB) {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_parameter(name="theta1", defval=0.0, inputs);
-      mf_model_.add_parameter(name="theta2", defval=0.0, inputs);
-      // bond operators
-      mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      // site operators
-      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-      // pairing term
-      cc = CouplingConstant({0,"delta_sc"}, {1,"delta_sc*exp(i*theta1)"}, 
-        {2,"delta_sc*exp(i*theta2)"});
-      mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      // variational parameters
-      //defval = mf_model_.get_parameter_value("delta_sc");
-      //varparms_.add("delta_sc", defval, lb=1.0E-3, ub=2.0, dh=0.01);
-      defval = mf_model_.get_parameter_value("theta1");
-      varparms_.add("theta1", defval, lb=0.0, ub=two_pi(), dh=0.2);
-      defval = mf_model_.get_parameter_value("theta2");
-      varparms_.add("theta2", defval, lb=0.0, ub=two_pi(), dh=0.2);
-    }
-    else {
-      throw std::range_error("BCS_State::BCS_State: state undefined for this lattice");
-    }
-  }
-  else {
-    throw std::range_error("BCS_State::BCS_State: unidefined bcs order");
-  }
-
-  // chemical potential
-  if (lattice.id()==lattice::lattice_id::NICKELATE ||
-      lattice.id()==lattice::lattice_id::NICKELATE_2D ) {
-    // do nothing
-  }
-  else {
-    int info;
-    mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
-    if (info == 0) noninteracting_mu_ = false;
-    else noninteracting_mu_ = true;
-    if (inputs.set_value("mu_variational", false, info)) 
-      varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
-  }
-#endif //DEPRECATED_STUFF
-//******************************************************************************
-
-
-
   //std::cout<< "mu_0 = " <<  get_noninteracting_mu() << "\n";
 
   // work arrays
@@ -676,6 +399,11 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   dphi_k_.resize(kblock_dim_,kblock_dim_);
   phi_k_.resize(num_kpoints_);
   work_k_.resize(num_kpoints_);
+  bdg_mat_.resize(2*kblock_dim_,2*kblock_dim_);
+  uk_.resize(kblock_dim_,kblock_dim_);
+  vk_.resize(kblock_dim_,kblock_dim_);
+  ubk_.resize(kblock_dim_,kblock_dim_);
+  vbk_.resize(kblock_dim_,kblock_dim_);
   for (int k=0; k<num_kpoints_; ++k) {
     phi_k_[k].resize(kblock_dim_,kblock_dim_);
     work_k_[k].resize(kblock_dim_,kblock_dim_);
@@ -712,7 +440,17 @@ void BCS_State::add_chemical_potential(const input::Parameters& inputs)
 std::string BCS_State::info_str(void) const
 {
   std::ostringstream info;
-  info << "# Ground State: '"<<name_<<" ("<<order_name_<<")'\n";
+  if (kblock_dim_>1) {
+    if (interband_pairing_) {
+      info << "# Ground State: '"<<name_<<" ("<<order_name_<<") (INTERBAND)'\n";
+    }
+    else {
+      info << "# Ground State: '"<<name_<<" ("<<order_name_<<") (INTRABAND)'\n";
+    }
+  }
+  else {
+    info << "# Ground State: '"<<name_<<" ("<<order_name_<<")'\n";
+  }
   info << "# Hole doping = "<<hole_doping()<<"\n";
   info << "# Particles = "<< num_upspins()+num_dnspins();
   info << " (Nup = "<<num_upspins()<<", Ndn="<<num_dnspins()<<")\n";
@@ -793,7 +531,12 @@ void BCS_State::get_wf_amplitudes(Matrix& psi)
       get_pair_amplitudes_oneband(phi_k_);
     }
     else {
-      get_pair_amplitudes_multiband(phi_k_);
+      if (interband_pairing_) {
+        get_pair_amplitudes_interband(phi_k_);
+      }
+      else {
+        get_pair_amplitudes_intraband(phi_k_);
+      }
     }
   }
 
@@ -824,13 +567,27 @@ void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient)
     mf_model_.update_parameter(p.name(), x_fwd);
     mf_model_.update_terms();
     if (kblock_dim_==1) get_pair_amplitudes_oneband(phi_k_);
-    else get_pair_amplitudes_multiband(phi_k_);
+    else {
+      if (interband_pairing_) {
+        get_pair_amplitudes_interband(phi_k_);
+      }
+      else {
+        get_pair_amplitudes_intraband(phi_k_);
+      }
+    } 
     double x_bwd = x-h; 
     if (x_bwd < p.lbound()) x_bwd = p.lbound();
     mf_model_.update_parameter(p.name(), x_bwd);
     mf_model_.update_terms();
     if (kblock_dim_==1) get_pair_amplitudes_oneband(work_k_);
-    else get_pair_amplitudes_multiband(work_k_);
+    else {
+      if (interband_pairing_) {
+        get_pair_amplitudes_interband(phi_k_);
+      }
+      else {
+        get_pair_amplitudes_intraband(phi_k_);
+      }
+    } 
     // model to original state
     mf_model_.update_parameter(p.name(), x);
     mf_model_.update_terms();
@@ -918,8 +675,9 @@ void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
   }
 }
 
-void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
+void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
 {
+  //std::cout << "get_pair_amplitudes_intraband\n";
   // BCS pair amplitudes for multi-band system (INTRABAND pairing only)
   for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
@@ -928,13 +686,17 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
     mf_model_.construct_kspace_block(kvec);
     // diagonalize quadratic part
     es_k_up.compute(mf_model_.quadratic_spinup_block());
+    //std::cout << es_k_up.eigenvalues().transpose() << "\n";
+    //getchar();
 
     // pairing part 
     delta_k_ = mf_model_.pairing_part();
+    //std::cout << "kvec = " << kvec.transpose() << "\n";
+    //std::cout << "delta_k =\n" << delta_k_ << "\n\n";
 
     //-------------'-k block'-------------
     mf_model_.construct_kspace_block(-kvec);
-    es_minusk_up.compute(mf_model_.quadratic_spindn_block());
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
 
     // assuming 'singlet pairing', see notes
     work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
@@ -942,15 +704,14 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
 
     // transform pairing part
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
-      es_minusk_up.eigenvectors().conjugate();
+      es_minusk_dn.eigenvectors().conjugate();
     //std::cout << "Uk_up =\n" << es_k_up.eigenvectors() << "\n\n";
-    //std::cout << "delta_dk =\n" << delta_k_ << "\n"; getchar();
-
+    //std::cout << "delta_k_ =\n" << delta_k_.real() << "\n"; getchar();
 
     // bcs ampitudes in rotated basis (assuming INTRABAND pairing only)
     dphi_k_.setZero();
     for (int i=0; i<kblock_dim_; ++i) {
-      double ek = es_k_up.eigenvalues()[i] + es_minusk_up.eigenvalues()[i];
+      double ek = es_k_up.eigenvalues()[i] + es_minusk_dn.eigenvalues()[i];
       double deltak_sq = std::norm(delta_k_(i,i));
       double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
       /*
@@ -959,7 +720,13 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
       */
       if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
         dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
-        //std::cout << "large_number \n";
+        //std::cout << "n = " << i << "\n";
+        //std::cout << "kvec = " << kvec.transpose() << "\n";
+        //std::cout << "deltak_sq = "<<deltak_sq<<"\n";
+        //std::cout << "ek = "<<ek<<"\n";
+        //std::cout << "ek_plus_Ek = "<<ek_plus_Ek<<"\n";
+        std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
+        //getchar();
       }
       else {
         dphi_k_(i,i) = 2.0*delta_k_(i,i)/ek_plus_Ek;
@@ -974,7 +741,109 @@ void BCS_State::get_pair_amplitudes_multiband(std::vector<ComplexMatrix>& phi_k)
     // bcs ampitudes in original basis 
     for (int i=0; i<kblock_dim_; ++i) 
       work_.col(i) = es_k_up.eigenvectors().col(i) * dphi_k_(i,i);
-    phi_k[k] = work_ * es_minusk_up.eigenvectors().transpose();
+    phi_k[k] = work_ * es_minusk_dn.eigenvectors().transpose();
+  } 
+}
+
+void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
+{
+  // BCS pair amplitudes for multi-band system (Including INTERBAND pairing)
+  for (int k=0; k<num_kpoints_; ++k) {
+    Vector3d kvec = blochbasis_.kvector(k);
+    //-------------'+k block'-------------
+    // hamiltonian in k-space
+    mf_model_.construct_kspace_block(kvec);
+    // diagonalize quadratic part
+    es_k_up.compute(mf_model_.quadratic_spinup_block());
+    //std::cout << es_k_up.eigenvalues().transpose() << "\n";
+    //getchar();
+
+    // pairing part 
+    delta_k_ = mf_model_.pairing_part();
+    //std::cout << "kvec = " << kvec.transpose() << "\n";
+    //std::cout << "delta_k =\n" << delta_k_ << "\n\n";
+
+    //-------------'-k block'-------------
+    mf_model_.construct_kspace_block(-kvec);
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
+
+    // assuming 'singlet pairing', see notes
+    work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
+    //std::cout << "delta_ck =\n" << work_ << "\n\n";
+
+    // transform pairing part
+    delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
+      es_minusk_dn.eigenvectors().conjugate();
+    //std::cout << "Uk_up =\n" << es_k_up.eigenvectors() << "\n\n";
+    //std::cout << "delta_k_ =\n" << delta_k_.real() << "\n"; getchar();
+
+    // BCS ampitudes in rotated basis 
+    int dim = kblock_dim_;
+    bdg_mat_.setZero();
+    // Construct the BDG matrix
+    for (int i=0; i<dim; ++i) {
+      bdg_mat_(i,i) = es_k_up.eigenvalues()[i];
+      bdg_mat_(dim+i,dim+i) = -es_minusk_dn.eigenvalues()[i];
+    }
+    bdg_mat_.block(0,dim, dim,dim) = -delta_k_;
+    bdg_mat_.block(dim,0, dim,dim) = -delta_k_.adjoint();
+    //std::cout << "BDG matrix\n";
+    //std::cout << bdg_mat_.real() << "\n\n";
+    // Diagonalize BDG matrix
+    es_bdg_.compute(bdg_mat_);
+    ComplexMatrix Udag = es_bdg_.eigenvectors().adjoint();
+    //std::cout << "Udag =\n" << Udag.real() << "\n\n";
+
+    // uk & vk matrices (since +ve energy Bogoliubov operators in 2nd half)
+    uk_ = Udag.block(dim,0,dim,dim);
+    vk_ = Udag.block(dim,dim,dim,dim);
+
+    // phi_k = uk^{-1} * vk
+    // SVD decompose: uk = USV^\dag => (uk)^{-1} = VS^{-1}U^{\dag} 
+    Eigen::JacobiSVD<Eigen::MatrixXcd> svd(uk_, Eigen::ComputeThinU | Eigen::ComputeThinV); 
+    work_ = svd.matrixU().adjoint() * vk_;
+    bool singular = false;
+    for (int i=0; i<dim; ++i) {
+      double dval = svd.singularValues()(i);
+      if (std::abs(dval) < 1.0E-12) {
+        //std::cout << uk_.real() << "\n";
+        //std::cout << vk_.row(i).real() << "\n";
+        //std::cout << "s["<<i<<"] = " << dval << "\n";
+        std::cout << ">> alert! BCS_State: uk matrix singular for k = (";
+        std::cout << kvec[0]<<", "<<kvec[1]<<", "<<kvec[2]<<")\n";
+        //getchar();
+        singular = true;
+        break;
+      }
+      work_.row(i) /= dval;
+    } 
+    if (!singular) {
+      dphi_k_ = svd.matrixV() * work_;
+    }
+    else {
+      // INTRABAND pairing only for this k
+      dphi_k_.setZero();
+      for (int i=0; i<kblock_dim_; ++i) {
+        double ek = es_k_up.eigenvalues()[i] + es_minusk_dn.eigenvalues()[i];
+        double deltak_sq = std::norm(delta_k_(i,i));
+        double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
+        if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
+          dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
+          std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
+          /*
+          std::cout << "deltak_sq = "<<deltak_sq<<"\n";
+          std::cout << "ek = "<<ek<<"\n";
+          std::cout << "ek_plus_Ek = "<<ek_plus_Ek<<"\n";
+          getchar();
+          */
+        }
+        else {
+          dphi_k_(i,i) = 2.0*delta_k_(i,i)/ek_plus_Ek;
+        }
+      }
+    }
+    // phi_k for 'ck'-operator
+    phi_k[k] = es_k_up.eigenvectors()*dphi_k_*es_minusk_dn.eigenvectors().transpose();
   } 
 }
 
@@ -999,13 +868,13 @@ double BCS_State::get_mf_energy(void)
     delta_k_ = mf_model_.pairing_part();
     //-------------'-k block'-------------
     mf_model_.construct_kspace_block(-kvec);
-    es_minusk_up.compute(mf_model_.quadratic_spinup_block());
+    es_minusk_dn.compute(mf_model_.quadratic_spinup_block());
     // assuming 'singlet pairing', see notes
     work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
     //std::cout << work_ << "\n"; getchar();
     // transform pairing part
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
-      es_minusk_up.eigenvectors().conjugate();
+      es_minusk_dn.eigenvectors().conjugate();
     // bcs ampitudes in rotated basis (assuming INTRABAND pairing only)
     for (unsigned i=0; i<kblock_dim_; ++i) {
       double ek = es_k_up.eigenvalues()[i];

@@ -57,6 +57,11 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   b1 = Vector3d(0.0,0.0,0.0);
   b2 = Vector3d(0.0,0.0,0.0);
   b3 = Vector3d(0.0,0.0,0.0);
+  /*
+  std::cout << "a1= " << a1.transpose() << "\n";
+  std::cout << "a2= " << a2.transpose() << "\n";
+  std::cout << "a3= " << a3.transpose() << "\n";
+  */
 
   unsigned symmetry_type = 0;
   if (lattice.bc1() == bc::periodic) {
@@ -106,6 +111,11 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
       default: break;
     }
   }
+  /*
+  std::cout << "b1= " << b1.transpose() << "\n";
+  std::cout << "b2= " << b2.transpose() << "\n";
+  std::cout << "b3= " << b3.transpose() << "\n";
+  */
 
   // antiperiodic boundary condition
   //Vector3d antipb_shift(0.0, 0.0, 0.0);
@@ -130,8 +140,11 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
     x2 = static_cast<double>(m(1)+n(1))/lattice.size2() + antipb_shift(1);
     x3 = static_cast<double>(m(2)+n(2))/lattice.size3() + antipb_shift(2);
     this->push_back(x1*b1 + x2*b2 + x3*b3);
-    //auto kvec = x1 * b1 + x2 * b2 + x3 * b3;
-    //std::cout << i << ": " << kvec.transpose() << "\n";
+    /*
+    auto kvec = x1 * b1 + x2 * b2 + x3 * b3;
+    std::cout << i << ": " << kvec.transpose() << "\n";
+    getchar();
+    */
     //translation_vectors.push_back(n);
     n = lattice.get_next_bravindex(n);
   }

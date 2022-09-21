@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-08-10 22:36:11
+* @Last Modified time: 2022-09-21 13:28:06
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -100,6 +100,101 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
     }
     add_chemical_potential(inputs);
   }
+
+  else if (lattice.id()==lattice::lattice_id::SQUARE_STRIPE) {
+    mf_model_.add_parameter(name="tx", defval=1.0, inputs);
+    mf_model_.add_parameter(name="ty1", defval=1.0, inputs);
+    mf_model_.add_parameter(name="ty2", defval=1.0, inputs);
+    mf_model_.add_parameter(name="lambda", defval=8, inputs);
+    // variational parameter
+    mf_model_.add_parameter(name="dCDW", defval=0.0, inputs);
+    mf_model_.add_parameter(name="dSDW", defval=0.0, inputs);
+
+    // hopping term 
+    cc.create(48);
+    for (int i=0; i<16; ++i) {
+      cc.add_type(i, "-tx");
+    }
+    for (int i=16; i<32; ++i) {
+      cc.add_type(i, "-ty1");
+    }
+    for (int i=32; i<48; ++i) {
+      cc.add_type(i, "-ty2");
+    }
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+
+    std::ostringstream strval;
+    strval.precision(12);
+    strval.setf(std::ios_base::fixed);
+    int lambda = mf_model_.get_parameter_value("lambda");
+    // check commensurate or not
+    double Q;
+    if (lambda > 0) {
+      int m = 16/lambda;
+      if (16 != m*lambda) {
+        std::cout<<">> alert: BCS_State::init: incommensurate `lambda`\n";
+      }
+      Q = two_pi()/lambda;
+    }
+    else {
+      Q = 0.0;
+    }
+
+    // CDW term
+    cc.create(32);
+    for (int n=0; n<32; ++n) {
+      double ampl;
+      if (lambda > 0) ampl = std::cos(Q*(n+1-0.5));
+      else ampl = 1.0;
+      strval << ampl << "*dCDW";
+      cc.add_type(n, strval.str());
+      //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+      strval.str(std::string()); // clear
+    }
+    mf_model_.add_siteterm(name="CDW", cc, op::ni_sigma());
+
+    // SDW term (UP spin)
+    cc.create(32);
+    strval.str(std::string()); // clear
+    int sign = 1;
+    for (int n=0; n<32; ++n) {
+      if (n == 16) sign = -1;
+      double ampl;
+      if (lambda > 0) ampl = sign*std::sin(0.5*Q*(n+1-0.5));
+      else ampl = sign;
+      sign *= -1;
+      strval << ampl << "*dSDW";
+      cc.add_type(n, strval.str());
+      //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+      strval.str(std::string()); // clear
+    }
+    mf_model_.add_siteterm(name="SDW_UP", cc, op::ni_up());
+
+    // SDW term (DN spin)
+    cc.create(32);
+    strval.str(std::string()); // clear
+    sign = -1;
+    for (int n=0; n<32; ++n) {
+      if (n == 16) sign = 1;
+      double ampl;
+      if (lambda > 0) ampl = sign*std::sin(0.5*Q*(n+1-0.5));
+      else ampl = sign;
+      sign *= -1;
+      strval << ampl << "*dSDW";
+      cc.add_type(n, strval.str());
+      //std::cout << "ampl["<<n<<"] = "<< strval.str() << "\n";
+      strval.str(std::string()); // clear
+    }
+    mf_model_.add_siteterm(name="SDW_DN", cc, op::ni_dn());
+
+    // variational parameters
+    defval = mf_model_.get_parameter_value("dCDW");
+    varparms_.add("dCDW", defval,lb=0,ub=2.0,dh=0.01);
+    defval = mf_model_.get_parameter_value("dSDW");
+    varparms_.add("dSDW", defval,lb=0,ub=2.0,dh=0.01);
+    add_chemical_potential(inputs);
+  }
+
 
   else if (lattice.id()==lattice::lattice_id::SIMPLECUBIC) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
@@ -328,10 +423,10 @@ void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k)
     es_k_up.compute(mf_model_.quadratic_spinup_block());
     mf_model_.construct_kspace_block(-kvec);
 
-    //es_minusk_up.compute(mf_model_.quadratic_spinup_block());
-    es_minusk_up.compute(mf_model_.quadratic_spindn_block());
+    //es_minusk_dn.compute(mf_model_.quadratic_spinup_block());
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
     phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
-      		 * es_minusk_up.eigenvectors().transpose().block(0,0,m,kblock_dim_);
+      		 * es_minusk_dn.eigenvectors().transpose().block(0,0,m,kblock_dim_);
     /*
     std::cout << "kvec = "<< kvec.transpose() << "\n"; 
     std::cout << mf_model_.quadratic_spinup_block() << "\n"; 

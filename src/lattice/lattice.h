@@ -24,14 +24,14 @@
 namespace lattice {
 
 // Global Constants
-const unsigned MAX_SITE_TYPES = 20;
-const unsigned MAX_BOND_TYPES = 40;
+const unsigned MAX_SITE_TYPES = 100;
+const unsigned MAX_BOND_TYPES = 200;
 
 /*---------------lattice types-----------------*/
 enum class lattice_id {
-  UNDEFINED, SQUARE, SQUARE_NNN, 
-  SQUARE_2SITE, CHAIN, CHAIN_2SITE, HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, 
-  NICKELATE, NICKELATE_2D, NICKELATE_2L, SQUARE_4SITE
+  UNDEFINED, SQUARE, SQUARE_NNN, SQUARE_2SITE, SQUARE_4SITE, CHAIN, CHAIN_2SITE, 
+  HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, NICKELATE, NICKELATE_2D, NICKELATE_2L, 
+  SQUARE_CDW4, SQUARE_STRIPE
 };
 
 /*---------------Lattice site class-----------------*/
@@ -166,6 +166,8 @@ public:
   int add_bond(const Bond& b) { bonds.push_back(b); return bonds.back().id(); }
   int add_bond(const unsigned& type, const unsigned& ngb, const unsigned& src_id, const Vector3i& src_offset,
     const unsigned& tgt_id, const Vector3i& tgt_offset); 
+  int add_bond(const unsigned& type, const unsigned& src_id, 
+    const unsigned& tgt_id, const Vector3i& tgt_offset, const int& ngb=1);
   void set_basis(const Vector3d& av1, const Vector3d& av2, const Vector3d& av3);
   void reset_a1(const Vector3d& av) { a1=av; }
   void reset_a2(const Vector3d& av) { a2=av; }
@@ -228,6 +230,8 @@ public:
     const unsigned& tgt_id, const Vector3i& tgt_offset); 
   int add_bond(const unsigned& type, const unsigned& src_id, const Vector3i& src_offset,
     const unsigned& tgt_id, const Vector3i& tgt_offset); 
+  int add_bond(const unsigned& type, const unsigned& src_id, 
+    const unsigned& tgt_id, const Vector3i& tgt_offset, const int& ngb=1);
   int add_bond(const Bond& b); 
   void set_boundary_twist(const int& twist_id) 
   {

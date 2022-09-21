@@ -20,7 +20,7 @@ class MF_Order
 {
 public:
   enum class order_t {SC, AF, AFSC, CDW, null};
-  enum class pairing_t {SWAVE, DWAVE, EXTENDED_S, D_PLUS_ID, CUSTOM, null};
+  enum class pairing_t {SWAVE, DWAVE, EXTENDED_S, D_PLUS_ID, CUSTOM, SC_CDW_SDW, null};
   MF_Order() {}
   MF_Order(const MF_Order::order_t& order, const MF_Order::pairing_t& pairsymm) 
     : order_{order}, pairing_{pairsymm} {}
@@ -74,7 +74,7 @@ protected:
   ComplexMatrix FTU_;
   // solvers
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_k_up;
-  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_up;
+  mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_dn;
   void set_nonmagnetic(const bool& yesno) { nonmagnetic_=yesno; }
   void set_particle_num(const input::Parameters& inputs);
   void set_ft_matrix(const lattice::Lattice& lattice);

@@ -20,6 +20,7 @@ SRCS+= lattice/latticelibrary.cpp
 SRCS+= model/hamiltonian_term.cpp
 SRCS+= model/model.cpp
 SRCS+= model/modellibrary.cpp
+SRCS+= wavefunction/strmatrix.cpp
 SRCS+= wavefunction/varparm.cpp
 SRCS+= wavefunction/blochbasis.cpp
 SRCS+= wavefunction/mf_model.cpp
@@ -60,6 +61,7 @@ HDRS=    scheduler/mpi_comm.h \
          model/modelparams.h  model/quantum_op.h \
 	 model/hamiltonian_term.h \
 	 model/model.h \
+	 wavefunction/strmatrix.h \
 	 wavefunction/varparm.h \
 	 wavefunction/blochbasis.h \
 	 wavefunction/mf_model.h \

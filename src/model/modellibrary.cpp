@@ -67,6 +67,29 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
 
+    else if (lattice.id() == lattice::lattice_id::SQUARE_STRIPE) {
+      add_parameter(name="tx", defval=1.0, inputs);
+      add_parameter(name="ty1", defval=1.0, inputs);
+      add_parameter(name="ty2", defval=1.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+
+      // hopping term 
+      cc.create(48);
+      for (int i=0; i<16; ++i) {
+        cc.add_type(i, "-tx");
+      }
+      for (int i=16; i<32; ++i) {
+        cc.add_type(i, "-ty1");
+      }
+      for (int i=32; i<48; ++i) {
+        cc.add_type(i, "-ty2");
+      }
+      add_bondterm(name="hopping", cc, op::spin_hop());
+
+      // Hubbard terms
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+    }
+
     else if (lattice.id() == lattice::lattice_id::SIMPLECUBIC) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
