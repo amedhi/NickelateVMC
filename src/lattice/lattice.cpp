@@ -570,7 +570,7 @@ Eigen::Matrix3d Lattice::rotation_matrix(const Vector3d& r, const Vector3d& rp)
 
   double e1 = sqrt(r.dot(r));
   double e2 = sqrt(rp.dot(rp));
-  double phi = acos(r.dot(rp))/(e1*e2);
+  double phi = acos(r.dot(rp)/(e1*e2));
   if (std::abs(phi) < dp_tol) return Eigen::Matrix<double,3,3>::Identity();
 
   // unit vector perpendicular to 'rp' and 'r' along \vec{r'} x \vec{r}
