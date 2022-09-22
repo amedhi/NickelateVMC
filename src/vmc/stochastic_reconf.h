@@ -28,6 +28,7 @@ public:
   int init(const input::Parameters& parms, const VMC& vmc);
   int print_info(const VMC& vmc);
   int optimize(VMC& vmc);
+  int optimize_old(VMC& vmc);
   const var::parm_vector& optimal_parms(void) const { return vparms_; }
   const int& num_opt_samples(void) const { return num_opt_samples_; }
   int start(const VMC& vmc, const int& sample);
@@ -37,6 +38,7 @@ public:
   int finalize(void);
 private:
   int num_parms_;
+  int num_parms_print_;
   mcdata::MC_Observable optimal_parms_;
   mcdata::MC_Observable optimal_energy_;
   mcdata::MC_Observable energy_error_bar_;
@@ -98,6 +100,9 @@ private:
   std::string iter_efile_;
   std::string iter_vfile_;
 
+  std::ostream& print_progress(std::ostream& os, const var::parm_vector& vparms, 
+    const double& energy, const double& error_bar, const Eigen::VectorXd& grad, 
+    const double& gnorm);
   RealVector lsqfit(const std::vector<double>& iter_energy, const int& max_fitpoints) const;
   void fit_vparms(const std::deque<mcdata::data_t>& iter_vparms, RealVector& fit_slope) const;
   void iter_mean(const std::deque<mcdata::data_t>& iter_vparms, RealVector& fit_slope) const;

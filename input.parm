@@ -35,13 +35,13 @@ wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 hole_doping = 0.16
-gfactor = 0.3037
+gfactor = .3037
 delta_sc = 0.08
 mu = -0.4263000
 mu_default = "NO"
 mu_variational = "YES"
-as_func_of = "hole_doping"
-#as_func_of = "gfactor"
+#as_func_of = "hole_doping"
+as_func_of = "delta_sc"
 
 #---------------------------------------------
 # List of observable to calculate:
@@ -49,7 +49,7 @@ as_func_of = "hole_doping"
 Energy = "YES"
 EnergyGradient = "YES"
 Magnetization = "NO"
-SC_Correlation = "YES"
+SC_Correlation = "NO"
 SiteOccupancy = "NO"
 
 
@@ -57,7 +57,7 @@ SiteOccupancy = "NO"
 # Monte Carlo parameters
 #---------------------------------------------
 rng_seed = 0
-measure_steps = 5000
+measure_steps = 50000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10
@@ -70,11 +70,14 @@ sr_progress_log = "YES"
 sr_random_start = "NO"
 sr_opt_samples = 3
 sr_max_iter = 200
-sr_start_tstep = 0.06
+sr_start_tstep = 0.1
 sr_refinement_cycle = 40
-sr_mkseries_len = 20
-sr_mkfluct_tol = 0.2
-sr_flat_tail_len = 10
-sr_rslope_tol =   0.010000
-sr_aslope_tol =   0.000010
+sr_mkseries_len = 30
+sr_mkfluct_tol = 0.3
+sr_gradtol = 5.0E-4
+
+
+#sr_flat_tail_len = 10
+#sr_rslope_tol =   0.010000
+#sr_aslope_tol =   0.000010
 

@@ -582,10 +582,10 @@ void BCS_State::get_wf_gradient(std::vector<Matrix>& psi_gradient)
     if (kblock_dim_==1) get_pair_amplitudes_oneband(work_k_);
     else {
       if (interband_pairing_) {
-        get_pair_amplitudes_interband(phi_k_);
+        get_pair_amplitudes_interband(work_k_);
       }
       else {
-        get_pair_amplitudes_intraband(phi_k_);
+        get_pair_amplitudes_intraband(work_k_);
       }
     } 
     // model to original state
@@ -809,8 +809,12 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         //std::cout << uk_.real() << "\n";
         //std::cout << vk_.row(i).real() << "\n";
         //std::cout << "s["<<i<<"] = " << dval << "\n";
+
+        /*
         std::cout << ">> alert! BCS_State: uk matrix singular for k = (";
         std::cout << kvec[0]<<", "<<kvec[1]<<", "<<kvec[2]<<")\n";
+        */
+
         //getchar();
         singular = true;
         break;
@@ -829,7 +833,7 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
         if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
           dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
-          std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
+          //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
           /*
           std::cout << "deltak_sq = "<<deltak_sq<<"\n";
           std::cout << "ek = "<<ek<<"\n";
