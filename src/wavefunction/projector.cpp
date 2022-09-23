@@ -27,6 +27,10 @@ void WavefunProjector::init(const input::Parameters& parms)
   gw_ratio_[2] = 1.0; // nd_increament =  0
   gw_ratio_[3] = 1.0; // nd_increament =  1
   gw_ratio_[4] = 1.0; // nd_increament =  2
+
+  // doublon holon 
+  dh_proj_ = parms.set_value("dh_proj", false, info);
+
 }
 
 void WavefunProjector::update(const input::Parameters& inputs) 

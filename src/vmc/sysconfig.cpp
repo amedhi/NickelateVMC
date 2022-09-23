@@ -117,6 +117,8 @@ int SysConfig::rebuild(const lattice::Lattice& lattice)
   return init_config();
 }
 
+dh_ratio(lattice, *this, )
+
 int SysConfig::init_config(void)
 {
   num_upspins_ = wf.num_upspins();
@@ -220,6 +222,8 @@ int SysConfig::update_state(void)
   }
   return 0;
 }
+
+//int SysConfig::dh_ratio()
 
 int SysConfig::do_upspin_hop(void)
 {

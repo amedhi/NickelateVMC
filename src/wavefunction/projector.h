@@ -36,6 +36,8 @@ public:
   { 
     return gw_ratio_[nd_incre+2]; 
   } 
+  //const double& dh_ratio(lattice, basis_state, fr, to) const 
+
   const VariationalParms& varparms(void) const { return varparms_; }
   void get_vparm_names(std::vector<std::string>& names, unsigned start_pos=0) const; 
   void get_vparm_values(var::parm_vector& values, unsigned start_pos=0) const; 
@@ -45,6 +47,7 @@ public:
 private:
   using vparm_t = std::pair<std::string,double>;
   bool gutzwiller_proj_{false};
+  bool dh_proj_{false};
   //int num_gw_factors_{0};
   std::vector<double> gw_ratio_;
   //std::map<std::string,double> pfactors_;
