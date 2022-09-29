@@ -66,28 +66,28 @@ int Lattice::define_lattice(void)
     add_basis_site(type=0, coord=vec(0,0,0));
     add_basis_site(type=1, coord=vec(0.5*b,0.5*b,0));
     // add bonds
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,0));
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,-1,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,0));
-
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-
     /*
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
-    add_bond(type=0,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
-    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=1,ngb=1,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=0,src=0,tgt=1,offset=pos(0,0,0));
+    add_bond(type=1,src=0,tgt=1,offset=pos(-1,0,0));
+    add_bond(type=0,src=0,tgt=1,offset=pos(-1,-1,0));
+    add_bond(type=1,src=0,tgt=1,offset=pos(0,-1,0));
 
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=3,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    add_bond(type=2,src=0,tgt=0,offset=pos(1,0,0));
+    add_bond(type=3,src=0,tgt=0,offset=pos(0,1,0));
+    add_bond(type=2,src=1,tgt=1,offset=pos(1,0,0));
+    add_bond(type=3,src=1,tgt=1,offset=pos(0,1,0));
     */
+    add_bond(type=0,src=0,tgt=1,offset=pos(0,0,0));
+    add_bond(type=1,src=1,tgt=0,offset=pos(1,0,0));
+    add_bond(type=1,src=1,tgt=0,offset=pos(0,1,0));
+    add_bond(type=0,src=1,tgt=0,offset=pos(1,1,0));
+
+    add_bond(type=2,src=0,tgt=0,offset=pos(1,0,0));
+    add_bond(type=3,src=0,tgt=0,offset=pos(0,1,0));
+    add_bond(type=2,src=1,tgt=1,offset=pos(1,0,0));
+    add_bond(type=3,src=1,tgt=1,offset=pos(0,1,0));
   }
+
 
   else if (lname == "SQUARE_STRIPE") {
     // type

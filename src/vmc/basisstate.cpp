@@ -327,6 +327,19 @@ const int& BasisState::which_dnspin(void) const
   }
 }
 
+const int& BasisState::which_frsite(void) const
+{
+  if (proposed_move_==move_t::upspin_hop) {
+    return up_frsite_;
+  }
+  else if (proposed_move_==move_t::dnspin_hop) {
+    return dn_frsite_;
+  }
+  else {
+    throw std::logic_error("BasisState::which_frsite: no existing move");
+  }
+}
+
 const int& BasisState::which_site(void) const
 {
   if (proposed_move_==move_t::upspin_hop) {
@@ -413,6 +426,18 @@ int BasisState::op_ni_dn(const int& site) const
 int BasisState::op_ni_updn(const int& site) const
 {
   if (site_states_[site].occupancy() == 2) return 1;
+  else return 0;
+}
+
+int BasisState::op_ni_dblon(const int& site) const
+{
+  if (site_states_[site].occupancy() == 2) return 1;
+  else return 0;
+}
+
+int BasisState::op_ni_holon(const int& site) const
+{
+  if (site_states_[site].occupancy() == 0) return 1;
   else return 0;
 }
 

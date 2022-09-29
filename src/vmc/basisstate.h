@@ -77,6 +77,7 @@ public:
   bool gen_exchange_move(void);
   const int& which_upspin(void) const;
   const int& which_dnspin(void) const;
+  const int& which_frsite(void) const; 
   const int& which_site(void) const; 
   const int& which_upsite(void) const; 
   const int& which_dnsite(void) const; 
@@ -86,6 +87,8 @@ public:
   int op_ni_up(const int& site) const;
   int op_ni_dn(const int& site) const;
   int op_ni_updn(const int& site) const;
+  int op_ni_dblon(const int& site) const;
+  int op_ni_holon(const int& site) const;
   bool op_cdagc_up_plus(const int& site_i, const int& site_j) const;
   bool op_cdagc_up(const int& frsite, const int& tosite) const;
   bool op_cdagc_dn_plus(const int& site_i, const int& site_j) const;

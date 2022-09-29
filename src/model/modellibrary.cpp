@@ -42,7 +42,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
 
-    if (lattice.id() == lattice::lattice_id::SQUARE_2SITE) {
+    else if (lattice.id() == lattice::lattice_id::SQUARE_2SITE) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
       //add_parameter(name="W", defval=0.0, inputs);
@@ -59,7 +59,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       //add_siteterm(name="ni_sigma", cc, op::ni_sigma());
     }
 
-    if (lattice.id() == lattice::lattice_id::CHAIN_2SITE) {
+    else if (lattice.id() == lattice::lattice_id::CHAIN_2SITE) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       cc = CouplingConstant({0,"-t"},{1,"-t"});
@@ -232,8 +232,33 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_bondterm(name="hopping", cc="-t", op::spin_hop());
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
-  } // end model_name == "HUBBARD"
+  } 
 
+  //------------------------HUBBARD IONIC-------------------------------------
+  else if (model_name == "HUBBARD_IONIC") {
+    mid = model_id::HUBBARD_IONIC;
+    if (lattice.id() == lattice::lattice_id::SQUARE_2SITE) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="W", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+      // bond operator terms
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+
+      // site operator terms
+      cc.create(2);
+      cc.add_type(0, "-0.5*W");
+      cc.add_type(1, "0.5*W");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+    }
+    else {
+      throw std::range_error("*error: modellibrary: model not defined for this lattice");
+    }
+  }
+
+  //------------------------TJ-------------------------------------
   else if (model_name == "TJ") {
     mid = model_id::TJ;
     int nowarn;

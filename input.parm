@@ -33,9 +33,11 @@ U = 8.0
 #---------------------------------------------
 wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
-gutzwiller_proj = "YES"
+gw_projector = "YES"
+dh_projector = "NO"
+dhfactor1 = 0.5
+gw_factor = 0.3037
 hole_doping = 0.16
-gfactor = .3037
 delta_sc = 0.08
 mu = -0.4263000
 mu_default = "NO"
@@ -57,7 +59,7 @@ SiteOccupancy = "NO"
 # Monte Carlo parameters
 #---------------------------------------------
 rng_seed = 0
-measure_steps = 50000
+measure_steps = 5000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10

@@ -14,7 +14,7 @@ SysConfig::SysConfig(const input::Parameters& inputs,
   const lattice::Lattice& lattice, const model::Hamiltonian& model)
   : BasisState(lattice.num_sites(), model.double_occupancy())
   , wf(lattice, inputs)
-  , pj(inputs)
+  , pj(lattice, inputs)
   , num_sites_(lattice.num_sites())
 {
   // set hubbard sites 
@@ -117,7 +117,6 @@ int SysConfig::rebuild(const lattice::Lattice& lattice)
   return init_config();
 }
 
-dh_ratio(lattice, *this, )
 
 int SysConfig::init_config(void)
 {
@@ -130,7 +129,7 @@ int SysConfig::init_config(void)
   bool tmp_restriction = false;
   bool original_state = BasisState::double_occupancy();
   if (pj.have_gutzwiller()) {
-    if (pj.gw_factor()<gfactor_cutoff()) {
+    if (pj.gwfactor_is_zero()) {
       BasisState::allow_double_occupancy(false);
       tmp_restriction = true;
     }
@@ -236,7 +235,9 @@ int SysConfig::do_upspin_hop(void)
   wf.get_amplitudes(psi_row, to_site, dnspin_sites());
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
   if (std::abs(det_ratio) < dratio_cutoff()) return 0; // for safety
-  double proj_ratio = pj.gw_ratio(dblocc_increament());
+  //double proj_ratio = pj.gw_ratio(dblocc_increament());
+  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site);
+
   amplitude_t weight_ratio = det_ratio * proj_ratio;
   double transition_proby = std::norm(weight_ratio);
   //std::cout << "W = " << transition_proby << "\n"; getchar();
@@ -262,7 +263,9 @@ int SysConfig::do_dnspin_hop(void)
   wf.get_amplitudes(psi_col, upspin_sites(), to_site);
   amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
   if (std::abs(det_ratio) < dratio_cutoff()) return 0; // for safety
-  double proj_ratio = pj.gw_ratio(dblocc_increament());
+  //double proj_ratio = pj.gw_ratio(dblocc_increament());
+  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site);
+
   amplitude_t weight_ratio = det_ratio * proj_ratio;
   double transition_proby = std::norm(weight_ratio);
   if (rng().random_real()<transition_proby) {
@@ -414,10 +417,12 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
     wf.get_amplitudes(psi_row, to_site, dnspin_sites());
     amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
     if (bc_state < 0) { // it's a boundary bond
-      return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
     else {
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
   }
   else if (op_cdagc_up(site_j,site_i)) {
@@ -428,10 +433,12 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
     wf.get_amplitudes(psi_row, to_site, dnspin_sites());
     amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
     if (bc_state < 0) { // it's a boundary bond
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
     else {
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
   }
   else {
@@ -465,10 +472,12 @@ amplitude_t SysConfig::apply_cdagc_up(const int& fr_site, const int& to_site,
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
   //det_ratio = ampl_part(std::conj(det_ratio));
   if (bc_state < 0) { // it's a boundary bond
-    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
   }
   else {
-    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
   }
 }
 
@@ -484,10 +493,12 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
     wf.get_amplitudes(psi_col, upspin_sites(), to_site);
     amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
     if (bc_state < 0) { // it's a boundary bond
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
     else {
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
   }
   else if (op_cdagc_dn(site_j,site_i)) {
@@ -498,10 +509,12 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
     wf.get_amplitudes(psi_col, upspin_sites(), to_site);
     amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
     if (bc_state < 0) { // it's a boundary bond
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
     else {
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
     }
   }
   else {
@@ -534,10 +547,12 @@ amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
   amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
   //det_ratio = ampl_part(std::conj(det_ratio));
   if (bc_state < 0) { // it's a boundary bond
-    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
   }
   else {
-    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
   }
 }
 
@@ -758,6 +773,14 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
 {
   // grad_logpsi wrt pj parameters
   int p = pj.varparms().size();
+  if (p > 0) {
+    RealVector grad(p);
+    pj.get_grad_logp(*this, grad);
+    for (int n=0; n<p; ++n) {
+      grad_logpsi(n) = grad(n);
+    }
+  }
+  /*
   for (int n=0; n<p; ++n) {
     if (pj.varparms()[n].name()=="gfactor") {
       double g = pj.varparms()[n].value();
@@ -767,6 +790,8 @@ void SysConfig::get_grad_logpsi(RealVector& grad_logpsi) const
       throw std::range_error("SysConfig::get_grad_logpsi: this pj parameter not implemented\n");
     }
   }
+  */
+
   // grad_logpsi wrt wf parameters
   for (int n=0; n<wf.varparms().size(); ++n) {
     wf.get_gradients(psi_grad,n,upspin_sites(),dnspin_sites());

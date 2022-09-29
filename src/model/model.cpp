@@ -154,6 +154,10 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   }*/
   // finalize the site terms
   for (auto it=site_terms_.begin(); it!=site_terms_.end(); ++it) {
+    /*
+    for (const auto& c : constants_) std::cout << c.first << "=  " << c.second << "\n";
+    for (const auto& p : parms_) std::cout << p.first << "=  " << p.second << "\n";
+    */
     it->eval_coupling_constant(constants_, parms_); 
   }
   have_siteterm_ = (site_terms_.size()>0);
@@ -166,6 +170,7 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   have_bondterm_ = (bond_terms_.size()>0);
   bt_begin_ = bond_terms_.cbegin();
   bt_end_ = bond_terms_.cend();
+
 
   // disorder terms
   dterm_begin_ = disorder_terms_.cbegin();

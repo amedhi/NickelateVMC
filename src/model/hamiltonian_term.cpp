@@ -131,8 +131,10 @@ void HamiltonianTerm::eval_coupling_constant(const ModelParams& cvals, const Mod
   expr::ComplexExpr expr;
   //expr::Expression expr;
   //expr::Expression::variables vars;
+ // std::cout << ">>>>>>>>>HERE>>>>>>>>>>\n";
   for (const auto& c : cvals) expr.add_var(c.first, c.second);
   for (const auto& p : pvals) expr.add_var(p.first, p.second);
+  //std::cout << ">>>>>>>>>DONE>>>>>>>>>>\n";
   try { 
     // if the 'cc' is implicitly defined for all types 
     if (cc_.size()==1 && cc_.begin()->first==CouplingConstant::global_type) {

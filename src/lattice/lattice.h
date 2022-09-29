@@ -29,7 +29,7 @@ const unsigned MAX_BOND_TYPES = 200;
 
 /*---------------lattice types-----------------*/
 enum class lattice_id {
-  UNDEFINED, SQUARE, SQUARE_NNN, SQUARE_2SITE, SQUARE_4SITE, CHAIN, CHAIN_2SITE, 
+  UNDEFINED, SQUARE, SQUARE_NNN, SQUARE_2SITE, CHAIN, CHAIN_2SITE, 
   HONEYCOMB, SW_GRAPHENE, SIMPLECUBIC, NICKELATE, NICKELATE_2D, NICKELATE_2L, 
   SQUARE_CDW4, SQUARE_STRIPE
 };
@@ -255,6 +255,14 @@ public:
   Vector3d basis_vector_a1(void) const { return Unitcell::vector_a1(); }
   Vector3d basis_vector_a2(void) const { return Unitcell::vector_a2(); }
   Vector3d basis_vector_a3(void) const { return Unitcell::vector_a3(); }
+  int size(const int& idir) const {
+    switch (idir) {
+      case 0: return static_cast<int>(extent[dim1].size); break;
+      case 1: return static_cast<int>(extent[dim2].size); break;
+      case 3: return static_cast<int>(extent[dim3].size); break;
+      default: throw std::range_error("error: Lattice::size: out-of-range argument");
+    }
+  }
   int size1(void) const { return static_cast<int>(extent[dim1].size); }
   int size2(void) const { return static_cast<int>(extent[dim2].size); }
   int size3(void) const { return static_cast<int>(extent[dim3].size); }
