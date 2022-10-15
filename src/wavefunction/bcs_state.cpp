@@ -99,12 +99,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
 
       // site term
       cc.create(2);
-      cc.add_type(0, "(P-dAF)");
-      cc.add_type(1, "(dAF-P)");
+      cc.add_type(0, "-(P+dAF)");
+      cc.add_type(1, "(P+dAF)");
       mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
       cc.create(2);
-      cc.add_type(0, "(P+dAF)");
-      cc.add_type(1, "-(P+dAF)");
+      cc.add_type(0, "-(P-dAF)");
+      cc.add_type(1, "(P-dAF)");
       mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
       
       // SC pairing term
@@ -126,9 +126,9 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       defval = mf_model_.get_parameter_value("delta_sc");
       varparms_.add("delta_sc",defval,lb=1.0E-3,ub=2.0,dh=0.01);
       defval = mf_model_.get_parameter_value("P");
-      varparms_.add("P", defval,lb=-1.0,ub=+1.0,dh=0.1);
+      varparms_.add("P", defval,lb=-5.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("dAF");
-      varparms_.add("dAF", defval,lb=0.0,ub=+1.0,dh=0.1);
+      varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
       add_chemical_potential(inputs);
     }
 
@@ -789,7 +789,7 @@ void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
       if (ek<0.0) dphi_k_(i,i) = 1.0;
       else dphi_k_(i,i) = 0.0;
       */
-      if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
+      if (std::sqrt(deltak_sq)<1.0E-12 && ek<=0.0) {
         dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
         //std::cout << "n = " << i << "\n";
         //std::cout << "kvec = " << kvec.transpose() << "\n";
@@ -803,6 +803,7 @@ void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
         dphi_k_(i,i) = 2.0*delta_k_(i,i)/ek_plus_Ek;
       }
       /*
+      std::cout << "kvec = " << kvec.transpose() << "\n";
       std::cout << "ek = " << ek << "\n";
       std::cout << "delta_sq = " << deltak_sq << "\n";
       std::cout << "phi_k = " << dphi_k_(i,i) << "\n";
@@ -902,7 +903,7 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         double ek = es_k_up.eigenvalues()[i] + es_minusk_dn.eigenvalues()[i];
         double deltak_sq = std::norm(delta_k_(i,i));
         double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
-        if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
+        if (std::sqrt(deltak_sq)<1.0E-12 && ek<=0.0) {
           dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
           //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
           /*

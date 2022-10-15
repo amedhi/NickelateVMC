@@ -218,25 +218,38 @@ int StochasticReconf::iterate(var::parm_vector& vparms, const double& energy,
   Eigen::MatrixXd sr_inv(num_parms_,num_parms_);
   for (int i=0; i<num_parms_; ++i) sr_matrix(i,i) *= (1.0+stabilizer_);
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(sr_matrix, Eigen::ComputeThinU | Eigen::ComputeThinV); 
-  double lmax = svd.singularValues()(0);
-  for (int i=0; i<num_parms_; ++i) {
-    for (int j=0; j<num_parms_; ++j) {
-      double sum = 0.0;
-      for (int m=0; m<num_parms_; ++m) {
-        double sval = svd.singularValues()(m);
-        if (sval/lmax < w_svd_cut_) break;
-        sum += svd.matrixV()(i,m)*svd.matrixU()(j,m)/sval;
-      }
-      sr_inv(i,j) = sum;
-    }
+  // condition number
+  double rcond = svd.singularValues()(svd.singularValues().size()-1)/svd.singularValues()(0);
+  //if (rcond < 1.0E-6) {
+  if (false) {
+    search_dir_ = -search_tstep_*grad;
   }
-  search_dir_ = -search_tstep_*sr_inv*grad;
+  else {
+    double lmax = svd.singularValues()(0);
+    for (int i=0; i<num_parms_; ++i) {
+      for (int j=0; j<num_parms_; ++j) {
+        double sum = 0.0;
+        for (int m=0; m<num_parms_; ++m) {
+          double sval = svd.singularValues()(m);
+          if (sval/lmax < w_svd_cut_) break;
+          sum += svd.matrixV()(i,m)*svd.matrixU()(j,m)/sval;
+        }
+        sr_inv(i,j) = sum;
+      }
+    }
+    search_dir_ = -search_tstep_*sr_inv*grad;
+  }
 
   // max_norm (of components not hitting boundary) 
   double gnorm = grad.squaredNorm();
   double proj_norm = proj_grad_norm(vparms,grad,lbound_,ubound_);
   gnorm = std::min(gnorm, proj_norm);
 
+  //std::cout << "rcond = " << rcond << "\n";
+  //std::cout << "SR_Matrix = \n" << sr_matrix << "\n\n";
+  //std::cout << "SR_Inv = \n" << sr_inv << "\n\n";
+  //std::cout << "grad = " << grad.transpose() << "\n";
+  //getchar();
 
   // file outs
   iter_++;
