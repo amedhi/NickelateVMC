@@ -19,10 +19,9 @@ namespace opt {
 class ProbLineSearchGP
 {
 public:
-  ProbLineSearchGP(const double& theta=1.0, const double& offset=1.0) 
-    { init(theta,offset); }
+  ProbLineSearchGP(); 
   ~ProbLineSearchGP() {}
-  int init(const double& theta=1.0, const double& offset=10.0);
+  int set_parameters(const double& theta, const double& offset);
   int add_obs(const double& t, const double& f, const double& df,
     const double& fvar=0.0, const double& dfvar=0.0);
   int reset(void);
@@ -91,13 +90,17 @@ public:
   using fquad = std::tuple<double,double,double,double>;
   ProbLineSearch();
   ~ProbLineSearch() {}
-  int set_parameters(const double& c1=0.05, const double& cW=0.3, 
+  void set_parameters(const double& c1=0.05, const double& cW=0.3, 
     const double& fpush=1.0, const double& alpha0=0.01, 
     const double& target_df=0.5, const double& df_lo=-0.1, 
     const double& df_hi=1.1, const int& max_steps=10, 
     const int& max_expl=6, const double& max_dmu0=0.0, 
     const double& max_change_factor=10.0, 
     const std::string& expl_policy="linear");
+  void set_c1(const double& c1) { c1_=c1; }
+  void set_cW(const double& cW) { cW_=cW; }
+  void set_alpha0(const double& alpha0) { alpha0_=alpha0; }
+  void set_target_df(const double& df) { target_df_=df; }
   double start(const double& en, const double& en_err, const RealVector& grad, 
     const RealVector& grad_err, const RealVector& search_dir);
   double do_step(const double& en, const double& en_err, const RealVector& grad, const RealVector& grad_err, 

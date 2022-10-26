@@ -3,7 +3,7 @@ PROJECT_ROOT=/Users/amedhi/Projects/Codes/VMC/MainVMC
 
 #-------------------------------------------------------------
 # need mpi version
-#MPI=HAVE_BOOST_MPI
+MPI=HAVE_BOOST_MPI
 
 #-------------------------------------------------------------
 # 1. Set compiler option
@@ -20,7 +20,7 @@ endif
 #-------------------------------------------------------------
 WAVEFUNC=REAL
 ifeq ($(WAVEFUNC), REAL)
-  CPPFLAGS += -DREAL_WAVEFUNCTION #-DEIGEN_NO_DEBUG 
+  CPPFLAGS += -DREAL_WAVEFUNCTION -DEIGEN_NO_DEBUG 
 else
   CPPFLAGS += -DEIGEN_NO_DEBUG 
 endif

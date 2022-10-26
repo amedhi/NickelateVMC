@@ -15,13 +15,35 @@
 #include "./prob_linesearch.h"
 
 namespace opt {
-
 /*
 Implementation of Probabilistic Line Search for Stochastic Optimization [1].
 [1] M. Mahsereci and P. Hennig. Probabilistic line searches for stochastic
 optimization. In Advances in Neural Information Processing Systems 28, pages
 181-189, 2015.
 */
+
+/*
+The implementation is ported from the Python implementation of the same 
+in https://github.com/ProbabilisticNumerics/probabilistic_line_search
+
+Given below is the notice as required by the Liense for the software.
+-----------------------------------------------------------------------
+Copyright 2015, Max Planck Society.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-----------------------------------------------------------------------
+*/
+
 
 int ProbLineSearch::test(void) 
 {
@@ -76,7 +98,7 @@ ProbLineSearch::ProbLineSearch(void)
   c1_ = 0.05;
   cW_ = 0.3; 
   fpush_ = 1.0;
-  alpha0_ = 0.02; // 0.02; 
+  alpha0_ = 0.02; // 0.01; 
   target_df_ = 0.5;
   df_lo_ = -0.1, 
   df_hi_ = 1.1;
@@ -92,7 +114,7 @@ ProbLineSearch::ProbLineSearch(void)
   new_search_ = false;
 }
 
-int ProbLineSearch::set_parameters(const double& c1, const double& cW, 
+void ProbLineSearch::set_parameters(const double& c1, const double& cW, 
   const double& fpush, const double& alpha0, const double& target_df, 
   const double& df_lo, const double& df_hi, const int& max_steps, 
   const int& max_expl, const double& max_dmu0, 
@@ -102,8 +124,6 @@ int ProbLineSearch::set_parameters(const double& c1, const double& cW,
   df_lo_=df_lo; df_hi_=df_hi; max_steps_=max_steps; max_expl_=max_expl;
   max_dmu0_=max_dmu0; max_change_factor_=max_change_factor;
   expl_policy_=expl_policy;
-
-  return 0;
 } 
 
 double ProbLineSearch::start(const double& en, const double& en_err, 
@@ -215,7 +235,7 @@ double ProbLineSearch::do_step(const double& en, const double& en_err,
 
   accept_status = accept_step();
   if (accept_status == true) {
-    if (abort_status2_) message = "abort";
+    if (abort_status2_) message = "aborted";
     else message = "ok";
     // start new search next
     new_search_ = true; 
@@ -549,17 +569,16 @@ double ProbLineSearch::projected_gradvar(const RealVector& grad_err, const RealV
   return sum; // variance, not stddev
 }
 
-
 /*
 Gaussian process functionality needed for the probabilistic
 line search algorithm.
 */
 
-int ProbLineSearchGP::init(const double& theta, const double& offset)
+ProbLineSearchGP::ProbLineSearchGP(void)
 {
-  theta_ = theta;
-  theta_sq_ = theta*theta;
-  offset_ = offset;
+  theta_ = 1.0;
+  theta_sq_ = theta_*theta_;
+  offset_ = 10.0; // 10.0
   N_ = 0;
   ts_.clear();
   fs_.clear();
@@ -568,6 +587,12 @@ int ProbLineSearchGP::init(const double& theta, const double& offset)
   dfvars_.clear();
   ready_ = false;
   have_min_obs_ = false;
+}
+
+int ProbLineSearchGP::set_parameters(const double& theta, const double& offset)
+{
+  theta_ = theta;
+  offset_ = offset;
   return 0;
 }
 
@@ -583,17 +608,6 @@ int ProbLineSearchGP::reset(void)
   ready_ = false;
   have_min_obs_ = false;
 
-
-  // Kernel matrices
-  /*
-  kernel_K_.clear();
-  kernel_Kd_.clear();
-  kernel_dKd_.clear();
-
-  // Gram matrix and pre-computed "weights" of the GP
-  G_.clear();
-  w_.clear();
-  */
   return 0;
 }
 
@@ -1022,8 +1036,6 @@ double ProbLineSearchGP::get_d2kd(const double& x, const double& y) const
 
 int ProbLineSearchGP::test(void) 
 {
-  init();
-
   // quadratic polynomial solve
   auto sol = quad_poly_solve(1., 3., -2., -4.);
   std::cout << "sol : ["; 

@@ -4,12 +4,10 @@
 #---------------------------------------
 #---------------------------------------
 job = "VMC Simulation"
-optimizing_run = "YES"
+optimizing_run = "NO"
 mode = "NEW"
 print_level = -2
 prefix = "swave"
-#mpi_mode = "BC_TWIST" 
-#mpi_mode = "NORMAL" 
 #---------------------------------------
 lattice = "NICKELATE_2L"
 lsize1 = 10
@@ -28,9 +26,9 @@ U     =  -6.000000
 #---------------------------------------
 wavefunction = "SC_SWAVE"
 #wavefunction = "FERMISEA"
-gutzwiller_proj = "YES"
-gfactor = 1.267940E+00
-hole_doping = 0.3;  0.160000;
+gw_projector = "YES"
+gw_factor = 1.267940E+00
+hole_doping = 0.3
 #delta_sc =  1.8
 delta_N = 1.162792E+00 
 delta_R = 0.02
@@ -48,17 +46,17 @@ SiteOccupancy = "NO"
 #---------------------------------------
 rng_seed = 0
 measure_steps = 5000
-warmup_steps = 1000
+warmup_steps = 5000
 min_interval = 3
 max_interval = 10
 #---------------------------------------
-sr_progress_stdout = "YES"
-sr_progress_log = "YES"
-sr_measure_steps = 10000
-sr_opt_samples = 3
-sr_max_iter = 200
-sr_start_tstep =   0.080000
-sr_flat_tail_len = 20
-sr_random_start = "YES"
-sr_rslope_tol =   0.010000
-sr_aslope_tol =   0.000010
+opt_progress_stdout = "YES"
+opt_progress_log = "YES"
+opt_num_samples = 1
+opt_max_iter = 200
+opt_pls_steps = 50
+opt_start_tstep = 0.080
+opt_refinement_cycle = 40
+opt_mkseries_len = 10
+opt_mkfluct_tol = 0.3
+opt_gradtol = 1.0E-3
