@@ -20,7 +20,7 @@ endif
 #-------------------------------------------------------------
 WAVEFUNC=REAL
 ifeq ($(WAVEFUNC), REAL)
-  CPPFLAGS += -DREAL_WAVEFUNCTION -DEIGEN_NO_DEBUG 
+  CPPFLAGS += -DREAL_WAVEFUNCTION #-DEIGEN_NO_DEBUG 
 else
   CPPFLAGS += -DEIGEN_NO_DEBUG 
 endif

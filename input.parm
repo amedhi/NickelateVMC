@@ -6,8 +6,7 @@
 # Job Specification 
 #---------------------------------------------
 job = "VMC Simulation" 
-#mpi_mode = "BC_TWIST" # "NORMAL"
-optimizing_run = "NO" 
+optimizing_run = "YES" 
 mode = "NEW" # ("NEW"/"APPEND")
 print_level = -2 #-2
 prefix="hub"
@@ -36,12 +35,12 @@ wavefunction = "SC_DWAVE"
 gw_projector = "YES"
 dh_projector = "NO"
 dhfactor1 = 0.5
-gw_factor = 0.3037
-hole_doping = 0.16
-delta_sc = 0.08
+gw_factor = 0.1 # 0.3037
+hole_doping = 0.16;
+delta_sc = 0.5 # 0.08
 mu = -0.4263000
 mu_default = "NO"
-mu_variational = "YES"
+mu_variational = "NO"
 #as_func_of = "hole_doping"
 as_func_of = "delta_sc"
 
@@ -67,16 +66,15 @@ max_interval = 10
 #---------------------------------------------
 # Optimization parameters
 #---------------------------------------------
-sr_progress_stdout = "YES"
-sr_progress_log = "YES"
-sr_random_start = "NO"
-sr_opt_samples = 3
-sr_max_iter = 200
-sr_start_tstep = 0.1
-sr_refinement_cycle = 40
-sr_mkseries_len = 30
-sr_mkfluct_tol = 0.3
-sr_gradtol = 5.0E-4
+opt_progress_stdout = "YES"
+opt_progress_log = "YES"
+opt_num_samples = 1
+opt_maxiter = 100
+opt_start_tstep = 0.1
+opt_refinement_cycle = 40
+opt_mkseries_len = 10
+opt_mkfluct_tol = 0.3
+opt_gradtol = 5.0E-4
 
 
 #sr_flat_tail_len = 10

@@ -78,6 +78,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
     }
     // variational parameters
+    //std::cout << " ALERT: 'delta_sc' variational param switched OFF\n";
     defval = mf_model_.get_parameter_value("delta_sc");
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
     add_chemical_potential(inputs);

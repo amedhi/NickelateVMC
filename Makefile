@@ -40,10 +40,12 @@ SRCS+= vmc/energy.cpp
 SRCS+= vmc/sccorr.cpp
 SRCS+= vmc/particle.cpp
 SRCS+= vmc/observables.cpp
-SRCS+= vmc/stochastic_reconf.cpp
-SRCS+= optimizer/optimizer.cpp
+#SRCS+= vmc/stochastic_reconf.cpp
 #SRCS+= vmc/measurement.cpp
 SRCS+= vmc/vmc.cpp
+SRCS+= vmc/vmcrun.cpp
+SRCS+= vmc/opt/prob_linesearch.cpp
+SRCS+= vmc/optimizer.cpp
 SRCS+= vmc/simulator.cpp
 SRCS+= main.cpp
 VMC_SRCS = $(addprefix src/,$(SRCS))
@@ -79,8 +81,10 @@ HDRS=    scheduler/mpi_comm.h \
 	 vmc/observables.h \
 	 vmc/random.h  vmc/basisstate.h vmc/sysconfig.h \
 	 vmc/disorder.h \
-	 vmc/stochastic_reconf.h \
 	 vmc/vmc.h \
+	 vmc/vmcrun.h \
+	 vmc/opt/prob_lineseach.h \
+	 vmc/optimizer.h \
 	 vmc/simulator.h \
 	 vmcpp.h \
 #-------------------------------------------------------------

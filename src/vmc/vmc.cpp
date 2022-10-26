@@ -75,7 +75,7 @@ int VMC::disorder_start(const input::Parameters& inputs,
     case run_mode::normal:
       if (observables.energy_grad()) with_psi_grad = true;
       break;
-    case run_mode::energy_function:
+    case run_mode::en_function:
       observables.switch_off();
       observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
@@ -94,18 +94,13 @@ int VMC::disorder_start(const input::Parameters& inputs,
   return config.build(lattice,site_disorder_.get_optimal_parms(),with_psi_grad);
 }
 
-
-int VMC::start(const input::Parameters& inputs, const run_mode& mode, 
-  const bool& silent)
+int VMC::set_run_mode(const run_mode& mode)
 {
-  //config.rng().seed(inputs.set_value("rng_seed", 1));
   run_mode_ = mode;
-  bool with_psi_grad = false;
   switch (mode) {
     case run_mode::normal:
-      if (observables.energy_grad()) with_psi_grad = true;
       break;
-    case run_mode::energy_function:
+    case run_mode::en_function:
       observables.switch_off();
       observables.energy().setup(lattice,model);
       observables.energy_grad().setup(config);
@@ -117,9 +112,20 @@ int VMC::start(const input::Parameters& inputs, const run_mode& mode,
       observables.sr_matrix().setup(lattice,config);
       break;
   }
+  return 0;
+}
+
+int VMC::start(const input::Parameters& inputs, const run_mode& mode, 
+  const bool& silent)
+{
+  config.rng().seed(rng_seed_);
   silent_mode_ = silent;
   if (inputs.have_option_quiet()) silent_mode_ = true;
+  set_run_mode(mode);
+
   // build config
+  bool with_psi_grad = false;
+  if (observables.energy_grad()) with_psi_grad = true;
   config.build(lattice, inputs, with_psi_grad);
 
   // xvariables
@@ -132,11 +138,57 @@ int VMC::start(const input::Parameters& inputs, const run_mode& mode,
   return 0;
 }
 
-int VMC::energy_function(const Eigen::VectorXd& varp, double& en_mean, 
-  double& en_stddev, Eigen::VectorXd& grad)
+int VMC::start(const var::parm_vector& varp, const run_mode& mode, const bool& silent) 
 {
-  int rng_seed = 1;
-  config.rng().seed(rng_seed);
+  silent_mode_ = silent;
+  set_run_mode(mode);
+  config.rng().seed(rng_seed_);
+  bool with_psi_grad = false;
+  if (observables.energy_grad()) with_psi_grad = true;
+  return config.build(lattice,varp,with_psi_grad);
+  return 0;
+}
+
+int VMC::build_config(const Eigen::VectorXd& varp, const bool& with_psi_grad) 
+{
+  config.rng().seed(rng_seed_);
+  return config.build(lattice, varp, with_psi_grad);
+}
+
+int VMC::sr_function(const var::parm_vector& varp, double& en_mean, 
+  double& en_err, RealVector& grad, RealVector& grad_err, RealMatrix& sr_matrix,
+  const bool& silent)
+{
+  if (rng_seed_ >= 0) {
+    config.rng().seed(rng_seed_);
+  }
+  silent_mode_ = silent;
+  set_run_mode(run_mode::sr_function);
+  // build the config from the variational parameters
+  bool with_psi_grad = true;
+  config.build(lattice, varp, with_psi_grad);
+  // run the simulation
+  run_simulation();
+  // energy
+  en_mean = observables.energy().mean();
+  en_err = observables.energy().stddev();
+  // gradient
+  grad = observables.energy_grad().mean_data();
+  grad_err = observables.energy_grad().stddev_data();
+  // sr matrix
+  observables.sr_matrix().get_matrix(sr_matrix);
+  return 0;
+}
+
+int VMC::en_function(const var::parm_vector& varp, double& en_mean, 
+  double& en_stddev, RealVector& grad, RealVector& grad_stddev,
+  const bool& silent)
+{
+  if (rng_seed_ >= 0) {
+    config.rng().seed(rng_seed_);
+  }
+  silent_mode_ = silent;
+  set_run_mode(run_mode::en_function);
   // build the config from the variational parameters
   bool with_psi_grad = true;
   config.build(lattice, varp, with_psi_grad);
@@ -147,34 +199,7 @@ int VMC::energy_function(const Eigen::VectorXd& varp, double& en_mean,
   en_stddev = observables.energy().stddev();
   // gradient
   grad = observables.energy_grad().mean_data();
-  return 0;
-}
-
-int VMC::build_config(const Eigen::VectorXd& varp, const bool& with_psi_grad) 
-{
-  config.rng().seed(rng_seed_);
-  return config.build(lattice, varp, with_psi_grad);
-}
-
-int VMC::sr_function(const Eigen::VectorXd& varp, double& en_mean, 
-  double& en_stddev, Eigen::VectorXd& grad, Eigen::MatrixXd& sr_matrix, 
-  const int& sample_size, const int& rng_seed)
-{
-  if (rng_seed >= 0) {
-    config.rng().seed(rng_seed);
-  }
-  // build the config from the variational parameters
-  bool with_psi_grad = true;
-  config.build(lattice, varp, with_psi_grad);
-  // run the simulation
-  run_simulation(sample_size);
-  // energy
-  en_mean = observables.energy().mean();
-  en_stddev = observables.energy().stddev();
-  // gradient
-  grad = observables.energy_grad().mean_data();
-  // sr matrix
-  observables.sr_matrix().get_matrix(sr_matrix);
+  grad_stddev = observables.energy_grad().stddev_data();
   return 0;
 }
 

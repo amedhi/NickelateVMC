@@ -19,7 +19,8 @@
 namespace mpi {
 
 enum {MP_make_task, MP_task_params, MP_run_task, MP_task_finished,
-  MP_quit_tasks, MP_data_samples, MP_variational_parms, MP_stop_simulation};
+  MP_quit_tasks, MP_data_samples, MP_variational_parms, 
+  MP_start_simulation, MP_stop_simulation};
 
 //const int MP_task_params = 0;
 //const int MP_run_task = 1;
@@ -82,7 +83,7 @@ public:
   mpi_communicator() {}
   ~mpi_communicator() {}
   int rank(void) const { return 0; }
-  int size(void) const { return 0; }
+  int size(void) const { return 1; }
   bool is_master(void) const { return rank()==0; }
   int master(void) const { return 0; }
   void send(int dest, int tag) const

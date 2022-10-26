@@ -109,6 +109,7 @@ public:
   void operator<<(const data_t& sample);
   void operator<<(const double& sample);
   const int& num_samples(void) const { return top_bin->num_samples(); }
+  //void set_propagated_stddev(const data_t& stddev) { propagated_stddev_ = stddev; }
   void finalize(void) const;
   void copy_finalize(const MC_Data& mcdata);
   const int& id(void) const { return id_; }
@@ -119,6 +120,7 @@ public:
   double mean(void) const; 
   const double& mean(const int& n) const; 
   const data_t& stddev_data(void) const; 
+  //const data_t& propagated_stddev(void) const { return propagated_stddev_; } 
   double stddev(void) const; // { return top_bin->stddev(); } 
   //const data_t& tau(void) const { finalize(); return tau_; } 
   const double& stddev(const int& n) const;
@@ -142,6 +144,7 @@ private:
   mutable int dcorr_level_;
   mutable data_t mean_;
   mutable data_t stddev_;
+  //mutable data_t propagated_stddev_; // in case of derived quantities
   mutable double tau_;
   mutable bool show_statistic_;
   mutable std::string error_converged_;
@@ -165,6 +168,7 @@ private:
     ar & dcorr_level_;
     ar & mean_;
     ar & stddev_;
+    //ar & propagated_stddev_;
     ar & tau_;
     ar & show_statistic_;
     ar & error_converged_;

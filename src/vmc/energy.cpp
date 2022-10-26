@@ -130,11 +130,54 @@ void EnergyGradient::setup(const SysConfig& config)
   grad_logpsi_.resize(config.num_varparms());
   config_value_.resize(2*config.num_varparms());
   //grad_terms_.resize(2*config.num_varparms());
-  grad_terms_.init("gradient_terms",2*config.num_varparms(),true);
-  total_en_.init("total_energy",1,true);
+  //grad_terms_.init("gradient_terms",2*config.num_varparms());
+  //total_en_.init("total_energy",1);
+
+  // for calculating gradients from partial sums
+  bool no_error_bar = true;
+  //partial_gsum_.resize(2*config.num_varparms());
+  partial_gsum_.init("partial_gsum",2*config.num_varparms(),no_error_bar);
+  partial_esum_.init("partial_esum",1,no_error_bar);
+
   setup_done_ = true;
 }
   
+void EnergyGradient::measure(const SysConfig& config, const double& config_energy)
+{
+  config.get_grad_logpsi(grad_logpsi_);
+  int n = 0;
+  for (int i=0; i<num_varp_; ++i) {
+    config_value_[n] = config_energy*grad_logpsi_[i];
+    config_value_[n+1] = grad_logpsi_[i];
+    n += 2;
+  }
+  partial_gsum_ << config_value_;
+  partial_esum_ << config_energy;
+
+  // compute gradient from partial sum (of 500 samples)
+  if (partial_esum_.num_samples()>=500) {
+    mcdata::data_t grad(num_varp_);
+    double Emean = partial_esum_.mean();
+    config_value_ = partial_gsum_.mean_data(); 
+    int n = 0;
+    for (int i=0; i<num_varp_; ++i) {
+      grad(i) = 2.0*(config_value_[n] - Emean*config_value_[n+1]);
+      n += 2;
+    }
+    // add sample
+    *this << grad;
+    // reset partial sums
+    partial_gsum_.reset();
+    partial_esum_.reset();
+  }
+}
+
+void EnergyGradient::finalize(void)
+{
+  // nothing to do
+}
+
+/*
 void EnergyGradient::measure(const SysConfig& config, const double& config_energy)
 {
   config.get_grad_logpsi(grad_logpsi_);
@@ -148,6 +191,29 @@ void EnergyGradient::measure(const SysConfig& config, const double& config_energ
   total_en_ << config_energy;
 }
 
+void EnergyGradient::finalize(void)
+{
+  double mean_energy = total_en_.mean();
+  config_value_ = grad_terms_.mean_data(); 
+  mcdata::data_t energy_grad(num_varp_);
+  int n = 0;
+  for (int i=0; i<num_varp_; ++i) {
+    energy_grad(i) = 2.0*(config_value_[n] - mean_energy*config_value_[n+1]);
+    n += 2;
+  }
+  //-------------------------------------------------
+  //std::cout << mean_energy << "\n";
+  //std::cout << config_value_.transpose() << "\n";
+  //for (int i=0; i<energy_grad_.size(); ++i) std::cout << energy_grad_[i] << "\n";
+  //-------------------------------------------------
+  *this << energy_grad;
+  // can we reset these now? not reseting...
+  //grad_terms_.reset();
+  //total_en_.reset();
+}
+*/
+
+/*
 #ifdef HAVE_BOOST_MPI
 void EnergyGradient::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
   const mpi::proc& p, const int& msg_tag)
@@ -176,28 +242,8 @@ void EnergyGradient::MPI_add_data(const mpi::mpi_communicator& mpi_comm,
   mcdata::MC_Observable::MPI_add_data(mpi_comm, p, msg_tag);
 }
 #endif
+*/
 
-
-void EnergyGradient::finalize(void)
-{
-  double mean_energy = total_en_.mean();
-  config_value_ = grad_terms_.mean_data(); 
-  unsigned n = 0;
-  mcdata::data_t energy_grad(num_varp_);
-  for (unsigned i=0; i<num_varp_; ++i) {
-    energy_grad(i) = 2.0*(config_value_[n] - mean_energy*config_value_[n+1]);
-    n += 2;
-  }
-  //-------------------------------------------------
-  //std::cout << mean_energy << "\n";
-  //std::cout << config_value_.transpose() << "\n";
-  //for (int i=0; i<energy_grad_.size(); ++i) std::cout << energy_grad_[i] << "\n";
-  //-------------------------------------------------
-  *this << energy_grad;
-  // can we reset these now?
-  grad_terms_.reset();
-  total_en_.reset();
-}
 
 //-------------------SR_Matrix (Stochastic Reconfiguration)---------------
 void SR_Matrix::setup(const lattice::Lattice& lattice, const SysConfig& config)

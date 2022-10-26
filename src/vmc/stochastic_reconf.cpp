@@ -410,21 +410,20 @@ int StochasticReconf::optimize(VMC& vmc)
   double energy, error_bar;
   int sim_samples = num_sim_samples_;
   int rng_seed = 1;
+  RealVector grad_err(num_parms_);
   for (int sample=1; sample<=num_opt_samples_; ++sample) {
     start(vmc, sample);
     vparms_ = vparms_start_;
     bool done = false;
     while (!done) {
       exit_stat status;
-      vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,sim_samples,rng_seed);
+      vmc.sr_function(vparms_,energy,error_bar,grad_,grad_err,sr_matrix_);
       done=iterate(vparms_,energy,error_bar,grad_,sr_matrix_,status);
     }
     finalize();
   }
   return true;
 }
-
-
 
 int StochasticReconf::optimize_old(VMC& vmc)
 {
@@ -517,6 +516,7 @@ int StochasticReconf::optimize_old(VMC& vmc)
     std::vector<double> iter_gnorm;
     std::deque<mcdata::data_t> iter_vparms;
     std::deque<mcdata::data_t> iter_grads;
+    RealVector grad_err(num_parms_);
     RealVector vparm_slope(num_parms_);
     RealVector grads_slope(num_parms_);
     //bool ln_search = true;
@@ -548,7 +548,7 @@ int StochasticReconf::optimize_old(VMC& vmc)
           logfile_ << " iteration  =  "<<std::setw(6)<<iter<<"(SA step)"<<"\n";
       }
 
-      vmc.sr_function(vparms_,energy,error_bar,grad_,sr_matrix_,sim_samples,rng_seed);
+      vmc.sr_function(vparms_,energy,error_bar,grad_,grad_err,sr_matrix_);
       // apply to stabilizer to sr matrix 
       // std::cout << sr_matrix_ << "\n"; getchar();
       //for (int i=0; i<num_parms_; ++i) sr_matrix_(i,i) += stabilizer_;
@@ -884,6 +884,7 @@ bool StochasticReconf::line_search(VMC& vmc, Eigen::VectorXd& x,
   double& fx, double& fx_err, Eigen::VectorXd& grad, 
   const Eigen::VectorXd& dir, const double& max_step) 
 {
+  Eigen::VectorXd gerr(x.size());
   // save the function value at the current x
   const Eigen::VectorXd x_init = x;
   const double fx_init = fx;
@@ -904,7 +905,8 @@ bool StochasticReconf::line_search(VMC& vmc, Eigen::VectorXd& x,
     //std::cout << " step= " << step << "\n";
     x.noalias() = x_init + step * dir;
     // evaluate this candidate
-    vmc(x,fx,fx_err,grad);
+    //vmc(x,fx,fx_err,grad);
+    vmc(x,fx,fx_err,grad,gerr);
     //std::cout << " fx_next = " << fx << "\n";
     //std::cout << " gain = " << fx_init-fx << "\n\n";
     if (fx < fx_init + std::min(err_tol, step*decr_factor)) {

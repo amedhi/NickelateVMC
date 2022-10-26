@@ -8,12 +8,11 @@
 
 #include <iostream>
 #include "./vmc.h"
-#include "./stochastic_reconf.h"
+//#include "./stochastic_reconf.h"
+#include "./optimizer.h"
 //#include "../optimizer/optimizer.h"
 
 namespace vmc {
-
-enum class mpi_mode {NORMAL, BC_TWIST};
 
 class Simulator : public scheduler::Worker
 {
@@ -28,11 +27,12 @@ public:
   void dostep(void) override {} 
   void halt(void) override {} 
   static void print_copyright(std::ostream& os);
-  const VMC& sim(void) { return vmc; }
+  //const VMC& sim(void) { return vmc; }
   //const var::parm_vector& vp(void) { return varparms; }
 private:
-  VMC vmc;
-  StochasticReconf sreconf;
+  VMCRun vmc_;
+  Optimizer optimizer_;
+  //StochasticReconf sreconf;
   //opt::Optimizer optimizer_;
   mpi_mode mpi_mode_; 
   bool optimization_mode_{false};

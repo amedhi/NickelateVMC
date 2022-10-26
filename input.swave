@@ -4,20 +4,20 @@
 #---------------------------------------
 #---------------------------------------
 job = "VMC Simulation"
-optimizing_run = "NO"
+optimizing_run = "YES"
 mode = "NEW"
 print_level = -2
 prefix = "swave"
 #mpi_mode = "BC_TWIST" 
-mpi_mode = "NORMAL" 
+#mpi_mode = "NORMAL" 
 #---------------------------------------
 lattice = "NICKELATE_2L"
 lsize1 = 10
 lsize2 = 10
 bc1 = "periodic"
 bc2 = "periodic"
-bc1_twists = 1
-bc2_twists = 1
+bc1_twists = 4
+bc2_twists = 4
 #---------------------------------------
 model = "HUBBARD"
 e_R   =  -2.500000
@@ -30,7 +30,7 @@ wavefunction = "SC_SWAVE"
 #wavefunction = "FERMISEA"
 gutzwiller_proj = "YES"
 gfactor = 1.267940E+00
-hole_doping = 0.3 #   0.160000
+hole_doping = 0.3;  0.160000;
 #delta_sc =  1.8
 delta_N = 1.162792E+00 
 delta_R = 0.02

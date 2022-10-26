@@ -150,6 +150,7 @@ void MC_Data::clear(void)
   dcorr_level_ = 0;
   mean_ = top_bin->mean();
   stddev_ = top_bin->stddev();
+  //propagated_stddev_.setZero();
   tau_ = -1.0;
   show_statistic_ = false;
   error_converged_ = "NOT_CONVD";
