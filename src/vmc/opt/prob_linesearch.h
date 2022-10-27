@@ -99,8 +99,9 @@ public:
     const std::string& expl_policy="linear");
   void set_c1(const double& c1) { c1_=c1; }
   void set_cW(const double& cW) { cW_=cW; }
-  void set_alpha0(const double& alpha0) { alpha0_=alpha0; }
+  void set_alpha0(const double& alpha0) { alpha0_=alpha0; alpha_stats_=alpha0; }
   void set_target_df(const double& df) { target_df_=df; }
+  void set_fpush(const double& fpush) { fpush_=fpush; }
   double start(const double& en, const double& en_err, const RealVector& grad, 
     const RealVector& grad_err, const RealVector& search_dir);
   double do_step(const double& en, const double& en_err, const RealVector& grad, const RealVector& grad_err, 
@@ -112,6 +113,7 @@ private:
   double cW_; 
   double fpush_; 
   double alpha0_; 
+  double alpha_stats_; 
   double target_df_;
   double df_lo_;
   double df_hi_; 
@@ -143,7 +145,7 @@ double rescale_t(const double& raw_t) const;
 double find_next_t(void);
 double find_abort_t(void);
 double compute_p_wolfe(const double& t);
-bool accept_step(void);
+bool check_acceptibility(void);
 double bounded_bivariate_normal_integral(const double& rho, const double& xl, 
   const double& xu, const double& yl, const double& yu) const;
 double unbounded_bivariate_normal_integral(const double& rho, const double& xl, 

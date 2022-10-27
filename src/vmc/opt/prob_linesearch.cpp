@@ -97,8 +97,9 @@ ProbLineSearch::ProbLineSearch(void)
 {
   c1_ = 0.05;
   cW_ = 0.3; 
-  fpush_ = 1.0;
+  fpush_ = 1.0; 
   alpha0_ = 0.02; // 0.01; 
+  alpha_stats_ = alpha0_;
   target_df_ = 0.5;
   df_lo_ = -0.1, 
   df_hi_ = 1.1;
@@ -233,10 +234,32 @@ double ProbLineSearch::do_step(const double& en, const double& en_err,
   dt = rescale_t(next_t-current_t_);
   current_t_ = next_t;
 
-  accept_status = accept_step();
+  accept_status = check_acceptibility();
   if (accept_status == true) {
     if (abort_status2_) message = "aborted";
     else message = "ok";
+
+    /*
+    # If this accept was not due to an abort and the step size did not change
+    # *too much*, we use the accepted alpha as the new base step size alpha0
+    # (and update a running average alpha_stats). Otherwise, we use said
+    # running average as the new base step size.
+    */
+    /*
+    double mcf = max_change_factor_; 
+    double alpha = rescale_t(current_t_);
+    bool alpha_good = false;
+    if (alpha0_/mcf<alpha && alpha<alpha0_*mcf) alpha_good = true;
+    if (!abort_status2_ && alpha_good) {
+      alpha_stats_ = 0.95*alpha_stats_ + 0.05*alpha;
+      alpha0_ = fpush_*alpha;
+    }
+    else {
+      alpha0_ = alpha_stats_;
+    }
+    std::cout << "\n alpha0_ = " << alpha0_ << "\n";
+    */
+
     // start new search next
     new_search_ = true; 
   }
@@ -247,7 +270,7 @@ double ProbLineSearch::do_step(const double& en, const double& en_err,
   return dt;
 }
 
-bool ProbLineSearch::accept_step(void) 
+bool ProbLineSearch::check_acceptibility(void) 
 {
   if (num_steps_ == 0) return false;
 
