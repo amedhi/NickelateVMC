@@ -20,7 +20,8 @@
 
 namespace var {
 
-constexpr double gw_cutoff(void) { return 1.0E-8; } 
+//constexpr double gw_cutoff(void) { return 1.0E-8; } 
+constexpr double gw_cutoff(void) { return 1.0E-3; } 
 
 enum class pp {gutzwiller, end};
 

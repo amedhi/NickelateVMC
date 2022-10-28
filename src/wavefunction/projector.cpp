@@ -143,7 +143,7 @@ void WavefunProjector::get_vparm_ubound(var::parm_vector& vparm_ub,
 bool WavefunProjector::gwfactor_is_zero(void) const
 {
   if (num_site_types_ == 1) {
-    return varparms_["gw_factor"].value() < gw_cutoff();
+    return varparms_["gw_factor"].value() <= gw_cutoff();
   }
   else {
     return false;
@@ -227,9 +227,11 @@ int WavefunProjector::init_gw_projector(const lattice::Lattice& lattice, const i
       if (num_site_types_ == 1) pname = "gw_factor";
       else pname = "gw_factor"+std::to_string(n+1);
       double g = inputs.set_value(pname, 1.0);
-      if (g<0.0) throw std::range_error("WavefunProjector::init: out-of-range 'g'-value.");
+      //if (g<0.0) throw std::range_error("WavefunProjector::init: out-of-range 'g'-value.");
+      if (g<gw_cutoff()) throw std::range_error("WavefunProjector::init: out-of-range 'g'-value.");
       gw_factor_[n] = g;
-      varparms_.add(pname, g, 1.0E-4, 10.0);
+      //varparms_.add(pname, g, 1.0E-4, 10.0);
+      varparms_.add(pname, g, gw_cutoff(), 10.0);
     }
   }
   else {
