@@ -432,9 +432,11 @@ int Lattice::construct(const input::Parameters& parms)
     }
   }
   // check
-  //for (int i=0; i<num_total_twists_; ++i) {
-  //  std::cout << "twist["<<i<<"] = "<<twist_angles_.row(i)<<"\n";
-  //}
+  /*
+  for (int i=0; i<num_total_twists_; ++i) {
+    std::cout << "twist["<<i<<"] = "<<twist_angles_.row(i)<<"\n";
+  }
+  */
   //getchar();
 
   // empty unitcell
@@ -667,6 +669,7 @@ int Lattice::construct_graph(void)
       sign = -1;
       phase *= std::exp(ii()*bc3_twist());
     } 
+    if (std::abs(phase.imag())<1.0E-15) phase.imag(0.0); 
     b.reset_sign(sign);
     b.reset_phase(phase);
 
@@ -705,6 +708,7 @@ int Lattice::reset_boundary_twist(const int& twist_id)
     extent[dim].bc_twist = twist_angles_(twist_id,dim);
     //std::cout << "twist = " << extent[dim].bc_twist << "\n";
   }
+  //std::cout << "twist = " << twist_angles_.row(twist_id) << "\n";
   //std::cout << "\n";
 
   // reset bond phase values
@@ -720,7 +724,9 @@ int Lattice::reset_boundary_twist(const int& twist_id)
       if (b.bc_state()[2]==-1) {
         phase *= std::exp(ii()*bc3_twist());
       } 
+      if (std::abs(phase.imag())<1.0E-15) phase.imag(0.0); 
       b.reset_phase(phase);
+      //std::cout << "phase["<<b.id()<<"] = " << b.phase() << "\n";
     }
   }
 

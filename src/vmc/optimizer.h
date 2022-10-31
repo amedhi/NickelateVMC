@@ -98,6 +98,9 @@ private:
     const RealVector& search_dir);
   int SR_direction(const RealVector& grad, RealMatrix& srmat, RealMatrix& work_mat,
     RealVector& search_dir);
+  //int CG_step(VMCRun& vmc, RealVector& vparms, double& en, 
+  //  double& en_err,  RealVector& grad, RealVector& grad_err, 
+  //  RealVector& search_dir);
   double projected_gnorm(const RealVector& x, const RealVector& grad, 
     const RealVector& lb, const RealVector& ub) const;
   double series_avg(const std::deque<double>& data) const;

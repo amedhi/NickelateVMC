@@ -17,9 +17,16 @@ void Energy::setup(const lattice::Lattice& lattice,
   if (setup_done_) return;
   num_sites_ = lattice.num_sites();
   std::vector<std::string> elem_names;
+  std::vector<std::string> term_names;
+  /*
   model.get_term_names(elem_names);
   this->resize(elem_names.size(), elem_names);
   this->set_have_total();
+  */
+  // include the 'Total' as seperate component
+  model.get_term_names(term_names);
+  elem_names.push_back("Total");
+  for (const auto& s : term_names) elem_names.push_back(s);
   config_value_.resize(elem_names.size());
   setup_done_ = true;
 }
@@ -29,7 +36,8 @@ void Energy::measure(const lattice::Lattice& lattice,
   const SiteDisorder& site_disorder)
 {
   using op_id = model::op_id;
-  //for (auto& elem : config_value_) elem = 0.0;
+  // In the energy components below, 0-th component is for the total
+  int component = 1;
   config_value_.setZero();
   // bond energies
   if (model.have_bondterm()) {
@@ -40,19 +48,21 @@ void Energy::measure(const lattice::Lattice& lattice,
       unsigned site_i = b.src_id();
       unsigned site_j = b.tgt_id();
       // matrix elements each term & bond type
-      unsigned term = 0;
+      int bterm = 0;
       for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
-        matrix_elem(term,type) += config.apply(it->qn_operator(),site_i,site_j,
+        matrix_elem(bterm,type) += config.apply(it->qn_operator(),site_i,site_j,
           b.sign(),b.phase());
-        term++;
+        bterm++;
       }
     }
-    unsigned i = 0;
+    // sum the contributions
+    int bterm = 0;
     for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
       for (unsigned btype=0; btype<lattice.num_bond_types(); ++btype) {
-        config_value_(i) += std::real(it->coupling(btype)*matrix_elem(i,btype));
+        config_value_(component) += std::real(it->coupling(btype)*matrix_elem(bterm,btype));
       }
-      i++;
+      bterm++;
+      component++;
     }
   }
 
@@ -63,7 +73,7 @@ void Energy::measure(const lattice::Lattice& lattice,
     Eigen::VectorXi hubbard_nd(lattice.num_site_types());
     hubbard_nd.setZero();
     // do it little differently
-    int term = 0;
+    int sterm = 0;
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
@@ -73,34 +83,33 @@ void Energy::measure(const lattice::Lattice& lattice,
       }
       else {
         for (const auto& s : lattice.sites()) {
-          matrix_elem(term,s.type()) += config.apply(it->qn_operator(), s.id());
+          matrix_elem(sterm,s.type()) += config.apply(it->qn_operator(), s.id());
           //std::cout << config.apply(it->qn_operator(),site) << "\n"; getchar();
         }
       }
-      term++;
+      sterm++;
     }
-    int sterm = 0;
-    int n = model.num_bondterms();
+    sterm = 0;
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
         for (int stype=0; stype<lattice.num_site_types(); ++stype) {
-          config_value_(n+sterm) += std::real(it->coupling(stype))*hubbard_nd(stype);
+          config_value_(component) += std::real(it->coupling(stype))*hubbard_nd(stype);
         }
       }
       else {
         for (unsigned stype=0; stype<lattice.num_site_types(); ++stype) {
-          config_value_(n+sterm) += std::real(it->coupling(stype)*matrix_elem(sterm,stype));
+          config_value_(component) += std::real(it->coupling(stype)*matrix_elem(sterm,stype));
         }
       }
       sterm++;
+      component++;
     }
   }
 
   // disorder term
   if (site_disorder) {
     //std::cout << "\ndisorder energy\n"; 
-    unsigned n = model.num_bondterms()+model.num_siteterms();
     double disorder_en = 0.0;
     for (const auto& s : lattice.sites()) {
       int n_i = config.apply(model::op::ni_sigma(), s.id());
@@ -109,13 +118,17 @@ void Energy::measure(const lattice::Lattice& lattice,
       //std::cout <<" V= "<<site_disorder.potential(site)<<"\n";
       //std::cout << "E+ = " << disorder_en << "\n"; 
     }
-    config_value_(n) = disorder_en;
+    config_value_(component) = disorder_en;
     //std::cout << "\ndisorder_en = " << disorder_en << "\n"; getchar();
   }
 
   // energy per site
+  double total = config_value_.sum();
+  config_value_(0) = total;
   config_value_ /= num_sites_;
-  // std::cout << "config_energy = " << config_value_ << "\n"; getchar();
+  //std::cout << "config_energy = " << config_value_.transpose() << "\n"; 
+  //getchar();
+
   // add to databin
   *this << config_value_;
 }

@@ -77,6 +77,19 @@ int Wavefunction::compute(const lattice::Lattice& lattice,
     have_gradient_ = true;
   }
   else have_gradient_ = false;
+
+  /*
+  std::cout << "Wavefunction::compute\n";
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      if (std::abs(psi_up_(i,j).imag())>1.0E-6) {
+        std::cout << "psi["<<i<<","<<j<<"] = "<<std::imag(psi_up_(i,j))<<"\n";
+      }
+    }
+  }
+  */
+
+
   return 0;
 }
 
@@ -103,6 +116,16 @@ int Wavefunction::recompute(const lattice::Lattice& lattice)
     groundstate_->get_wf_gradient(psi_gradient_);
     //std::cout << "get_wf_gradient\n"; getchar();
   }
+  /*
+  std::cout << "Wavefunction::recompute\n";
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      if (std::abs(psi_up_(i,j).imag())>1.0E-6) {
+        std::cout << "wf["<<i<<","<<j<<"] = "<<std::imag(psi_up_(i,j))<<"\n";
+      }
+    }
+  }
+  */
   return 0;
 }
 
@@ -117,15 +140,17 @@ void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& row,
 void Wavefunction::get_amplitudes(ColVector& psi_vec, const int& irow,  
     const std::vector<int>& col) const
 {
-  for (unsigned j=0; j<col.size(); ++j)
+  for (unsigned j=0; j<col.size(); ++j) {
     psi_vec[j] = psi_up_(irow,col[j]);
+  }
 }
 
 void Wavefunction::get_amplitudes(RowVector& psi_vec, const std::vector<int>& row,
     const int& icol) const
 {
-  for (unsigned j=0; j<row.size(); ++j)
+  for (unsigned j=0; j<row.size(); ++j) {
     psi_vec[j] = psi_up_(row[j],icol);
+  }
 }
 
 void Wavefunction::get_amplitudes(amplitude_t& elem, const int& irow, 

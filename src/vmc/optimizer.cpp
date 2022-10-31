@@ -242,6 +242,7 @@ int Optimizer::optimize(VMCRun& vmc)
       if (print_progress_) print_progress(std::cout, iter, "SR");
       if (print_log_) print_progress(logfile_, iter, "SR");
 
+
       // SR search direction
       vmc.run(vparms,en,en_err,grad,grad_err,sr_matrix,silent);
       SR_direction(grad,sr_matrix,work_mat,search_dir);
@@ -318,6 +319,7 @@ int Optimizer::optimize(VMCRun& vmc)
       if (iter <= num_probls_steps_) {
         // Line search
         line_search(vmc,vparms,en,en_err,grad,grad_err,search_dir);
+        //CG_step(vmc,vparms,en,en_err,grad,grad_err,search_dir);
       }
       else {
         // Fixed sized step beyond this iteration
@@ -587,6 +589,74 @@ double Optimizer::series_avg(const std::deque<double>& data) const
   for (const auto& d : data) sum += d;
   return sum/data.size();
 }
+
+/*
+int Optimizer::CG_step(VMCRun& vmc, RealVector& vparms, double& en, 
+  double& en_err,  RealVector& grad, RealVector& grad_err, 
+  RealVector& search_dir)
+{
+  RealVector grad_prev(num_parms_);
+  RealVector grad_next(num_parms_);
+  double gnorm;
+
+  // initial learning rate
+  double eta = 0.001;
+
+  // HD learning rate
+  double alpha = 0.01;
+
+  // initial quantities
+  //vmc.run(vparms,en,en_err,grad,grad_err,true);
+  grad_prev = grad;
+  search_dir = -grad;
+  gnorm = grad.squaredNorm();
+
+  for (int k=0; k<10; ++k) {
+    if (print_progress_) {
+      std::cout<<"\n CG step   =  "<<eta<<"\n";
+      std::cout<<" energy   =  "<<en<<"\n";
+  std::cout << " varp        =";
+  for (int i=0; i<num_parms_print_; ++i) std::cout<<std::setw(12)<<vparms[i];
+  std::cout << "\n";
+  std::cout << " grad        =";
+  for (int i=0; i<num_parms_print_; ++i) std::cout<<std::setw(12)<<grad[i];
+  std::cout << "\n";
+  std::cout << " search_dir  =";
+  for (int i=0; i<num_parms_print_; ++i) std::cout<<std::setw(12)<<search_dir[i];
+  std::cout << "\n";
+  std::cout << " gnorm       ="<<std::setw(12)<< gnorm << "\n";
+    } 
+
+    // update parameters
+    vparms.noalias() += eta * search_dir;
+    vparms = lbound_.cwiseMax(vparms.cwiseMin(ubound_));
+
+    // quantities for next iteration
+    vmc.run(vparms,en,en_err,grad_next,grad_err,true);
+
+    // update learning rate
+    if (k >= 1) {
+      double hk = grad.dot(grad_prev);
+      eta = std::abs(eta + alpha*hk);
+      grad_prev = grad;
+    }
+
+    // calculate beta
+    double gnorm_next = grad_next.squaredNorm();
+    double beta = gnorm_next/gnorm;
+
+    // update search direction
+    search_dir = -grad_next + beta * grad;
+
+    // current gradient
+    grad = grad_next;
+    gnorm = gnorm_next;
+  }
+
+  return 0;
+}
+*/
+
 
 } // end namespace vmc
 

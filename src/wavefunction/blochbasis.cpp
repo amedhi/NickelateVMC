@@ -128,6 +128,7 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
   antipb_shift(0) = lattice.bc1_twist()/(two_pi()*lattice.size1());
   antipb_shift(1) = lattice.bc2_twist()/(two_pi()*lattice.size2());
   antipb_shift(2) = lattice.bc3_twist()/(two_pi()*lattice.size3());
+  //std::cout << "k-shift = " << antipb_shift.transpose() << "\n";
 
   // k-points & translation vectors
   double x1, x2, x3;

@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-10-26 15:53:29
+* @Last Modified time: 2022-10-31 12:06:26
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -219,69 +219,26 @@ int VMCRun::stop_worker_run(void)
   return 0;
 }
 
-
-#ifdef ON
-int VMCRun::mpirun(const input::Parameters& inputs, const mpi::mpi_communicator& mpi_comm) 
+// for external optimizers
+/*
+bool VMCRun::Evaluate(const double* parameters, double* cost, double* gradient)
 {
-  if (mpi_comm.is_master()) {
-    if (!inputs.have_option_quiet()) std::cout << " starting vmc run in normal MPI mode\n";
+  double x = parameters[0];
+  double y = parameters[1];
+  cost[0] = (1.0 - x) * (1.0 - x) + 100.0 * (y - x * x) * (y - x * x);
+  if (gradient) {
+     gradient[0] = -2.0 * (1.0 - x) - 200.0 * (y - x * x) * 2.0 * x;
+     gradient[1] = 200.0 * (y - x * x);
   }
-  // every procs
-  start(inputs,run_mode::normal,true);
-  run_simulation();
-  // collect samples
-  if (mpi_comm.is_master()) {
-    for (const mpi::proc& p : working_procs) {
-      //std::cout << "reciving results from p = " << p << "\n";
-      MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
-    }
-    finalize_results();
-  	print_results();
-  }
-  else {
-    //std::cout << "sending results from p = " << mpi_comm.rank() << "\n";
-    MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
-  }
-  return 0;
+  return true;
 }
 
-int VMCRun::master_run(const Eigen::VectorXd& vparms, double& en_mean, double& en_stddev,
-  Eigen::VectorXd& grad, Eigen::MatrixXd& sr_matrix, const mpi::mpi_communicator& mpi_comm)
-{
-  bool with_psi_grad = true;
-  build_config(vparms, with_psi_grad);
-  reset_observables();
-  do_warmup_run();
-  do_measure_run(num_samples_);
-  // recieve from works
-  for (const mpi::proc& p : working_procs) {
-    MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
-  }
-  finalize_results();
+int VMCRun::NumParameters(void) const 
+{ 
+  return 2; 
 }
+*/
 
-int VMCRun::worker_run(const mpi::mpi_communicator& mpi_comm)
-{
-  while (true) {
-  	mpi::mpi_status msg = mpi_comm.probe();
-  	switch (msg:tag()) {
-  	  case mpi::MP_start_simulation:
-  		bool with_psi_grad = true;
-  		build_config(vparms, with_psi_grad);
-  		reset_observables();
-  		do_warmup_run();
-  		do_measure_run(num_samples_);
-    	MPI_send_results(mpi_comm, mpi_comm.master(), mpi::MP_data_samples);
-  	  	break;
-  	  case mpi::MP_stop_simulation:
-        mpi_comm.recv(msg.source(), msg.tag());
-        return 0;
-  	  default: break;
-  	}
-  }
-  return 0;
-}
-#endif
 
 
 } // end namespace vmc

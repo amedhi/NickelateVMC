@@ -3,7 +3,7 @@ PROJECT_ROOT=/Users/amedhi/Projects/Codes/VMC/MainVMC
 
 #-------------------------------------------------------------
 # need mpi version
-MPI=HAVE_BOOST_MPI
+#MPI=HAVE_BOOST_MPI
 
 #-------------------------------------------------------------
 # 1. Set compiler option
@@ -43,7 +43,7 @@ OPTFLAGS= -Wall -O3
 # 3. Boost and Eigen library
 # Flags to give the compiler for "release mode"
 BOOST_INCLUDE=-I/usr/local/include
-EIGEN_INCLUDE=-I/usr/local/include
+EIGEN_INCLUDE=-I/usr/local/include/Eigen 
 
 # Boost MPI library
 ifeq ($(MPI), HAVE_BOOST_MPI)
@@ -68,7 +68,7 @@ ifneq ($(BOOST_INCLUDE), $(EIGEN_INCLUDE))
 endif
 
 CXXFLAGS = $(CPPFLAGS) $(OPTFLAGS) $(INCLUDE) #$(NLOPT_INCLUDE)
-LDFLAGS = $(BOOST_LDFLAGS) #$(NLOPT_LDFLAGS)  
+LDFLAGS = $(BOOST_LDFLAGS) $(CERES_LDFLAG) #$(NLOPT_LDFLAGS)  
 LIBS = $(BOOST_LIBS) #$(NLOPT_LIBS)  
 
 ifeq ($(EIGEN_USE_MKL), USE_INTEL_MKL_ALL)

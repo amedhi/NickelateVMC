@@ -233,6 +233,7 @@ public:
   int add_bond(const unsigned& type, const unsigned& src_id, 
     const unsigned& tgt_id, const Vector3i& tgt_offset, const int& ngb=1);
   int add_bond(const Bond& b); 
+  /*
   void set_boundary_twist(const int& twist_id) 
   {
     for (unsigned dim=dim1; dim<=dim3; ++dim) {
@@ -241,6 +242,7 @@ public:
     }
     //std::cout << "\n";
   }
+  */
   int reset_boundary_twist(const int& twist_id);
 
   // getter functions

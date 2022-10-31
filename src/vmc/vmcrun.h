@@ -27,6 +27,10 @@ public:
 	RealVector& grad, RealVector& grad_err, RealMatrix& sr_matrix, const bool& silent_mode=false);
   int run(const var::parm_vector& vparms, double& en, double& en_err,
 	RealVector& grad, RealVector& grad_err, const bool& silent_mode=false);
+  // external optimizer
+  //bool Evaluate(const double* parameters, double* cost, double* gradient) override;
+  //int NumParameters() const override;
+
   int start_worker_run(void);
   int stop_worker_run(void);
   //int start_worker_run(const mpi::mpi_communicator& mpi_comm);

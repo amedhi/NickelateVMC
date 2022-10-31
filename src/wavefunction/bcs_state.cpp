@@ -682,6 +682,7 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
 {
   // psi = FTU_ * PHI_K * conjugate(transpose(FTU_))
   // PHI_K is block diagonal (k-th block is phi_k) 
+  std::complex<double> ampl;
   int p = 0;
   for (int i=0; i<num_kpoints_; ++i) {
     int q = 0;
@@ -693,8 +694,12 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
       // copy transformed block
       //psi.block(p,q,kblock_dim_,kblock_dim_) = 
       for (int m=0; m<kblock_dim_; ++m) {
-        for (int n=0; n<kblock_dim_; ++n) 
-          psi(p+m,q+n) = ampl_part(work_(m,n));
+        for (int n=0; n<kblock_dim_; ++n) {
+          //psi(p+m,q+n) = ampl_part(work_(m,n));
+          ampl = work_(m,n);
+          if (std::abs(ampl.imag())<1.0E-15) ampl.imag(0.0);
+          psi(p+m,q+n) = ampl_part(ampl);
+        } 
       }
       q += kblock_dim_;
     }
@@ -704,9 +709,10 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
   for (int i=0; i<num_sites_; ++i) {
     for (int j=0; j<num_sites_; ++j) {
       std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
-      getchar();
+      //getchar();
     }
   }
+  getchar();
   */
 }
 
@@ -810,6 +816,7 @@ void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
       std::cout << "phi_k = " << dphi_k_(i,i) << "\n";
       getchar();
       */
+      //std::cout << "phi_k["<<k<<","<<i<<"] = "<<dphi_k_(i,i) <<"\n";
     }
     // bcs ampitudes in original basis 
     for (int i=0; i<kblock_dim_; ++i) 
