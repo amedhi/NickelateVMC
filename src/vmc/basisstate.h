@@ -89,6 +89,7 @@ public:
   int op_ni_updn(const int& site) const;
   int op_ni_dblon(const int& site) const;
   int op_ni_holon(const int& site) const;
+  int op_Sz(const int& site) const;
   bool op_cdagc_up_plus(const int& site_i, const int& site_j) const;
   bool op_cdagc_up(const int& frsite, const int& tosite) const;
   bool op_cdagc_dn_plus(const int& site_i, const int& site_j) const;
@@ -96,6 +97,10 @@ public:
   bool op_exchange_ud(const int& fr_site, const int& to_site) const;
   const std::vector<int>& upspin_sites(void) const { return upspin_sites_; }
   const std::vector<int>& dnspin_sites(void) const { return dnspin_sites_; }
+  void temporary_upspin_hop(const int& fr_site, const int& to_site) const;
+  void temporary_dnspin_hop(const int& fr_site, const int& to_site) const;
+  void undo_upspin_hop(void) const;
+  void undo_dnspin_hop(void) const;
   RandomGenerator& rng(void) const { return rng_; }
   friend std::ostream& operator<<(std::ostream& os, const BasisState& bs);
 private:
@@ -107,7 +112,7 @@ private:
   int num_dnholes_{0};
   int num_dblocc_sites_{0};
   bool double_occupancy_{true};
-  std::vector<SiteState> site_states_;
+  mutable std::vector<SiteState> site_states_;
   std::vector<int> upspin_sites_;
   std::vector<int> dnspin_sites_;
   std::vector<int> uphole_sites_;
@@ -123,6 +128,18 @@ private:
   mutable int dn_frsite_;
   mutable int dn_tosite_;
   mutable int mv_dnhole_;
+
+  // temporary change of state
+  mutable move_t temporary_move_{move_t::null};
+  mutable int tmp_mv_upspin_;
+  mutable int tmp_up_frsite_;
+  mutable int tmp_up_tosite_;
+  mutable int tmp_mv_uphole_;
+  mutable int tmp_mv_dnspin_;
+  mutable int tmp_dn_frsite_;
+  mutable int tmp_dn_tosite_;
+  mutable int tmp_mv_dnhole_;
+
   void clear(void); 
 };
 

@@ -32,9 +32,11 @@ public:
     const bool& silent=false);
   void seed_rng(const int& seed=1);
   int set_run_mode(const run_mode& mode);
-  int run_simulation(const int& sample_size=-1, 
-    const std::vector<int>& bc_list={-1});
-  int run_simulation(const Eigen::VectorXd& varp);
+  int run_simulation(void);
+  int run_simulation(const int& sample_size);
+  int run_simulation(const std::vector<int>& bc_list);
+  int run_simulation(const int& sample_size, const std::vector<int>& bc_list);
+  //int run_simulation(const Eigen::VectorXd& varp);
   int reset_observables(void);
   int do_warmup_run(void); 
   int do_measure_run(const int& num_samples); 

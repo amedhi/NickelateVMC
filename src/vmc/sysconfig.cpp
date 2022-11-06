@@ -5,6 +5,7 @@
 * Last Modified time: 2017-05-20 11:16:31
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
+#include <iomanip>
 #include "./sysconfig.h"
 #include <Eigen/SVD>
 
@@ -128,8 +129,8 @@ int SysConfig::init_config(void)
   // small 'gfactor' caution
   bool tmp_restriction = false;
   bool original_state = BasisState::double_occupancy();
-  if (pj.have_gutzwiller()) {
-    if (pj.gwfactor_is_zero()) {
+  if (pj.gw_projection()) {
+    if (pj.gw_projection_strong()) {
       BasisState::allow_double_occupancy(false);
       tmp_restriction = true;
     }
@@ -390,14 +391,14 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& site_i) cons
   switch (qn_op.id()) {
     case model::op_id::ni_sigma:
       return op_ni_up(site_i)+op_ni_dn(site_i);
-    /*
     case model::op_id::ni_up:
       return op_ni_up(site_i);
     case model::op_id::ni_dn:
       return op_ni_dn(site_i);
-    */
     case model::op_id::niup_nidn:
       return op_ni_updn(site_i); 
+    case model::op_id::Sz:
+      return op_Sz(site_i); 
     default: 
       throw std::range_error("SysConfig::apply: undefined site operator");
   }
@@ -414,7 +415,7 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
   if (site_i == site_j) return ampl_part(op_ni_up(site_i));
   if (op_cdagc_up(site_i,site_j)) {
     int upspin = which_upspin();
-    int delta_nd = dblocc_increament();
+    //int delta_nd = dblocc_increament();
     int to_site = site_j;
     // det_ratio for the term
     wf.get_amplitudes(psi_row, to_site, dnspin_sites());
@@ -430,7 +431,7 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
   }
   else if (op_cdagc_up(site_j,site_i)) {
     int upspin = which_upspin();
-    int delta_nd = dblocc_increament();
+    //int delta_nd = dblocc_increament();
     int to_site = site_i;
     // det_ratio for the term
     wf.get_amplitudes(psi_row, to_site, dnspin_sites());
@@ -469,7 +470,7 @@ amplitude_t SysConfig::apply_cdagc_up(const int& fr_site, const int& to_site,
   if (fr_site == to_site) return ampl_part(op_ni_up(fr_site));
   if (!op_cdagc_up(fr_site,to_site)) return amplitude_t(0.0);
   int upspin = which_upspin();
-  int delta_nd = dblocc_increament();
+  //int delta_nd = dblocc_increament();
   // det_ratio for the term
   wf.get_amplitudes(psi_row, to_site, dnspin_sites());
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
@@ -491,7 +492,7 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
   if (op_cdagc_dn(site_i,site_j)) {
     int dnspin = which_dnspin();
     int to_site = site_j;
-    int delta_nd = dblocc_increament();
+    //int delta_nd = dblocc_increament();
     // det_ratio for the term
     wf.get_amplitudes(psi_col, upspin_sites(), to_site);
     amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
@@ -507,7 +508,7 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
   else if (op_cdagc_dn(site_j,site_i)) {
     int dnspin = which_dnspin();
     int to_site = site_i;
-    int delta_nd = dblocc_increament();
+    //int delta_nd = dblocc_increament();
     // det_ratio for the term
     wf.get_amplitudes(psi_col, upspin_sites(), to_site);
     amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
@@ -544,7 +545,7 @@ amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
   if (fr_site == to_site) return ampl_part(op_ni_dn(fr_site));
   if (!op_cdagc_dn(fr_site,to_site)) return amplitude_t(0.0);
   int dnspin = which_dnspin();
-  int delta_nd = dblocc_increament();
+  //int delta_nd = dblocc_increament();
   // det_ratio for the term
   wf.get_amplitudes(psi_col, upspin_sites(), to_site);
   amplitude_t det_ratio = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
@@ -659,12 +660,11 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
         break;
     }
 
-    int upspin, dnspin, delta_nd;
+    int upspin, dnspin;
     amplitude_t det_ratio1, det_ratio2;
     // upspin hop
     if (!op_cdagc_up(up_frsite, up_tosite)) continue;
     upspin = which_upspin();
-    delta_nd = dblocc_increament();
     if (up_frsite==up_tosite) {
       det_ratio1 = amplitude_t(1.0);
     }
@@ -677,7 +677,6 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
     // dnspin hop
     if (!op_cdagc_dn(dn_frsite, dn_tosite)) continue;
     dnspin = which_dnspin();
-    delta_nd += dblocc_increament();
     if (dn_frsite==dn_tosite) {
       det_ratio2 = amplitude_t(1.0);
     }
@@ -703,10 +702,18 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
     // net ratio for up & dn spin hop
     //amplitude_t det_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
     amplitude_t det_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
-    if (pj.have_gutzwiller()) {
-      det_ratio *= pj.gw_ratio(delta_nd);
-    }
+
+    // GW ratio due to upspin hop
+    double gw_ratio = pj.gw_ratio(*this, up_frsite, up_tosite);
+    // make temporary change for the upspin hop 
+    temporary_upspin_hop(up_frsite, up_tosite);
+    // GW ratio due to dnspin hop
+    gw_ratio *= pj.gw_ratio(*this, dn_frsite, dn_tosite);
+    // undo the change
+    undo_upspin_hop();
+
     // contribution from this term
+    det_ratio *= gw_ratio;
     net_ratio += det_ratio;
     //std::cout << " det_ratio1 = " << det_ratio1 << "\n";
     //std::cout << " det_ratio2 = " << det_ratio2 << "\n";
@@ -828,6 +835,9 @@ void SysConfig::print_stats(std::ostream& os) const
   double accept_ratio = 100.0*double(accepted_hops+accepted_exch)/(proposed_hops+proposed_exch);
   double hop_ratio = double(100.0*accepted_hops)/(proposed_hops);
   double exch_ratio = double(100.0*accepted_exch)/(proposed_exch);
+  std::ios state(NULL);
+  state.copyfmt(os);
+  os <<std::fixed<<std::setprecision(1)<<std::right;
   os << "--------------------------------------\n";
   os << " total mcsteps = " << num_updates_ <<"\n";
   os << " total accepted moves = " << (accepted_hops+accepted_exch)<<"\n";
@@ -835,6 +845,7 @@ void SysConfig::print_stats(std::ostream& os) const
   os << " hopping = " << hop_ratio << " %\n";
   os << " exchange = " << exch_ratio << " %\n";
   os << "--------------------------------------\n";
+  os.copyfmt(state);
 }
 
 

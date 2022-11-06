@@ -12,10 +12,10 @@
 
 namespace model {
 
-enum class spin { UP, DN, UD, SIGMA, SINGLET };
+enum class spin {UP, DN, UD, SIGMA, SINGLET, MIXED};
 
 enum class op_id {
-  ni_sigma, ni, cdagc_up, cdagc_dn, cdagc_sigma, sisj, sisj_plus, 
+  ni_up, ni_dn, ni_sigma, ni, Sz, cdagc_up, cdagc_dn, cdagc_sigma, sisj, sisj_plus, 
   niup_nidn, cdagup_cdagdn, null
 };
 
@@ -90,13 +90,13 @@ private:
 class ni_up : public quantum_op
 {
 public:
-  ni_up() : quantum_op("ni_up", op_id::ni_sigma, spin::UP, op_type::quadratic) {}
+  ni_up() : quantum_op("ni_up", op_id::ni_up, spin::UP, op_type::quadratic) {}
 };
 
 class ni_dn : public quantum_op
 {
 public:
-  ni_dn() : quantum_op("ni_dn", op_id::ni_sigma, spin::DN, op_type::quadratic) {}
+  ni_dn() : quantum_op("ni_dn", op_id::ni_dn, spin::DN, op_type::quadratic) {}
 };
 
 // implies both UP or DN
@@ -104,6 +104,12 @@ class ni_sigma : public quantum_op
 {
 public:
   ni_sigma() : quantum_op("ni_sigma", op_id::ni_sigma, spin::SIGMA, op_type::quadratic) {}
+};
+
+class Sz : public quantum_op
+{
+public:
+  Sz() : quantum_op("Sz", op_id::Sz, spin::MIXED, op_type::quadratic) {}
 };
 
 // implies both UP or DN

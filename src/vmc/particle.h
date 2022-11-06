@@ -15,7 +15,7 @@
 
 namespace vmc {
 
-class SiteOccupancy : public mcdata::MC_Observable
+class ParticleDensity : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
@@ -25,7 +25,7 @@ public:
 private:
   bool setup_done_{false};
   int num_sites_{0};
-  int num_basis_sites_{0};
+  int num_site_types_{0};
   int num_particles_{0};
   mcdata::data_t config_value_;
 };

@@ -11,9 +11,10 @@ namespace vmc {
 ObservableSet::ObservableSet() 
   : energy_("Energy")
   , energy_grad_("EnergyGradient")
+  , particle_density_("ParticleDensity")
+  , spin_corr_("SpinCorrelation")
   , sc_corr_("SC_Correlation")
   , sr_matrix_("SR_Matrix")
-  , site_occupancy_("SiteOccupancy")
 {
 }
 
@@ -22,7 +23,7 @@ ObservableSet::ObservableSet()
 //    const model::Hamiltonian& model, const SysConfig& config)
 void ObservableSet::init(const input::Parameters& inputs, 
   const lattice::Lattice& lattice, const model::Hamiltonian& model, 
-  const SysConfig& config, const std::string& prefix)
+  const SysConfig& config, const std::string& prefix, const int& sample_size)
 {
   // file open mode
   std::string mode = inputs.set_value("mode", "NEW");
@@ -39,60 +40,73 @@ void ObservableSet::init(const input::Parameters& inputs,
   // files
   energy_.set_ofstream(prefix);
   energy_grad_.set_ofstream(prefix);
+  particle_density_.set_ofstream(prefix);
+  spin_corr_.set_ofstream(prefix);
   sc_corr_.set_ofstream(prefix);
   sr_matrix_.set_ofstream(prefix);
-  site_occupancy_.set_ofstream(prefix);
 
   // switch on required observables
   energy_.check_on(inputs, replace_mode_);
   energy_grad_.check_on(inputs, replace_mode_);
   if (energy_grad_) energy_.switch_on();
+  particle_density_.check_on(inputs,replace_mode_);
+  spin_corr_.check_on(inputs,replace_mode_);
   sc_corr_.check_on(inputs,replace_mode_);
   sr_matrix_.check_on(inputs,replace_mode_);
-  site_occupancy_.check_on(inputs,replace_mode_);
 
   // set up observables
   if (energy_) energy_.setup(lattice,model);
-  if (energy_grad_) energy_grad_.setup(config);
+  if (energy_grad_) energy_grad_.setup(config,sample_size);
+  if (particle_density_) particle_density_.setup(lattice,config);
+  if (spin_corr_) spin_corr_.setup(lattice);
   if (sc_corr_) sc_corr_.setup(lattice,config.wavefunc().pair_symmetry());
   if (sr_matrix_) sr_matrix_.setup(lattice,config);
-  if (site_occupancy_) site_occupancy_.setup(lattice,config);
 }
 
 void ObservableSet::reset(void)
 {
   if (energy_) energy_.reset();
   if (energy_grad_) energy_grad_.reset();
+  if (particle_density_) particle_density_.reset();
+  if (spin_corr_) spin_corr_.reset();
   if (sc_corr_) sc_corr_.reset();
   if (sr_matrix_) sr_matrix_.reset();
-  if (site_occupancy_) site_occupancy_.reset();
+}
+
+void ObservableSet::reset_batch_limit(const int& sample_size)
+{
+  if (energy_grad_) energy_grad_.reset_batch_limit(sample_size);
+  if (sr_matrix_) sr_matrix_.reset_batch_limit(sample_size);
 }
 
 void ObservableSet::reset_grand_data(void)
 {
   if (energy_) energy_.reset_grand_data();
   if (energy_grad_) energy_grad_.reset_grand_data();
+  if (particle_density_) particle_density_.reset_grand_data();
+  if (spin_corr_) spin_corr_.reset_grand_data();
   if (sc_corr_) sc_corr_.reset_grand_data();
   if (sr_matrix_) sr_matrix_.reset_grand_data();
-  if (site_occupancy_) site_occupancy_.reset_grand_data();
 }
 
 void ObservableSet::save_results(void)
 {
   if (energy_) energy_.save_result();
   if (energy_grad_) energy_grad_.save_result();
+  if (particle_density_) particle_density_.save_result();
+  if (spin_corr_) spin_corr_.save_result();
   if (sc_corr_) sc_corr_.save_result();
   if (sr_matrix_) sr_matrix_.save_result();
-  if (site_occupancy_) site_occupancy_.save_result();
 }
 
 void ObservableSet::avg_grand_data(void)
 {
   if (energy_) energy_.avg_grand_data();
   if (energy_grad_) energy_grad_.avg_grand_data();
+  if (particle_density_) particle_density_.avg_grand_data();
+  if (spin_corr_) spin_corr_.avg_grand_data();
   if (sc_corr_) sc_corr_.avg_grand_data();
   if (sr_matrix_) sr_matrix_.avg_grand_data();
-  if (site_occupancy_) site_occupancy_.avg_grand_data();
 }
 
 
@@ -105,13 +119,14 @@ int ObservableSet::do_measurement(const lattice::Lattice& lattice,
       throw std::logic_error("ObservableSet::measure: dependency not met for 'energy'");
     energy_grad_.measure(config, energy_.config_value().sum());
   }
+  if (particle_density_) particle_density_.measure(lattice, config);
+  if (spin_corr_) spin_corr_.measure(lattice,model,config);
   if (sc_corr_) sc_corr_.measure(lattice,model,config);
   if (sr_matrix_) {
     if (!energy_grad_) 
       throw std::logic_error("ObservableSet::measure: dependency not met for 'sr_matrix_'");
     sr_matrix_.measure(energy_grad_.grad_logpsi());
   }
-  if (site_occupancy_) site_occupancy_.measure(lattice, config);
   return 0;
 }
 
@@ -137,18 +152,20 @@ void ObservableSet::as_functions_of(const std::string& xvar)
 void ObservableSet::switch_off(void) {
   energy_.switch_off();
   energy_grad_.switch_off();
+  particle_density_.switch_off();
+  spin_corr_.switch_off();
   sc_corr_.switch_off();
   sr_matrix_.switch_off();
-  site_occupancy_.switch_off();
 }
 
 void ObservableSet::print_heading(void)
 {
   energy_.print_heading(headstream_.rdbuf()->str(),xvars_);
   energy_grad_.print_heading(headstream_.rdbuf()->str(),xvars_);
+  particle_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
+  spin_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
   sc_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
   sr_matrix_.print_heading(headstream_.rdbuf()->str(),xvars_);
-  site_occupancy_.print_heading(headstream_.rdbuf()->str(),xvars_);
 }
 
 void ObservableSet::print_results(const std::vector<double>& xvals) 
@@ -163,13 +180,17 @@ void ObservableSet::print_results(const std::vector<double>& xvals)
     energy_grad_.print_heading(headstream_.rdbuf()->str(),xvars_);
     energy_grad_.print_result(xvals);
   }
+  if (particle_density_) {
+    particle_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    particle_density_.print_result(xvals);
+  }
+  if (spin_corr_) {
+    spin_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    spin_corr_.print_result(xvals);
+  }
   if (sc_corr_) {
     sc_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
     sc_corr_.print_result(xvals);
-  }
-  if (site_occupancy_) {
-    site_occupancy_.print_heading(headstream_.rdbuf()->str(),xvars_);
-    site_occupancy_.print_result(xvals);
   }
 }
 
@@ -186,13 +207,17 @@ void ObservableSet::print_results(const double& xval)
     energy_grad_.print_heading(headstream_.rdbuf()->str(),xvars_);
     energy_grad_.print_result(xvals);
   }
+  if (particle_density_) {
+    particle_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    particle_density_.print_result(xvals);
+  }
+  if (spin_corr_) {
+    spin_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    spin_corr_.print_result(xvals);
+  }
   if (sc_corr_) {
     sc_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
     sc_corr_.print_result(xvals);
-  }
-  if (site_occupancy_) {
-    site_occupancy_.print_heading(headstream_.rdbuf()->str(),xvars_);
-    site_occupancy_.print_result(xvals);
   }
 }
 
@@ -201,9 +226,10 @@ void ObservableSet::MPI_send_results(const mpi::mpi_communicator& mpi_comm,
 {
   if (energy_) energy_.MPI_send_data(mpi_comm, proc, msg_tag);
   if (energy_grad_) energy_grad_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (particle_density_) particle_density_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (spin_corr_) spin_corr_.MPI_send_data(mpi_comm, proc, msg_tag);
   if (sc_corr_) sc_corr_.MPI_send_data(mpi_comm, proc, msg_tag);
   if (sr_matrix_) sr_matrix_.MPI_send_data(mpi_comm, proc, msg_tag);
-  if (site_occupancy_) site_occupancy_.MPI_send_data(mpi_comm, proc, msg_tag);
 }
 
 void ObservableSet::MPI_recv_results(const mpi::mpi_communicator& mpi_comm, 
@@ -211,9 +237,10 @@ void ObservableSet::MPI_recv_results(const mpi::mpi_communicator& mpi_comm,
 {
   if (energy_) energy_.MPI_add_data(mpi_comm, proc, msg_tag);
   if (energy_grad_) energy_grad_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (particle_density_) particle_density_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (spin_corr_) spin_corr_.MPI_add_data(mpi_comm, proc, msg_tag);
   if (sc_corr_) sc_corr_.MPI_add_data(mpi_comm, proc, msg_tag);
   if (sr_matrix_) sr_matrix_.MPI_add_data(mpi_comm, proc, msg_tag);
-  if (site_occupancy_) site_occupancy_.MPI_add_data(mpi_comm, proc, msg_tag);
 }
 
 } // end namespace vmc

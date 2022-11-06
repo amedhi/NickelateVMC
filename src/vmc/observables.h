@@ -14,8 +14,9 @@
 #include "../model/model.h"
 #include "./sysconfig.h"
 #include "./energy.h"
-#include "./sccorr.h"
 #include "./particle.h"
+#include "./spincorr.h"
+#include "./sccorr.h"
 
 namespace vmc {
 
@@ -29,11 +30,13 @@ public:
   //  void (&print_copyright)(std::ostream& os), const lattice::Lattice& lattice, 
   //  const model::Hamiltonian& model, const SysConfig& config);
   void init(const input::Parameters& inputs, const lattice::Lattice& lattice, 
-    const model::Hamiltonian& model, const SysConfig& config, const std::string& prefix);
+    const model::Hamiltonian& model, const SysConfig& config, const std::string& prefix,
+    const int& sample_size);
   void as_functions_of(const std::vector<std::string>& xvars=std::vector<std::string>());
   void as_functions_of(const std::string& xvar);
   void switch_off(void);
   void reset(void); 
+  void reset_batch_limit(const int& sample_size);
   void reset_grand_data(void); 
   void save_results(void); 
   void avg_grand_data(void); 
@@ -45,7 +48,10 @@ public:
   inline SR_Matrix& sr_matrix(void) { return sr_matrix_; }
   const Energy& energy(void) const { return energy_; }
   const EnergyGradient& energy_grad(void) const { return energy_grad_; }
+  const SpinCorrelation& spin_corr(void) const { return spin_corr_; }
+  const SC_Correlation& sc_corr(void) const { return sc_corr_; }
   const SR_Matrix& sr_matrix(void) const { return sr_matrix_; }
+  const ParticleDensity& particle_density(void) const { return particle_density_; }
 
   void finalize(void);
   void print_heading(void);
@@ -63,9 +69,10 @@ private:
   unsigned num_xvars_{0};
   Energy energy_;
   EnergyGradient energy_grad_;
+  ParticleDensity particle_density_;
+  SpinCorrelation spin_corr_;
   SC_Correlation sc_corr_;
   SR_Matrix sr_matrix_;
-  SiteOccupancy site_occupancy_;
 };
 
 

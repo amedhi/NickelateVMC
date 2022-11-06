@@ -15,8 +15,6 @@
 #include "../vmc/basisstate.h"
 #include "../lattice/lattice.h"
 #include "./varparm.h"
-//#include "../lattice/graph.h"
-//#include "../variational/matrix.h"
 
 namespace var {
 
@@ -24,6 +22,8 @@ namespace var {
 constexpr double gw_cutoff(void) { return 1.0E-3; } 
 
 enum class pp {gutzwiller, end};
+
+enum class gw_ptype {DOUBLON, HOLON};
 
 class NNTable
 {
@@ -43,6 +43,34 @@ private:
   std::vector<int> nn3_list_;
 };
 
+class GW_Projector 
+{
+public:
+  GW_Projector() {}
+  ~GW_Projector() {}
+  int init(const lattice::Lattice& lattice, const input::Parameters& inputs,
+    VariationalParms& vparms);
+  bool is_present(void) const { return is_present_; }
+  bool is_strong(void) const; 
+  int update_parameters(const VariationalParms& vparms);
+  double gw_ratio(const vmc::BasisState& state, 
+    const int& fr_site, const int& to_site) const;
+  void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
+private:
+  enum class pjn {DOUBLON, HOLON};
+  bool is_present_{false};
+  bool uniform_projection_{true};
+  int num_sites_;
+  int num_site_types_;
+  std::vector<pjn> projection_; 
+  std::vector<double> gw_factor_;
+  std::vector<int> sitetype_list_;
+  RealMatrix ratio_table_;
+
+  void set_ratio_table(void); 
+};
+
+
 class WavefunProjector 
 {
 public:
@@ -53,17 +81,14 @@ public:
   void init(const lattice::Lattice& lattice, const input::Parameters& inputs); 
   void update(const input::Parameters& inputs); 
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
-  const bool& have_gutzwiller(void) const { return gw_projector_; }
+  bool gw_projection(void) const { return gw_projector_.is_present(); }
+  bool gw_projection_strong(void) const { return gw_projector_.is_strong(); }
+  double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
+    { return gw_projector_.gw_ratio(state, fr_site, to_site); }
   const bool& have_dh_projector(void) const { return dh_projector_; }
-  bool gwfactor_is_zero(void) const;
   double dh_factor1(void) const; 
   double dh_factor2(void) const; 
   double dh_factor3(void) const; 
-  const double& gw_ratio(const int& nd_incre) const 
-  { 
-    return gw_ratio_table_[0][nd_incre+2]; 
-  } 
-  double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const;
   double dh_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const;
   void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
   const VariationalParms& varparms(void) const { return varparms_; }
@@ -74,28 +99,22 @@ public:
   void get_vparm_ubound(var::parm_vector& ubounds, unsigned start_pos=0) const; 
 private:
   using vparm_t = std::pair<std::string,double>;
-  bool gw_projector_{false};
+  GW_Projector gw_projector_;
+
   bool dh_projector_{false};
   int num_sites_{0};
   int num_site_types_{1};
   int dh_range_{0};
 
-  // for faster access
-  std::vector<double> gw_factor_;
   std::vector<double> dh_factor_;
-  //std::vector<double> gw_ratio_;
-  std::vector<std::vector<double>> gw_ratio_table_;
   double dh_factor1_;
   double dh_factor2_;
   double dh_factor3_;
 
   //int num_gw_factors_{0};
   VariationalParms varparms_;
-  std::vector<int> sitetype_list_;
   std::vector<NNTable> adjacency_;
 
-  void set_gw_ratio(void);
-  int init_gw_projector(const lattice::Lattice& lattice, const input::Parameters& inputs); 
   int init_dh_projector(const lattice::Lattice& lattice, const input::Parameters& inputs); 
 };
 

@@ -34,40 +34,39 @@ class EnergyGradient : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const SysConfig& config);
+  void setup(const SysConfig& config, const int& sample_size=500);
   void measure(const SysConfig& config, const double& config_energy);
   void finalize(void);
-  void reset(void) override 
-  { 
-    //MC_Observable::reset(); grad_terms_.reset(); total_en_.reset();
-    MC_Observable::reset(); partial_gsum_.reset(); partial_esum_.reset();
-  }
+  void reset(void) override;
+  void reset_batch_limit(const int& sample_size);
   const RealVector& grad_logpsi(void) const { return grad_logpsi_; }
-  //void MPI_send_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
-  //void MPI_add_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
 private:
   bool setup_done_{false};
   unsigned num_varp_{0};
+  int batch_size_{500};
   mcdata::data_t config_value_;
   RealVector grad_logpsi_;
-  //mcdata::MC_Observable grad_terms_{"gradient_terms"};
-  //mcdata::MC_Observable total_en_{"total_energy"};
-  mcdata::MC_Observable partial_gsum_{"partial_gsum"};
-  mcdata::MC_Observable partial_esum_{"partial_esum"};
+  mcdata::MC_Observable batch_gsum_{"batch_gsum"};
+  mcdata::MC_Observable batch_esum_{"batch_esum"};
 };
 
 class SR_Matrix : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const lattice::Lattice& lattice, const SysConfig& config);
+  void setup(const lattice::Lattice& lattice, const SysConfig& config,
+    const int& sample_size=500);
   void measure(const RealVector& grad_logpsi);
   void get_matrix(Eigen::MatrixXd& sr_mat) const;
+  void reset_batch_limit(const int& sample_size);
 private:
   bool setup_done_{false};
   unsigned num_sites_{0};
   unsigned num_varp_{0};
+  int batch_size_{500};
   mutable mcdata::data_t config_value_;
+  mutable mcdata::data_t upper_elems_;
+  mcdata::MC_Observable batch_sum_{"batch_sum"};
 };
 
 

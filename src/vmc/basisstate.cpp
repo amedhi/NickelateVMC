@@ -375,6 +375,9 @@ const int& BasisState::which_dnsite(void) const
 
 void BasisState::accept_last_move(void)
 {
+  if (temporary_move_ != move_t::null) {
+    throw std::range_error(" BasisState::accept_last_move: temporary change found, serious problem");
+  }
   // double occupancy count
   switch (proposed_move_) {
     case move_t::upspin_hop:
@@ -413,6 +416,54 @@ void BasisState::accept_last_move(void)
   }
 }
 
+void BasisState::temporary_upspin_hop(const int& fr_site, const int& to_site) const
+{
+  if (temporary_move_ != move_t::null) {
+    throw std::range_error(" BasisState::temporary_upspin_hop: already contains temporary change");
+  }
+  tmp_up_frsite_ = fr_site;
+  tmp_up_tosite_ = to_site;
+  tmp_mv_upspin_ = site_states_[fr_site].upspin_id(); 
+  tmp_mv_uphole_ = site_states_[to_site].uphole_id(); 
+  site_states_[fr_site].put_uphole(tmp_mv_uphole_);
+  site_states_[to_site].put_upspin(tmp_mv_upspin_);
+  temporary_move_ = move_t::upspin_hop;
+}
+
+void BasisState::undo_upspin_hop(void) const
+{
+  if (temporary_move_ != move_t::upspin_hop) {
+    throw std::range_error(" BasisState::undo_upspin_hop: no 'upspin_hop' to undo");
+  }
+  site_states_[tmp_up_frsite_].put_upspin(tmp_mv_upspin_);
+  site_states_[tmp_up_tosite_].put_uphole(tmp_mv_uphole_);
+  temporary_move_ = move_t::null;
+}
+
+void BasisState::temporary_dnspin_hop(const int& fr_site, const int& to_site) const
+{
+  if (temporary_move_ != move_t::null) {
+    throw std::range_error(" BasisState::temporary_upspin_hop: already contains temporary change");
+  }
+  tmp_dn_frsite_ = fr_site;
+  tmp_dn_tosite_ = to_site;
+  tmp_mv_dnspin_ = site_states_[fr_site].dnspin_id(); 
+  tmp_mv_dnhole_ = site_states_[to_site].dnhole_id(); 
+  site_states_[fr_site].put_dnhole(tmp_mv_dnhole_);
+  site_states_[to_site].put_dnspin(tmp_mv_dnspin_);
+  temporary_move_ = move_t::dnspin_hop;
+}
+
+void BasisState::undo_dnspin_hop(void) const
+{
+  if (temporary_move_ != move_t::dnspin_hop) {
+    throw std::range_error(" BasisState::undo_upspin_hop: no 'upspin_hop' to undo");
+  }
+  site_states_[tmp_dn_frsite_].put_dnspin(tmp_mv_dnspin_);
+  site_states_[tmp_dn_tosite_].put_dnhole(tmp_mv_dnhole_);
+  temporary_move_ = move_t::null;
+}
+
 int BasisState::op_ni_up(const int& site) const
 {
   return site_states_[site].num_upspins();
@@ -439,6 +490,11 @@ int BasisState::op_ni_holon(const int& site) const
 {
   if (site_states_[site].occupancy() == 0) return 1;
   else return 0;
+}
+
+int BasisState::op_Sz(const int& site) const
+{
+  return site_states_[site].num_upspins()-site_states_[site].num_dnspins();
 }
 
 bool BasisState::op_cdagc_up_plus(const int& site_i, const int& site_j) const

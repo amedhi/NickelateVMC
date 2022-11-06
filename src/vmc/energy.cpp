@@ -134,7 +134,7 @@ void Energy::measure(const lattice::Lattice& lattice,
 }
 
 //-------------------ENERGY GRADIENT--------------------------------
-void EnergyGradient::setup(const SysConfig& config)
+void EnergyGradient::setup(const SysConfig& config, const int& sample_size)
 {
   MC_Observable::switch_on();
   if (setup_done_) return;
@@ -142,17 +142,28 @@ void EnergyGradient::setup(const SysConfig& config)
   this->resize(config.num_varparms(),config.varp_names());
   grad_logpsi_.resize(config.num_varparms());
   config_value_.resize(2*config.num_varparms());
-  //grad_terms_.resize(2*config.num_varparms());
-  //grad_terms_.init("gradient_terms",2*config.num_varparms());
-  //total_en_.init("total_energy",1);
 
-  // for calculating gradients from partial sums
+  // for calculating gradients from batch data
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,500);
   bool no_error_bar = true;
-  //partial_gsum_.resize(2*config.num_varparms());
-  partial_gsum_.init("partial_gsum",2*config.num_varparms(),no_error_bar);
-  partial_esum_.init("partial_esum",1,no_error_bar);
+  batch_gsum_.init("batch_gsum",2*config.num_varparms(),no_error_bar);
+  batch_esum_.init("batch_esum",1,no_error_bar);
 
   setup_done_ = true;
+}
+
+void EnergyGradient::reset(void) 
+{
+  MC_Observable::reset(); 
+  batch_gsum_.reset(); 
+  batch_esum_.reset();
+}
+
+void EnergyGradient::reset_batch_limit(const int& sample_size)
+{
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,500);
 }
   
 void EnergyGradient::measure(const SysConfig& config, const double& config_energy)
@@ -164,14 +175,14 @@ void EnergyGradient::measure(const SysConfig& config, const double& config_energ
     config_value_[n+1] = grad_logpsi_[i];
     n += 2;
   }
-  partial_gsum_ << config_value_;
-  partial_esum_ << config_energy;
+  batch_gsum_ << config_value_;
+  batch_esum_ << config_energy;
 
-  // compute gradient from partial sum (of 500 samples)
-  if (partial_esum_.num_samples()>=500) {
+  // compute gradient from the batch sum 
+  if (batch_esum_.num_samples()>=batch_size_) {
     mcdata::data_t grad(num_varp_);
-    double Emean = partial_esum_.mean();
-    config_value_ = partial_gsum_.mean_data(); 
+    double Emean = batch_esum_.mean();
+    config_value_ = batch_gsum_.mean_data(); 
     int n = 0;
     for (int i=0; i<num_varp_; ++i) {
       grad(i) = 2.0*(config_value_[n] - Emean*config_value_[n+1]);
@@ -180,8 +191,8 @@ void EnergyGradient::measure(const SysConfig& config, const double& config_energ
     // add sample
     *this << grad;
     // reset partial sums
-    partial_gsum_.reset();
-    partial_esum_.reset();
+    batch_gsum_.reset();
+    batch_esum_.reset();
   }
 }
 
@@ -259,20 +270,96 @@ void EnergyGradient::MPI_add_data(const mpi::mpi_communicator& mpi_comm,
 
 
 //-------------------SR_Matrix (Stochastic Reconfiguration)---------------
-void SR_Matrix::setup(const lattice::Lattice& lattice, const SysConfig& config)
+void SR_Matrix::setup(const lattice::Lattice& lattice, const SysConfig& config,
+  const int& sample_size)
 {
   MC_Observable::switch_on();
   if (setup_done_) return;
   num_sites_ = lattice.num_sites();
   num_varp_ = config.num_varparms();
   // '\del(ln(psi))' plus upper triangular part of the sr_matrix 
-  unsigned n = num_varp_ + num_varp_*(num_varp_+1)/2;
-  this->resize(n);
+  unsigned num_elems = num_varp_ + num_varp_*(num_varp_+1)/2;
+  this->resize(num_elems);
   this->error_bar_off();
-  config_value_.resize(n);
+  config_value_.resize(num_elems);
+  upper_elems_.resize(num_elems);
+
+  // for calculating gradients from batch data
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,500);
+  batch_sum_.resize(num_elems);
+  batch_sum_.error_bar_off();
   setup_done_ = true;
 }
 
+void SR_Matrix::reset_batch_limit(const int& sample_size)
+{
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,500);
+}
+  
+
+void SR_Matrix::measure(const RealVector& grad_logpsi)
+{
+  assert(grad_logpsi.size()==num_varp_);
+ /*--------------------------------------------------
+  * Construct the upper triangular part of Smatrix, 
+  * and flatten it into a vector
+  *--------------------------------------------------*/
+  // operator 'del(ln(psi))' terms
+  for (unsigned i=0; i<num_varp_; ++i) config_value_[i] = grad_logpsi[i];
+
+  unsigned k = num_varp_;
+  for (unsigned i=0; i<num_varp_; ++i) {
+    double x = grad_logpsi[i];
+    for (unsigned j=i; j<num_varp_; ++j) {
+      double y = grad_logpsi[j];
+      config_value_[k] = x * y;
+      ++k;
+    }
+  }
+  // add to batch data
+  batch_sum_ << config_value_;
+
+ /*--------------------------------------------------
+  * Compute the SR matrix (upper triangular) elements 
+  * from the batch data 
+  *--------------------------------------------------*/
+  if (batch_sum_.num_samples()>=batch_size_) {
+    config_value_ = batch_sum_.mean_data();
+    unsigned k = num_varp_;
+    int n = 0;
+    for (unsigned i=0; i<num_varp_; ++i) {
+      double x = config_value_[i];
+      for (unsigned j=i; j<num_varp_; ++j) {
+        double y = config_value_[j];
+        upper_elems_[n] = (config_value_[k] - x*y)/num_sites_;
+        k++;
+        n++;
+      }
+    }
+    // add sample
+    *this << upper_elems_;
+    // reset partial sums
+    batch_sum_.reset();
+  }
+}
+
+void SR_Matrix::get_matrix(Eigen::MatrixXd& sr_matrix) const
+{
+  // construct the matrix from the mean elemenet values
+  upper_elems_ = MC_Observable::mean_data();
+  int n = 0;
+  for (unsigned i=0; i<num_varp_; ++i) {
+    for (unsigned j=i; j<num_varp_; ++j) {
+      sr_matrix(i,j) = upper_elems_[n];
+      sr_matrix(j,i) = sr_matrix(i,j);
+      n++;
+    }
+  }
+}
+
+/*
 void SR_Matrix::measure(const RealVector& grad_logpsi)
 {
   assert(grad_logpsi.size()==num_varp_);
@@ -306,6 +393,7 @@ void SR_Matrix::get_matrix(Eigen::MatrixXd& sr_matrix) const
     }
   }
 }
+*/
 
 
 } // end namespace vmc

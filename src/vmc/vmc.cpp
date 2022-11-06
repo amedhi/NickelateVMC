@@ -55,7 +55,7 @@ VMC::VMC(const input::Parameters& inputs)
   // observables
   make_info_str(inputs);
   observables.headstream() << info_str_.str();
-  observables.init(inputs,lattice,model,config,prefix_);
+  observables.init(inputs,lattice,model,config,prefix_,num_measure_steps_);
   observables.as_functions_of(xvar_names_);
 }
 
@@ -204,6 +204,7 @@ int VMC::en_function(const var::parm_vector& varp, double& en_mean,
 }
 
 // simulation after optimization
+/*
 int VMC::run_simulation(const Eigen::VectorXd& varp)
 {
   observables.switch_off();
@@ -212,12 +213,39 @@ int VMC::run_simulation(const Eigen::VectorXd& varp)
   run_simulation();
   return 0;
 }
+*/
+
+int VMC::run_simulation(void)
+{
+  std::vector<int> empty_bc_list;
+  return run_simulation(num_measure_steps_,empty_bc_list);
+}
+
+int VMC::run_simulation(const int& sample_size)
+{
+  std::vector<int> empty_bc_list;
+  return run_simulation(sample_size,empty_bc_list);
+}
+
+int VMC::run_simulation(const std::vector<int>& bc_list)
+{
+  return run_simulation(num_measure_steps_,bc_list);
+}
 
 int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
 {
-  // take care of default argument
+  /*--------------------------------------------------------------
+   * Assumming everything ready, run actual simulation here
+   *--------------------------------------------------------------*/
+  assert(sample_size>=0);
+
+  // update 'sample_size' dependent things
+  check_interval_ = std::max(1,sample_size/10);
+  observables.reset_batch_limit(sample_size);
+
+  // Take care of BC twists
   std::vector<int> bc_twists;
-  if (bc_list.size()==1 && bc_list[0]==-1) {
+  if (bc_list.size()==0) {
     for (int bc=0; bc<lattice.num_boundary_twists(); ++bc) {
       bc_twists.push_back(bc);
     }
@@ -233,15 +261,13 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
   if (bc_twists.size()==1 && bc_twists[0]==0) {
     // initialize
     observables.reset();
-    int num_measure_steps = num_measure_steps_;
-    if (sample_size>0) num_measure_steps = sample_size;
 
     // warmup run
     if (!silent_mode_) std::cout << " warming up... " << std::flush;
     do_warmup_run();
     if (!silent_mode_) std::cout << "done\n" << std::flush;
     // measuring run
-    do_measure_run(num_measure_steps);
+    do_measure_run(sample_size);
     // finalize
     observables.finalize();
     if (!silent_mode_) {
@@ -254,9 +280,6 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
    * *****************************************/
   else {
     // initialize
-    int num_measure_steps = num_measure_steps_;
-    if (sample_size>0) num_measure_steps = sample_size;
-    observables.reset();
     for (const auto& bc: bc_twists) {
       if (!silent_mode_) {
         std::cout << "\n-------------------------------------" << std::endl;
@@ -273,7 +296,7 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
       do_warmup_run();
       if (!silent_mode_) std::cout << "done\n" << std::flush;
       // measuring run
-      do_measure_run(num_measure_steps);
+      do_measure_run(sample_size);
       // finalization needed only for "Energy Gradient"
       observables.finalize();
 
@@ -336,8 +359,14 @@ void VMC::print_results(void)
 
 void VMC::print_progress(const int& num_measurement, const int& num_measure_steps) const
 {
-  if (num_measurement%check_interval_==0)
-  std::cout<<" measurement = "<< double(100.0*num_measurement)/num_measure_steps<<" %\n";
+  if (num_measurement%check_interval_==0) {
+    std::ios state(NULL);
+    state.copyfmt(std::cout);
+    std::cout<<std::fixed<<std::setprecision(1)<<std::right;
+    double w = double(100.0*num_measurement)/num_measure_steps;
+    std::cout<<" measurement = "<< w <<" %\n";
+    std::cout.copyfmt(state);
+  }
 }
 
 void VMC::make_info_str(const input::Parameters& inputs)

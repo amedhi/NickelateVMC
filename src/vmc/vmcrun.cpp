@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-10-31 12:06:26
+* @Last Modified time: 2022-11-05 18:17:11
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -37,8 +37,17 @@ int VMCRun::run(const input::Parameters& inputs, const mpi::mpi_communicator& mp
   	}
   }
 
-  // every procs
-  start(inputs,run_mode::normal,true);
+  bool silent;
+  if (mpi_comm.is_master() && !inputs.have_option_quiet()) {
+    std::cout << " progress in master\n";
+    silent = false;
+    start(inputs,run_mode::normal,silent);
+  }
+  else {
+    silent = true;
+    start(inputs,run_mode::normal,silent);
+  }
+
   if (mpi_mode_ == mpi_mode::NORMAL) {
     //std::cout << " running "<<measure_samples_<<" samples in p"
     //	<<mpi_comm.rank()<<"\n";
@@ -47,11 +56,14 @@ int VMCRun::run(const input::Parameters& inputs, const mpi::mpi_communicator& mp
   if (mpi_mode_ == mpi_mode::BC_TWIST) {
     //std::cout << " running BC_TWISTS: "<<bc_list_.front()+1<<"-"
     //	<<bc_list_.back()+1<<" in p"<<mpi_comm.rank()<<"\n";
-  	run_simulation(-1, bc_list_);
+  	run_simulation(bc_list_);
   }
 
   // collect samples
   if (mpi_comm.is_master()) {
+    if (!inputs.have_option_quiet()) {
+      std::cout << " collecting data from other procs...";
+    }
     for (const mpi::proc& p : worker_procs_) {
       //std::cout << "reciving results from p = " << p << "\n";
       MPI_recv_results(mpi_comm, p, mpi::MP_data_samples);
@@ -66,6 +78,10 @@ int VMCRun::run(const input::Parameters& inputs, const mpi::mpi_communicator& mp
   if (mpi_comm.is_master()) {
     finalize_results();
   	print_results();
+    if (!inputs.have_option_quiet()) {
+      std::cout << " done\n";
+      std::cout << std::flush;
+    }
   }
 
   // for safetly, all together here
@@ -107,7 +123,7 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
   	run_simulation(measure_samples_);
   }
   if (mpi_mode_ == mpi_mode::BC_TWIST) {
-  	run_simulation(-1, bc_list_);
+  	run_simulation(bc_list_);
   }
   for (const mpi::proc& p : worker_procs_) {
     MPI_recv_results(mpi_comm_,p,mpi::MP_data_samples);
@@ -116,8 +132,8 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
   //print_results();
 
   // computed quantities
-  en = observable().energy().mean();
-  en_err = observable().energy().stddev();
+  en = observable().energy().mean(0);
+  en_err = observable().energy().stddev(0);
   grad = observable().energy_grad().mean_data();
   grad_err = observable().energy_grad().stddev_data();
   observable().sr_matrix().get_matrix(sr_matrix);
@@ -158,7 +174,7 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
   	run_simulation(measure_samples_);
   }
   if (mpi_mode_ == mpi_mode::BC_TWIST) {
-  	run_simulation(-1, bc_list_);
+  	run_simulation(bc_list_);
   }
   for (const mpi::proc& p : worker_procs_) {
     MPI_recv_results(mpi_comm_,p,mpi::MP_data_samples);
@@ -167,8 +183,8 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
   print_results();
 
   // computed quantities
-  en = observable().energy().mean();
-  en_err = observable().energy().stddev();
+  en = observable().energy().mean(0);
+  en_err = observable().energy().stddev(0);
   grad = observable().energy_grad().mean_data();
   grad_err = observable().energy_grad().stddev_data();
   //std::cout << "grad_err = " << grad_err.transpose()<<"\n";
@@ -195,7 +211,7 @@ int VMCRun::start_worker_run(void)
   	      run_simulation(measure_samples_);
         }
         if (mpi_mode_ == mpi_mode::BC_TWIST) {
-  	      run_simulation(-1, bc_list_);
+  	      run_simulation(bc_list_);
         }
     	MPI_send_results(mpi_comm_, mpi_comm_.master(), mpi::MP_data_samples);
   	  	break;

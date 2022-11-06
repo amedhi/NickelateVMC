@@ -126,8 +126,9 @@ void Bond::connect(const Site& src, const Vector3i& src_offset, const Site& tgt,
 {
   this->first = src;
   this->second = tgt;
-  this->first.reset_bravindex(src_offset);
-  this->second.reset_bravindex(tgt_offset);
+  // It seems, we need to SWITCH OFF the next 2 lines
+  //this->first.reset_bravindex(src_offset);
+  //this->second.reset_bravindex(tgt_offset);
   sign_ = sign;
 }
 
@@ -136,8 +137,9 @@ void Bond::connect(const Site& src, const Vector3i& src_offset, const Site& tgt,
 {
   this->first = src;
   this->second = tgt;
-  this->first.reset_bravindex(src_offset);
-  this->second.reset_bravindex(tgt_offset);
+  // It seems, we need to SWITCH OFF the next 2 lines
+  //this->first.reset_bravindex(src_offset);
+  //this->second.reset_bravindex(tgt_offset);
   bc_state_ = bstate;
 }
 
