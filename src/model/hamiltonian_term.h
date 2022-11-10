@@ -21,11 +21,6 @@
 
 namespace model {
 
-enum class qn_op {
-  ni_up, ni_dn, ni, cdagicj_up, cdagicj_dn, sisj, niup_nidn, cdagiup_cdagidn, 
-  cdagiup_cdagjdn, null
-};
-
 class CouplingConstant : public std::unordered_map<int, std::string>
 {
 public:

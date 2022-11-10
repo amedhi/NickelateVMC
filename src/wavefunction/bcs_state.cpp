@@ -28,8 +28,10 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   num_bonds_ = lattice.num_bonds();
   // particle number
   set_particle_num(inputs);
+
   // infinity limit
-  large_number_ = 5.0E+4;
+  int info;
+  singular_ampl_ = inputs.set_value("singularity_amplitude", 5.0E+2, info);
 
   // Bloch basis
   blochbasis_.construct(lattice);
@@ -49,7 +51,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
   bool mf_model_finalized = false;
-  int info;
   // read parameter
   strMatrix expr_mat;
 
@@ -85,17 +86,17 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   }
   //---------------------------------------------------------------------------
 
-  else if (lattice.id()==lattice::lattice_id::SQUARE_2SITE) {
+  else if (lattice.id()==lattice::lattice_id::SQUARE_4SITE) {
     std::string modelname = inputs.set_value("model","");
     if (modelname == "HUBBARD_IONIC") {
-      mf_model_.add_parameter(name="t", defval=1.0, inputs);
-      mf_model_.add_parameter(name="tp", defval=1.0, inputs);
+      mf_model_.add_parameter(name="tv", defval=1.0, inputs);
+      mf_model_.add_parameter(name="tpv", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       mf_model_.add_parameter(name="P", defval=0.0, inputs);
       mf_model_.add_parameter(name="dAF", defval=0.0, inputs);
 
       // bond operator terms
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      cc = CouplingConstant({0,"-tv"},{1,"-tv"},{2,"-tpv"});
       mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
 
       // site term
@@ -111,12 +112,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       // SC pairing term
       if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
         order_name_ = "SC-DWAVE";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"}, {3,"0"});
+        cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
         order_name_ = "SC-Extended_S";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"}, {3,"0"});
+        cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else {
@@ -130,17 +131,21 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       varparms_.add("P", defval,lb=-5.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("tv");
+      varparms_.add("tv", defval,lb=0.1,ub=3.0,dh=0.02);
+      defval = mf_model_.get_parameter_value("tpv");
+      varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
       add_chemical_potential(inputs);
     }
 
-    else {
+    else if (modelname == "HUBBARD") {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=0.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
       mf_model_.add_parameter(name="delta_af", defval=1.0, inputs);
 
       // bond operator terms
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
       mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
 
       // site operator terms
@@ -155,12 +160,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
 
       if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
         order_name_ = "SC-DWAVE";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"}, {3,"0"});
+        cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
         order_name_ = "SC-Extended_S";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"}, {3,"0"});
+        cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else {
@@ -173,6 +178,9 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       defval = mf_model_.get_parameter_value("delta_af");
       varparms_.add("delta_af",defval,lb=0.0,ub=2.0,dh=0.02);
       add_chemical_potential(inputs);
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
     }
   }
 
@@ -737,7 +745,7 @@ void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
     double deltak_sq = std::norm(delta_k);
     double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
     if (std::sqrt(deltak_sq)<1.0E-12 && ek<0.0) {
-      phi_k[k](0,0) = large_number_ * std::exp(ii()*std::arg(delta_k));
+      phi_k[k](0,0) = singular_ampl_ * std::exp(ii()*std::arg(delta_k));
     }
     else {
       phi_k[k](0,0) = 2.0*delta_k/ek_plus_Ek;
@@ -755,7 +763,7 @@ void BCS_State::get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k)
 
 void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
 {
-  //std::cout << "get_pair_amplitudes_intraband\n";
+  // std::cout << "get_pair_amplitudes_INTRABAND\n";
   // BCS pair amplitudes for multi-band system (INTRABAND pairing only)
   for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
@@ -797,13 +805,13 @@ void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
       else dphi_k_(i,i) = 0.0;
       */
       if (std::sqrt(deltak_sq)<1.0E-12 && ek<=0.0) {
-        dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
+        dphi_k_(i,i) = singular_ampl_ * std::exp(ii()*std::arg(delta_k_(i,i)));
         //std::cout << "n = " << i << "\n";
         //std::cout << "kvec = " << kvec.transpose() << "\n";
         //std::cout << "deltak_sq = "<<deltak_sq<<"\n";
         //std::cout << "ek = "<<ek<<"\n";
         //std::cout << "ek_plus_Ek = "<<ek_plus_Ek<<"\n";
-        //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
+        //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by value = "<<singular_ampl_<<"\n";
         //getchar();
       }
       else {
@@ -827,6 +835,7 @@ void BCS_State::get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k)
 
 void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
 {
+  //std::cout << "get_pair_amplitudes_INTERBAND\n";
   // BCS pair amplitudes for multi-band system (Including INTERBAND pairing)
   for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
@@ -905,6 +914,7 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
       dphi_k_ = svd.matrixV() * work_;
     }
     else {
+      //std::cout << ">> alert! singularilty in interband pairing\n";
       // INTRABAND pairing only for this k
       dphi_k_.setZero();
       for (int i=0; i<kblock_dim_; ++i) {
@@ -912,8 +922,8 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         double deltak_sq = std::norm(delta_k_(i,i));
         double ek_plus_Ek = ek + std::sqrt(ek*ek + 4.0*deltak_sq);
         if (std::sqrt(deltak_sq)<1.0E-12 && ek<=0.0) {
-          dphi_k_(i,i) = large_number_ * std::exp(ii()*std::arg(delta_k_(i,i)));
-          //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by 'large number'\n";
+          dphi_k_(i,i) = singular_ampl_ * std::exp(ii()*std::arg(delta_k_(i,i)));
+          //std::cout << ">> alert! BCS_State: singularilty in 'phi_k', replaced by value = "<<singular_ampl_<<"\n";
           /*
           std::cout << "deltak_sq = "<<deltak_sq<<"\n";
           std::cout << "ek = "<<ek<<"\n";
@@ -1018,13 +1028,13 @@ void BCS_State::analytical_amplitudes_NICKELATE2L(std::vector<ComplexMatrix>& ph
     double Eqp2k = std::sqrt(E2k*E2k + Delta2k_sq);
     dphi_k_.setZero();
     if (std::sqrt(Delta1k_sq)<1.0E-12 && E1k<0.0) {
-      dphi_k_(0,0) = large_number_;
+      dphi_k_(0,0) = singular_ampl_;
     }
     else {
       dphi_k_(0,0) = Delta1k/(E1k + Eqp1k);
     }
     if (std::sqrt(Delta2k_sq)<1.0E-12 && E2k<0.0) {
-      dphi_k_(1,1) = large_number_;
+      dphi_k_(1,1) = singular_ampl_;
     }
     else {
       dphi_k_(1,1) = Delta2k/(E2k + Eqp2k);
@@ -1095,13 +1105,13 @@ void  BCS_State::analytical_gradient_NICKELATE2L(std::vector<Matrix>& psi_gradie
     double Eqp2k = std::sqrt(E2k*E2k + Delta2k_sq);
     dphi_k_.setZero();
     if (std::sqrt(Delta1k_sq)<1.0E-12 && E1k<0.0) {
-      dphi_k_(0,0) = large_number_;
+      dphi_k_(0,0) = singular_ampl_;
     }
     else {
       dphi_k_(0,0) = Delta1k/(E1k + Eqp1k);
     }
     if (std::sqrt(Delta2k_sq)<1.0E-12 && E2k<0.0) {
-      dphi_k_(1,1) = large_number_;
+      dphi_k_(1,1) = singular_ampl_;
     }
     else {
       dphi_k_(1,1) = Delta2k/(E2k + Eqp2k);

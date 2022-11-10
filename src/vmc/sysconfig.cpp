@@ -713,8 +713,7 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
     undo_upspin_hop();
 
     // contribution from this term
-    det_ratio *= gw_ratio;
-    net_ratio += det_ratio;
+    net_ratio += det_ratio * gw_ratio;
     //std::cout << " det_ratio1 = " << det_ratio1 << "\n";
     //std::cout << " det_ratio2 = " << det_ratio2 << "\n";
     //std::cout << " delta_nd = " << delta_nd << "\n";
@@ -772,9 +771,23 @@ amplitude_t SysConfig::apply_sitepair_hop(const int& i_cdag, const int& i_c) con
     // ratio for the dnspin hop
     det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
   }
+
   // net ratio for up & dn spin hop
   //net_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
   net_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
+
+  // GW ratio: will come into play in case of HOLON projection
+  if (pj.have_holon_projection()) {
+    double gw_ratio = pj.gw_ratio(*this, frsite, tosite);
+    // make temporary change for the upspin hop 
+    temporary_upspin_hop(frsite, tosite);
+    // GW ratio due to dnspin hop
+    gw_ratio *= pj.gw_ratio(*this, frsite, tosite);
+    // undo the change
+    undo_upspin_hop();
+
+    net_ratio *= gw_ratio;
+  }
 
   return net_ratio;
 }

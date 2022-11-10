@@ -33,16 +33,16 @@ U = 8.0
 wavefunction = "SC_DWAVE"
 #wavefunction = "FERMISEA"
 gw_projector = "YES"
-dh_projector = "NO"
-dhfactor1 = 0.5
-gw_factor = 0.5 # 0.3037
+#dh_projector = "NO"
+#dhfactor1 = 0.5
+gw_factor = 0.3037
 hole_doping = 0.16;
-delta_sc = 0.5 # 0.08
-mu = 0.0 # -0.4263000
+delta_sc = 0.08
+mu = -0.4263000
 mu_default = "NO"
 mu_variational = "YES"
-#as_func_of = "hole_doping"
-as_func_of = "delta_sc"
+as_func_of = "hole_doping"
+#as_func_of = "delta_sc"
 
 #---------------------------------------------
 # List of observable to calculate:
@@ -58,7 +58,7 @@ SiteOccupancy = "NO"
 # Monte Carlo parameters
 #---------------------------------------------
 rng_seed = 0
-measure_steps = 100000
+measure_steps = 5000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10

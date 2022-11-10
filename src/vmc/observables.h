@@ -52,6 +52,7 @@ public:
   const SC_Correlation& sc_corr(void) const { return sc_corr_; }
   const SR_Matrix& sr_matrix(void) const { return sr_matrix_; }
   const ParticleDensity& particle_density(void) const { return particle_density_; }
+  const DoublonDensity& doublon_density(void) const { return doublon_density_; }
 
   void finalize(void);
   void print_heading(void);
@@ -69,10 +70,11 @@ private:
   unsigned num_xvars_{0};
   Energy energy_;
   EnergyGradient energy_grad_;
-  ParticleDensity particle_density_;
   SpinCorrelation spin_corr_;
   SC_Correlation sc_corr_;
   SR_Matrix sr_matrix_;
+  ParticleDensity particle_density_;
+  DoublonDensity doublon_density_;
 };
 
 

@@ -170,7 +170,7 @@ int Optimizer::init_sample(const VMCRun& vmc, const int& sample)
 
   // iteration files
   std::ostringstream suff;
-  suff << "_sample"<<std::setfill('0')<<std::setw(2)<<sample+1<<".txt";
+  suff << "_sample"<<std::setfill('0')<<std::setw(2)<<sample<<".txt";
   file_life_.open(life_fname_);
   file_life_.close();
   file_energy_.open(iter_efile_+suff.str());
@@ -324,7 +324,7 @@ int Optimizer::optimize(VMCRun& vmc)
        /*--------------------------------------------------------------
         * Convergence criteria
         *--------------------------------------------------------------*/
-        if (mk_statistic_.is_full() && en_trend<=0.1) {
+        if (mk_statistic_.is_full() && en_trend<=0.1 && avg_gnorm<=grad_tol_) {
           mk_statistic_.get_series_avg(vparms);
           status = exit_status::converged;
           break;
@@ -430,7 +430,7 @@ int Optimizer::optimize(VMCRun& vmc)
      /*--------------------------------------------------------------
       * Convergence criteria
       *--------------------------------------------------------------*/
-      if (mk_statistic_.is_full() && en_trend<=0.1) {
+      if (mk_statistic_.is_full() && en_trend<=0.1 && avg_gnorm<=grad_tol_) {
         mk_statistic_.get_series_avg(vparms);
         status = exit_status::converged;
         break;

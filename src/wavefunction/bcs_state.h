@@ -41,7 +41,7 @@ private:
   bool interband_pairing_{false};
   bool wf_analytical_form_{false};
   bool noninteracting_mu_{true};
-  double large_number_{1.0E+2};
+  double singular_ampl_{1.0E+2};
   lattice::lattice_id lattice_id_;
   // matrices
   ComplexMatrix work_;

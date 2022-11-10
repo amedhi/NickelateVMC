@@ -160,6 +160,14 @@ bool GW_Projector::is_strong(void) const
   }
 }
 
+bool GW_Projector::have_holon_projection(void) const
+{
+  for (const auto& p : projection_) {
+    if (p == pjn::HOLON) return true;
+  }
+  return false;
+}
+
 int GW_Projector::update_parameters(const VariationalParms& vparms)
 {
   if (!is_present_) return 0;

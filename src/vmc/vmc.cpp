@@ -159,9 +159,7 @@ int VMC::sr_function(const var::parm_vector& varp, double& en_mean,
   double& en_err, RealVector& grad, RealVector& grad_err, RealMatrix& sr_matrix,
   const bool& silent)
 {
-  if (rng_seed_ >= 0) {
-    config.rng().seed(rng_seed_);
-  }
+  config.rng().seed(rng_seed_);
   silent_mode_ = silent;
   set_run_mode(run_mode::sr_function);
   // build the config from the variational parameters
@@ -184,9 +182,7 @@ int VMC::en_function(const var::parm_vector& varp, double& en_mean,
   double& en_stddev, RealVector& grad, RealVector& grad_stddev,
   const bool& silent)
 {
-  if (rng_seed_ >= 0) {
-    config.rng().seed(rng_seed_);
-  }
+  config.rng().seed(rng_seed_);
   silent_mode_ = silent;
   set_run_mode(run_mode::en_function);
   // build the config from the variational parameters

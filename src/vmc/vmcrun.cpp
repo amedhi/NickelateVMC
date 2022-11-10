@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-11-05 18:17:11
+* @Last Modified time: 2022-11-07 22:37:03
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -206,14 +206,14 @@ int VMCRun::start_worker_run(void)
         break;
   	  case mpi::MP_start_simulation:
         mpi_comm_.recv(msg.source(),msg.tag(),runmode);
-  		start(vparms,runmode,silent_mode);
-  		if (mpi_mode_ == mpi_mode::NORMAL) {
+  		  start(vparms,runmode,silent_mode);
+  		  if (mpi_mode_ == mpi_mode::NORMAL) {
   	      run_simulation(measure_samples_);
         }
         if (mpi_mode_ == mpi_mode::BC_TWIST) {
   	      run_simulation(bc_list_);
         }
-    	MPI_send_results(mpi_comm_, mpi_comm_.master(), mpi::MP_data_samples);
+    	 MPI_send_results(mpi_comm_, mpi_comm_.master(), mpi::MP_data_samples);
   	  	break;
   	  case mpi::MP_stop_simulation:
         mpi_comm_.recv(msg.source(), msg.tag());

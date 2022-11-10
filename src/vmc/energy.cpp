@@ -27,6 +27,7 @@ void Energy::setup(const lattice::Lattice& lattice,
   model.get_term_names(term_names);
   elem_names.push_back("Total");
   for (const auto& s : term_names) elem_names.push_back(s);
+  this->resize(elem_names.size(), elem_names);
   config_value_.resize(elem_names.size());
   setup_done_ = true;
 }
@@ -290,6 +291,12 @@ void SR_Matrix::setup(const lattice::Lattice& lattice, const SysConfig& config,
   batch_sum_.resize(num_elems);
   batch_sum_.error_bar_off();
   setup_done_ = true;
+}
+
+void SR_Matrix::reset(void) 
+{
+  MC_Observable::reset(); 
+  batch_sum_.reset(); 
 }
 
 void SR_Matrix::reset_batch_limit(const int& sample_size)

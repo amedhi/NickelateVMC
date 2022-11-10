@@ -30,6 +30,20 @@ private:
   mcdata::data_t config_value_;
 };
 
+class DoublonDensity : public mcdata::MC_Observable
+{
+public:
+  using MC_Observable::MC_Observable;
+  void setup(const lattice::Lattice& lattice, const SysConfig& config);
+  void measure(const lattice::Lattice& lattice, const SysConfig& config);
+  const mcdata::data_t& config_value(void) const { return config_value_; }
+private:
+  bool setup_done_{false};
+  int num_sites_{0};
+  int num_site_types_{0};
+  mcdata::data_t config_value_;
+};
+
 } // end namespave vmc
 
 

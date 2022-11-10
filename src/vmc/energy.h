@@ -56,6 +56,7 @@ public:
   using MC_Observable::MC_Observable;
   void setup(const lattice::Lattice& lattice, const SysConfig& config,
     const int& sample_size=500);
+  void reset(void) override;
   void measure(const RealVector& grad_logpsi);
   void get_matrix(Eigen::MatrixXd& sr_mat) const;
   void reset_batch_limit(const int& sample_size);

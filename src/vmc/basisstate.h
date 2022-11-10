@@ -21,6 +21,7 @@ enum class spin {UP, DN};
 
 enum class move_t {upspin_hop, dnspin_hop, exchange, null};
 enum class proj_t {partial, full, null};
+enum class pjn {DOUBLON, HOLON, NONE};
 
 class SiteState 
 {
@@ -113,6 +114,7 @@ private:
   int num_dblocc_sites_{0};
   bool double_occupancy_{true};
   mutable std::vector<SiteState> site_states_;
+  std::vector<pjn> site_projection_;
   std::vector<int> upspin_sites_;
   std::vector<int> dnspin_sites_;
   std::vector<int> uphole_sites_;

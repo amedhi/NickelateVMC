@@ -52,6 +52,7 @@ public:
     VariationalParms& vparms);
   bool is_present(void) const { return is_present_; }
   bool is_strong(void) const; 
+  bool have_holon_projection(void) const;
   int update_parameters(const VariationalParms& vparms);
   double gw_ratio(const vmc::BasisState& state, 
     const int& fr_site, const int& to_site) const;
@@ -83,6 +84,7 @@ public:
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   bool gw_projection(void) const { return gw_projector_.is_present(); }
   bool gw_projection_strong(void) const { return gw_projector_.is_strong(); }
+  bool have_holon_projection(void) const { return gw_projector_.have_holon_projection(); }
   double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
     { return gw_projector_.gw_ratio(state, fr_site, to_site); }
   const bool& have_dh_projector(void) const { return dh_projector_; }

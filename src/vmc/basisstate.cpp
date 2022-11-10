@@ -32,6 +32,10 @@ void BasisState::set_vaccuum(const int& num_sites, const bool& allow_dbl)
   double_occupancy_ = allow_dbl;
   site_states_.resize(num_sites_);
   projections_.resize(num_sites_);
+  site_projection_.resize(num_sites_);
+  for (auto& p : site_projection_) p = pjn::NONE;
+
+
   if (double_occupancy_)  {
     for (auto& p : projections_) p = proj_t::partial;
   }

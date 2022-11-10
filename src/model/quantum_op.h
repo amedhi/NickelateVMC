@@ -9,6 +9,8 @@
 #define QUANTUM_OP_H
 
 #include <string>
+//#include <map>
+#include <unordered_map>
 
 namespace model {
 
@@ -20,6 +22,8 @@ enum class op_id {
 };
 
 enum class op_type { quadratic, pairing, quartic };
+
+enum class projection_t {DOUBLON, HOLON, NONE};
 
 namespace op {
 class quantum_op 
@@ -150,6 +154,25 @@ public:
 };
 
 } // end namespace op
+
+
+class ProjectionOp : public std::unordered_map<int, projection_t>
+{
+public:
+  using super_type = std::unordered_map<int, projection_t>;
+  using iterator = super_type::iterator;
+  using const_iterator = super_type::const_iterator;
+  using value_type = super_type::value_type;
+
+  ProjectionOp() {}
+  ~ProjectionOp() {}
+private:
+  int num_types_{0}; 
+  bool valid_{false};
+};
+
+
+
 } // end namespace model
 
 #endif

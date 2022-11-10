@@ -237,13 +237,13 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
   //------------------------HUBBARD IONIC-------------------------------------
   else if (model_name == "HUBBARD_IONIC") {
     mid = model_id::HUBBARD_IONIC;
-    if (lattice.id() == lattice::lattice_id::SQUARE_2SITE) {
+    if (lattice.id() == lattice::lattice_id::SQUARE_4SITE) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
       add_parameter(name="W", defval=0.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
       // bond operator terms
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
       add_bondterm(name="hopping", cc, op::spin_hop());
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
 
