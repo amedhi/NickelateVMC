@@ -22,6 +22,7 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
   is_present_ = inputs.set_value("gw_projector",false,info);
   if (!is_present_) {
     // set inert values & quit
+    uniform_projection_ = true;
     num_site_types_ = 1;
     projection_.resize(1);
     gw_factor_.resize(1);
@@ -119,9 +120,23 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
   return gw_factor_.size();
 }
 
+void GW_Projector::switch_off(void)
+{
+  is_present_ = false;
+  // set inert values 
+  uniform_projection_ = true;
+  num_site_types_ = 1;
+  projection_.resize(1);
+  gw_factor_.resize(1);
+  projection_[0] = pjn::DOUBLON;
+  gw_factor_[0] = 1.0;
+  set_ratio_table();
+}
+
 void GW_Projector::set_ratio_table(void)
 {
   if (uniform_projection_) {
+    ratio_table_.resize(1,5);
     double g = gw_factor_[0];
     if ( g<0.0 ) {
       throw std::range_error("GW_Projector::set_ratio_table: out of range 'gw_factor' value");
@@ -133,6 +148,7 @@ void GW_Projector::set_ratio_table(void)
     ratio_table_(0,4) = g*g; // nd_increament =  2
   }
   else {
+    ratio_table_.resize(num_site_types_,5);
     for (int n=0; n<num_site_types_; ++n) {
       double g = gw_factor_[n];
       if ( g<0.0 ) {
@@ -247,6 +263,38 @@ double GW_Projector::gw_ratio(const vmc::BasisState& state,
     }
     return gw_ratio;
   }
+}
+
+double GW_Projector::gw_ratio_pairhop(const int& fr_site, const int& to_site) const
+{
+  double gw_ratio = 1.0;
+  if (uniform_projection_) return gw_ratio;
+  //if (!is_present_) return gw_ratio;
+  if (fr_site == to_site) return gw_ratio;
+
+  // for non-uniform projection
+  // fr_site
+  int stype = sitetype_list_[fr_site];
+  if (projection_[stype] == pjn::DOUBLON) {
+    // one doublon to be annihilated (change = -1)
+    gw_ratio *= ratio_table_(stype,1);
+  }
+  else if (projection_[stype] == pjn::HOLON) {
+    // one holon to be created (change = 1)
+    gw_ratio *= ratio_table_(stype,3);
+  }
+
+  // to_site
+  stype = sitetype_list_[to_site];
+  if (projection_[stype] == pjn::DOUBLON) {
+    // one doublon to be created (change = +1)
+    gw_ratio *= ratio_table_(stype,3);
+  }
+  else if (projection_[stype] == pjn::HOLON) {
+    // one holon to be annihilated (change = -1)
+    gw_ratio *= ratio_table_(stype,1);
+  }
+  return gw_ratio;
 }
 
 void GW_Projector::get_grad_logp(const vmc::BasisState& state, RealVector& grad) const

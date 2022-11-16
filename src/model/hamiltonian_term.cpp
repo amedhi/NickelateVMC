@@ -30,7 +30,7 @@ std::pair<CouplingConstant::iterator, bool> CouplingConstant::insert(const value
   return res;
 }
 
-CouplingConstant& CouplingConstant::operator=(const std::string expr)
+CouplingConstant& CouplingConstant::operator=(const std::string& expr)
 {
   super_type::clear();
   // expr is applicable for all site & bond types

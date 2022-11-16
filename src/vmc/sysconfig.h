@@ -48,9 +48,9 @@ public:
   int apply(const model::op::quantum_op& qn_op, const int& site_i) const;
   amplitude_t apply(const model::op::quantum_op& op, const int& fr_site, 
     const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const;
-  amplitude_t apply_bondsinglet_hop(const int& idag, const int& ia_dag,
-    const int& bphase_i, const int& j, const int& ja, const int& bphase_j) const;
-  amplitude_t apply_sitepair_hop(const int& i_cdag, const int& i_c) const;
+  amplitude_t apply_bondsinglet_hop(const int& fr_site_i, 
+    const int& fr_site_ia, const int& to_site_j, const int& to_site_jb) const;
+  amplitude_t apply_sitepair_hop(const int& fr_site, const int& to_site) const;
   int apply_niup_nidn(const int& site_i) const;
   amplitude_t apply_upspin_hop(const int& i, const int& j,
     const int& bc_state, const std::complex<double>& bc_phase) const;

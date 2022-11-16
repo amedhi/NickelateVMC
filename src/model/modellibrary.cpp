@@ -258,6 +258,37 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     }
   }
 
+  else if (model_name == "TJ_IONIC") {
+    mid = model_id::TJ_IONIC;
+    if (lattice.id() == lattice::lattice_id::SQUARE_4SITE) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="tp", defval=1.0, inputs);
+      add_parameter(name="W", defval=0.0, inputs);
+      add_parameter(name="U", defval=0.0, inputs);
+
+      // hopping term
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
+      add_bondterm(name="hopping", cc, op::spin_hop());
+
+      // exchange term
+      cc.create(3);
+      cc.add_type(0, "2.0*t*t/(U+W)");
+      cc.add_type(1, "2.0*t*t/(U+W)");
+      cc.add_type(2, "4.0*tp*tp/U");
+      add_bondterm(name="exchange", cc, op::sisj_plus());
+
+      // extra terms
+      //add_siteterm(name="hubbard", cc="U", op::hubbard_int());
+
+      // projection operator
+      ProjectionOp pjn({0,projection_t::HOLON}, {1,projection_t::DOUBLON});
+      set_projection_op(pjn);
+    }
+    else {
+      throw std::range_error("*error: modellibrary: model not defined for this lattice");
+    }
+  }
+
   //------------------------TJ-------------------------------------
   else if (model_name == "TJ") {
     mid = model_id::TJ;
@@ -265,6 +296,9 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     if (inputs.set_value("no_double_occupancy",true,nowarn)) {
       set_no_dbloccupancy();
     }
+    // projection operator
+    //ProjectionOp pjn = projection_t::DOUBLON; 
+    set_projection_op(projection_t::DOUBLON);
     if (lattice.id() == lattice::lattice_id::SQUARE_NNN) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);

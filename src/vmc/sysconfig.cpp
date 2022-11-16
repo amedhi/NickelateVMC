@@ -13,12 +13,13 @@ namespace vmc {
 
 SysConfig::SysConfig(const input::Parameters& inputs, 
   const lattice::Lattice& lattice, const model::Hamiltonian& model)
-  : BasisState(lattice.num_sites(), model.double_occupancy())
+  : BasisState(lattice, model)
   , wf(lattice, inputs)
   , pj(lattice, inputs)
   , num_sites_(lattice.num_sites())
 {
   // set hubbard sites 
+  /*
   if (lattice.id()==lattice::lattice_id::NICKELATE ||
       lattice.id()==lattice::lattice_id::NICKELATE_2D ||
       lattice.id()==lattice::lattice_id::NICKELATE_2L) {
@@ -38,7 +39,14 @@ SysConfig::SysConfig(const input::Parameters& inputs,
       throw std::range_error("*error: sysconfig: internal error");
     }
   }
+  */
 
+  // If model has full projection, then switch off GW projector
+  if (model.projection()) {
+    pj.gw_switch_off();
+  }
+
+  // particle number
   num_upspins_ = wf.num_upspins();
   num_dnspins_ = wf.num_dnspins();
 
@@ -126,6 +134,7 @@ int SysConfig::init_config(void)
   if (num_upspins_==0 && num_dnspins_==0) return -1;
   if (num_upspins_ != num_dnspins_) 
     throw std::range_error("*SysConfig::init_config: unequal UP & DN spin case not implemented");
+  /*
   // small 'gfactor' caution
   bool tmp_restriction = false;
   bool original_state = BasisState::double_occupancy();
@@ -134,7 +143,8 @@ int SysConfig::init_config(void)
       BasisState::allow_double_occupancy(false);
       tmp_restriction = true;
     }
-  }
+  }*/
+
   BasisState::init_spins(num_upspins_, num_dnspins_);
   psi_mat.resize(num_upspins_, num_dnspins_);
   psi_inv.resize(num_dnspins_, num_upspins_);
@@ -158,7 +168,7 @@ int SysConfig::init_config(void)
       throw std::underflow_error("*SysConfig::init: configuration wave function ill conditioned.");
     }
   }
-  if (tmp_restriction) allow_double_occupancy(original_state);
+  //if (tmp_restriction) allow_double_occupancy(original_state);
 
   // amplitude matrix invers
   psi_inv = psi_mat.inverse();
@@ -179,7 +189,8 @@ int SysConfig::set_run_parameters(void)
   // number of moves per mcstep
   int n_up = static_cast<int>(num_upspins_);
   int n_dn = static_cast<int>(num_dnspins_);
-  if (double_occupancy()) {
+  //if (double_occupancy()) {
+  if (true) {
     num_uphop_moves_ = num_upspins_;
     num_dnhop_moves_ = num_dnspins_;
     num_exchange_moves_ = std::min(n_up, n_dn);
@@ -562,14 +573,16 @@ amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
 
 amplitude_t SysConfig::apply_sisj_plus(const int& i, const int& j) const
 {
-/* It evaluates the following operator:
- !   O = (S_i.S_j - (n_i n_j)/4)
- ! The operator can be cast in the form,
- !   O = O_{ud} + O_{du}
- ! where,
- !   O_{ud} = 1/2*(- c^{\dag}_{j\up}c_{i\up} c^{\dag}_{i\dn}c_{j\dn}
- !                 - n_{i\up} n_{j_dn})
- ! O_{du} is obtained from O_{ud} by interchanging spin indices. */
+/*----------------------------------------------------------------------
+* Evaluates the following operator:
+*   J = (S_i.S_j - (n_i n_j)/4)
+* The operator can be cast in the form,
+*   J = P_{ud} + P_{du}
+* where,
+*   P_{ud} = 1/2*(- c^{\dag}_{j\up}c_{i\up} c^{\dag}_{i\dn}c_{j\dn}
+*                 - n_{i\up} n_{j_dn})
+* P_{du} is obtained from P_{ud} by interchanging spin indices. 
+*-----------------------------------------------------------------------*/
 
   // ni_nj term
   double ninj_term;
@@ -623,18 +636,31 @@ amplitude_t SysConfig::apply_sisj_plus(const int& i, const int& j) const
   return -0.5 * det_ratio + amplitude_t(ninj_term);
 }
 
-amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag, 
-  const int& ia_dag, const int& bphase_i, const int& j, 
-  const int& jb, const int& bphase_j) const
+amplitude_t SysConfig::apply_bondsinglet_hop(const int& fr_site_i, 
+  const int& fr_site_ia, const int& to_site_j, const int& to_site_jb) const
 {
-  // Evaluates the following operator:
-  //   F_{ab}(i,j) = (c^{\dag}_{i\up}c^{\dag}_{i+a\dn} -  c^{\dag}_{i\dn}c^{\dag}_{i+a,\up})/sqrt(2)
-  //          x (c_{j+b\dn}c_{j\up} - c_{j+b\up}c_{j\dn})/sqrt(2)
-  //          = 0.5 * [c^{\dag}_{i\up}c_{j\up} x c^{\dag}_{i+a\dn}c_{j+b\dn}
-  //                 + c^{\dag}_{i+a\up}c_{j\up} x c^{\dag}_{i\dn}c_{j+b\dn}
-  //                 + c^{\dag}_{i+a\up}c_{j+b\up} x c^{\dag}_{i\dn}c_{j\dn}
-  //                 + c^{\dag}_{i\up}c_{j+b\up} x c^{\dag}_{i+a\dn}c_{j\dn}]
-
+/*----------------------------------------------------------------------
+* Evaluates the following operator:
+* Denoting: 
+*          c^{dag}_{i\sigma} = d_{i\sigma}
+*          c_{i\sigma}       = c_{i\sigma}
+*          1/\sqrt{2}        = 1sqrt2 
+*          1/2               = half 
+*
+* F_{ab}(i,j) = 1sqrt2 x (d_{i\up}d_{i+a\dn} - d_{i\dn}d_{i+a\up}) x
+*               1sqrt2 x (c_{i\dn}c_{i+b\up} - c_{i\up}c_{i+b\dn}) 
+*
+* It can be written as sum of 4 terms:
+* 
+* F_{ab}(i,j) = 0.5 x [ (d_{i+a\dn}c_{j+b\dn) (d_{i\up}c_{j\up}) 
+*                     + (d_{i+a\dn}c_{j\dn})  (d_{i\up}c_{j+b\up})
+*                     + (d_{i\dn}c_{j+b\dn})  (d_{i+a\up}c_{j\up}) 
+*                     + (d_{i\dn}c_{j\dn})    (d_{i+a\up}c_{j+b\up}) ]
+*
+* Each term describes a 'UP'-spin hop followed by a 'DOWN'-spin hop
+*
+* Assumption: No hopping crosses boundary (no need to consider BC twists)
+*-----------------------------------------------------------------------*/
   int num_terms = 4;
   int up_frsite, up_tosite;
   int dn_frsite, dn_tosite;
@@ -643,151 +669,159 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& i_dag,
   for (int iterm=0; iterm<num_terms; ++iterm) {
     switch (iterm) {
       case 0:
-        up_frsite = j; up_tosite = i_dag;
-        dn_frsite = jb; dn_tosite = ia_dag;
+        up_frsite = fr_site_i;  up_tosite = to_site_j;
+        dn_frsite = fr_site_ia; dn_tosite = to_site_jb;
         break;
       case 1:
-        up_frsite = j; up_tosite = ia_dag;
-        dn_frsite = jb; dn_tosite = i_dag;
+        up_frsite = fr_site_i;  up_tosite = to_site_jb;
+        dn_frsite = fr_site_ia; dn_tosite = to_site_j;
         break;
       case 2:
-        up_frsite = jb; up_tosite = ia_dag;
-        dn_frsite = j; dn_tosite = i_dag;
+        up_frsite = fr_site_ia; up_tosite = to_site_j;
+        dn_frsite = fr_site_i;  dn_tosite = to_site_jb;
         break;
       case 3:
-        up_frsite = jb; up_tosite = i_dag;
-        dn_frsite = j; dn_tosite = ia_dag;
+        up_frsite = fr_site_ia; up_tosite = to_site_jb;
+        dn_frsite = fr_site_i;  dn_tosite = to_site_j;
         break;
+    }
+/*----------------------------------------------------------------------
+* Assumptions (true for bond-single hop):                     
+*   up_frsite != dn_frsite
+*   up_tosite != dn_tosite
+*-----------------------------------------------------------------------*/
+    if (up_frsite == dn_frsite) {
+      throw std::range_error("SysConfig::apply_bondsinglet_hop: violation of assumption-1");
+    }
+    if (up_tosite == dn_tosite) {
+      throw std::range_error("SysConfig::apply_bondsinglet_hop: violation of assumption-2");
     }
 
     int upspin, dnspin;
-    amplitude_t det_ratio1, det_ratio2;
-    // upspin hop
-    if (!op_cdagc_up(up_frsite, up_tosite)) continue;
-    upspin = which_upspin();
-    if (up_frsite==up_tosite) {
-      det_ratio1 = amplitude_t(1.0);
+    amplitude_t det_ratio1, det_ratio2, term_ratio;
+
+    // if same site for upspin
+    if (up_frsite == up_tosite) {
+      if (op_ni_up(up_frsite) == 0) continue;
+      // if same site for dnspin
+      if (dn_frsite == dn_tosite) {
+        if (op_ni_dn(dn_frsite) == 0) continue;
+        // term ratio
+        term_ratio = amplitude_t(1.0);
+      }
+      else {
+        // if dnspin hop to different site
+        if (!op_cdagc_dn(dn_frsite,dn_tosite)) continue;
+        dnspin = which_dnspin();
+        // det_ratio for the term
+        wf.get_amplitudes(psi_col,upspin_sites(),dn_tosite);
+        det_ratio2 = psi_col.cwiseProduct(psi_inv.row(dnspin)).sum();
+        // term ratio
+        term_ratio = det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite);
+      }
     }
     else {
+      // upspin hop to different site
+      if (!op_cdagc_up(up_frsite, up_tosite)) continue;
+      upspin = which_upspin();
       wf.get_amplitudes(psi_row, up_tosite, dnspin_sites());
       det_ratio1 = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
-    }
-    if (std::abs(det_ratio1) < dratio_cutoff()) continue; // for safety
+      // term ratio
+      term_ratio = det_ratio1 * pj.gw_ratio(*this, up_frsite, up_tosite);
 
-    // dnspin hop
-    if (!op_cdagc_dn(dn_frsite, dn_tosite)) continue;
-    dnspin = which_dnspin();
-    if (dn_frsite==dn_tosite) {
-      det_ratio2 = amplitude_t(1.0);
-    }
-    else {
-      wf.get_amplitudes(psi_col, upspin_sites(), dn_tosite);
-      // since one upspin have moved
-      wf.get_amplitudes(psi_col(upspin), up_tosite, dn_tosite);
-      // updated 'dnspin'-th row of psi_inv
-      amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
-      // elements other than 'upspin'-th
-      for (int i=0; i<upspin; ++i) {
-        amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
-        inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+      // same site for dnspin
+      if (dn_frsite == dn_tosite) {
+        if (op_ni_dn(dn_frsite) == 0) continue;
+        // above term_ratio does not change
       }
-      for (int i=upspin+1; i<num_upspins_; ++i) {
-        amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
-        inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+      else {
+        // dnspin hop to different site
+        if (std::abs(det_ratio1) < dratio_cutoff()) continue; // for safety
+        if (!op_cdagc_dn(dn_frsite, dn_tosite)) continue;
+        dnspin = which_dnspin();
+        wf.get_amplitudes(psi_col, upspin_sites(), dn_tosite);
+        // since one upspin have moved
+        wf.get_amplitudes(psi_col(upspin), up_tosite, dn_tosite);
+        // updated 'dnspin'-th row of psi_inv
+        amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
+        // elements other than 'upspin'-th
+        for (int i=0; i<upspin; ++i) {
+          amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+          inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+        }
+        for (int i=upspin+1; i<num_upspins_; ++i) {
+          amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+          inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
+        }
+        inv_row(upspin) = ratio_inv * psi_inv(dnspin,upspin);
+        // ratio for the dnspin hop
+        det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
+
+        // term ratio (combined with the ratio for upspin hop)
+        term_ratio *= det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite);
       }
-      inv_row(upspin) = ratio_inv * psi_inv(dnspin,upspin);
-      // ratio for the dnspin hop
-      det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
     }
-    // net ratio for up & dn spin hop
-    //amplitude_t det_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
-    amplitude_t det_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
-
-    // GW ratio due to upspin hop
-    double gw_ratio = pj.gw_ratio(*this, up_frsite, up_tosite);
-    // make temporary change for the upspin hop 
-    temporary_upspin_hop(up_frsite, up_tosite);
-    // GW ratio due to dnspin hop
-    gw_ratio *= pj.gw_ratio(*this, dn_frsite, dn_tosite);
-    // undo the change
-    undo_upspin_hop();
-
-    // contribution from this term
-    net_ratio += det_ratio * gw_ratio;
-    //std::cout << " det_ratio1 = " << det_ratio1 << "\n";
-    //std::cout << " det_ratio2 = " << det_ratio2 << "\n";
-    //std::cout << " delta_nd = " << delta_nd << "\n";
-    //getchar();
+    // net ratio due to all non-zero terms
+    net_ratio += ampl_part(std::conj(term_ratio));
   }
-  int bc_phase = bphase_i * bphase_j;
-  return 0.5 * bc_phase * net_ratio;
+  //int bc_phase = bphase_i * bphase_j;
+  //return 0.5 * bc_phase * net_ratio;
+  return 0.5 * net_ratio;
 }
 
-amplitude_t SysConfig::apply_sitepair_hop(const int& i_cdag, const int& i_c) const
+amplitude_t SysConfig::apply_sitepair_hop(const int& fr_site, const int& to_site) const
 {
-  // Evaluates the following operator:
-  //   F_{ab}(i,j) = c^{\dag}_{i\up}c^{\dag}_{i\dn}c^{\dag}_{j\dn}c^{\dag}_{j\up}
-  //               = c^{\dag}_{i\dn}c^{\dag}_{j\dn} x c^{\dag}_{i\up}c^{\dag}_{j\up}
-  int frsite = i_c;
-  int tosite = i_cdag;
+/*----------------------------------------------------------------------
+* Evaluates the following operator.
+* Denote: 
+*          c^{dag}_{i\sigma} = d_{i\sigma}
+*          c_{i\sigma}       = c_{i\sigma}
+*
+* F_{ab}(i,j) = (d_{i\up}d_{i\dn}) (c_{j\dn}c_{j\up}
+*             = (d_{i\dn}c_{j\dn}) (d_{i\up}c_{j\up)
+*
+* The term describes a 'UP'-spin hop followed by a 'DOWN'-spin hop 
+* between same sites
+*-----------------------------------------------------------------------*/
+  if (fr_site == to_site) {
+    return ampl_part(op_ni_updn(fr_site));
+  }
 
   int upspin, dnspin;
   amplitude_t det_ratio1, det_ratio2;
   amplitude_t net_ratio(0.0);
+
   // upspin hop
-  if (!op_cdagc_up(frsite, tosite)) return net_ratio;
+  if (!op_cdagc_up(fr_site, to_site)) return net_ratio;
   upspin = which_upspin();
-  if (frsite==tosite) {
-    det_ratio1 = amplitude_t(1.0);
-  }
-  else {
-    wf.get_amplitudes(psi_row, tosite, dnspin_sites());
-    det_ratio1 = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
-  }
+  wf.get_amplitudes(psi_row, to_site, dnspin_sites());
+  det_ratio1 = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
   if (std::abs(det_ratio1) < dratio_cutoff()) return net_ratio; // for safety
 
   // dnspin hop
-  if (!op_cdagc_dn(frsite, tosite)) return net_ratio;
+  if (!op_cdagc_dn(fr_site, to_site)) return net_ratio;
   dnspin = which_dnspin();
-  if (frsite==tosite) {
-    det_ratio2 = amplitude_t(1.0);
+  wf.get_amplitudes(psi_col, upspin_sites(), to_site);
+  // since one upspin have moved
+  wf.get_amplitudes(psi_col(upspin), to_site, to_site);
+  // updated 'dnspin'-th row of psi_inv
+  amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
+  // elements other than 'upspin'-th
+  for (int i=0; i<upspin; ++i) {
+    amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+    inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
   }
-  else {
-    wf.get_amplitudes(psi_col, upspin_sites(), tosite);
-    // since one upspin have moved
-    wf.get_amplitudes(psi_col(upspin), tosite, tosite);
-    // updated 'dnspin'-th row of psi_inv
-    amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio1;
-    // elements other than 'upspin'-th
-    for (int i=0; i<upspin; ++i) {
-      amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
-      inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
-    }
-    for (int i=upspin+1; i<num_upspins_; ++i) {
-      amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
-      inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
-    }
-    inv_row(upspin) = ratio_inv * psi_inv(dnspin,upspin);
-    // ratio for the dnspin hop
-    det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
+  for (int i=upspin+1; i<num_upspins_; ++i) {
+    amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
+    inv_row(i) = psi_inv(dnspin,i) - beta * psi_inv(dnspin,upspin);
   }
+  inv_row(upspin) = ratio_inv * psi_inv(dnspin,upspin);
+  // ratio for the dnspin hop
+  det_ratio2 = psi_col.cwiseProduct(inv_row).sum();
 
   // net ratio for up & dn spin hop
-  //net_ratio = ampl_part(std::conj(det_ratio1)*det_ratio2);
-  net_ratio = ampl_part(std::conj(det_ratio1*det_ratio2));
-
-  // GW ratio: will come into play in case of HOLON projection
-  if (pj.have_holon_projection()) {
-    double gw_ratio = pj.gw_ratio(*this, frsite, tosite);
-    // make temporary change for the upspin hop 
-    temporary_upspin_hop(frsite, tosite);
-    // GW ratio due to dnspin hop
-    gw_ratio *= pj.gw_ratio(*this, frsite, tosite);
-    // undo the change
-    undo_upspin_hop();
-
-    net_ratio *= gw_ratio;
-  }
+  double gw_ratio = pj.gw_ratio_pairhop(fr_site, to_site);
+  net_ratio = ampl_part(std::conj(det_ratio1*det_ratio2)*gw_ratio);
 
   return net_ratio;
 }

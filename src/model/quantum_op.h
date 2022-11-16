@@ -9,7 +9,6 @@
 #define QUANTUM_OP_H
 
 #include <string>
-//#include <map>
 #include <unordered_map>
 
 namespace model {
@@ -156,19 +155,33 @@ public:
 } // end namespace op
 
 
-class ProjectionOp : public std::unordered_map<int, projection_t>
+class ProjectionOp : private std::unordered_map<unsigned, projection_t>
 {
 public:
-  using super_type = std::unordered_map<int, projection_t>;
+  using super_type = std::unordered_map<unsigned, projection_t>;
   using iterator = super_type::iterator;
   using const_iterator = super_type::const_iterator;
   using value_type = super_type::value_type;
-
+  using pjn = projection_t;
   ProjectionOp() {}
+  ProjectionOp(const projection_t& pj); 
+  ProjectionOp(const value_type& type0, const value_type& type1={0,pjn::NONE}, 
+    const value_type& type2={0,pjn::NONE}, const value_type& type3={0,pjn::NONE}, 
+    const value_type& type4={0,pjn::NONE}, const value_type& type5={0,pjn::NONE});
   ~ProjectionOp() {}
+  void clear(void); 
+  ProjectionOp& operator=(const projection_t& pj); 
+  void set(const value_type& type0, const value_type& type1={0,pjn::NONE}, 
+    const value_type& type2={0,pjn::NONE}, const value_type& type3={0,pjn::NONE}, 
+    const value_type& type4={0,pjn::NONE}, const value_type& type5={0,pjn::NONE});
+  void finalize(const unsigned& num_site_types);
+  const bool is_present(void) const { return is_present_; }
+  operator int(void) const { return is_present_; }
+  const projection_t& get(const unsigned& i) const;
 private:
-  int num_types_{0}; 
-  bool valid_{false};
+  bool is_present_{false};
+  bool global_type_{false};
+  bool finalized_{false};
 };
 
 

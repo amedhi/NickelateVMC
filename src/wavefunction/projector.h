@@ -50,12 +50,14 @@ public:
   ~GW_Projector() {}
   int init(const lattice::Lattice& lattice, const input::Parameters& inputs,
     VariationalParms& vparms);
+  void switch_off(void);
   bool is_present(void) const { return is_present_; }
   bool is_strong(void) const; 
   bool have_holon_projection(void) const;
   int update_parameters(const VariationalParms& vparms);
   double gw_ratio(const vmc::BasisState& state, 
     const int& fr_site, const int& to_site) const;
+  double gw_ratio_pairhop(const int& fr_site, const int& to_site) const;
   void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
 private:
   enum class pjn {DOUBLON, HOLON};
@@ -80,6 +82,7 @@ public:
     { init(lattice, parms); }
   ~WavefunProjector() {}
   void init(const lattice::Lattice& lattice, const input::Parameters& inputs); 
+  void gw_switch_off(void) { gw_projector_.switch_off(); }
   void update(const input::Parameters& inputs); 
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   bool gw_projection(void) const { return gw_projector_.is_present(); }
@@ -87,6 +90,8 @@ public:
   bool have_holon_projection(void) const { return gw_projector_.have_holon_projection(); }
   double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
     { return gw_projector_.gw_ratio(state, fr_site, to_site); }
+  double gw_ratio_pairhop(const int& fr_site, const int& to_site) const
+    { return gw_projector_.gw_ratio_pairhop(fr_site, to_site); }
   const bool& have_dh_projector(void) const { return dh_projector_; }
   double dh_factor1(void) const; 
   double dh_factor2(void) const; 
@@ -105,7 +110,7 @@ private:
 
   bool dh_projector_{false};
   int num_sites_{0};
-  int num_site_types_{1};
+  //int num_site_types_{1};
   int dh_range_{0};
 
   std::vector<double> dh_factor_;

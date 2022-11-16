@@ -98,6 +98,12 @@ unsigned Hamiltonian::add_bondterm(const std::string& name, const CouplingConsta
   return bond_terms_.size();
 }
 
+unsigned Hamiltonian::set_projection_op(const ProjectionOp& pjn)
+{
+  projection_ = pjn;
+  return 1;
+}
+
 unsigned Hamiltonian::add_disorder_term(const std::string& name, const op::quantum_op& op)
 {
   // site disorder term
@@ -163,6 +169,8 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   have_siteterm_ = (site_terms_.size()>0);
   st_begin_ = site_terms_.cbegin();
   st_end_ = site_terms_.cend();
+
+
   // finalize the bond terms
   for (auto it=bond_terms_.begin(); it!=bond_terms_.end(); ++it) {
     it->eval_coupling_constant(constants_, parms_); 
@@ -171,6 +179,8 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   bt_begin_ = bond_terms_.cbegin();
   bt_end_ = bond_terms_.cend();
 
+  // finalize projection op 
+  projection_.finalize(L.num_site_types());
 
   // disorder terms
   dterm_begin_ = disorder_terms_.cbegin();

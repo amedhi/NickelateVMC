@@ -14,14 +14,11 @@
 #include <bitset>
 #include <array>
 #include "./random.h"
+#include "../model/model.h"
 
 namespace vmc {
 
-enum class spin {UP, DN};
-
 enum class move_t {upspin_hop, dnspin_hop, exchange, null};
-enum class proj_t {partial, full, null};
-enum class pjn {DOUBLON, HOLON, NONE};
 
 class SiteState 
 {
@@ -62,17 +59,16 @@ private:
 class BasisState 
 {
 public:
-  BasisState(); 
-  BasisState(const int& num_sites); 
-  BasisState(const int& num_sites, const bool& allow_dbl);
+  BasisState() {} 
+  BasisState(const lattice::Lattice& lattice, const model::Hamiltonian& model)
+    { init(lattice, model); }
   ~BasisState() {} 
-  void set_vaccuum(const int& num_sites, const bool& allow_dbl=true);
-  void allow_double_occupancy(const bool& allow);
-  void set_projection(const int& site, const proj_t& p); 
+  void init(const lattice::Lattice& lattice, const model::Hamiltonian& model);
+  //void allow_double_occupancy(const bool& allow);
   void init_spins(const int& num_upspins, const int& num_dnspins);
   void set_random(void);
   void set_custom(void);
-  const bool& double_occupancy(void) const { return double_occupancy_; }
+  //const bool& double_occupancy(void) const { return double_occupancy_; }
   bool gen_upspin_hop(void);
   bool gen_dnspin_hop(void);
   bool gen_exchange_move(void);
@@ -82,8 +78,8 @@ public:
   const int& which_site(void) const; 
   const int& which_upsite(void) const; 
   const int& which_dnsite(void) const; 
-  const int& dblocc_count(void) const { return num_dblocc_sites_; }
-  const int& dblocc_increament(void) const { return dblocc_increament_; }
+  //const int& dblocc_count(void) const { return num_dblocc_sites_; }
+  //const int& dblocc_increament(void) const { return dblocc_increament_; }
   void accept_last_move(void);
   int op_ni_up(const int& site) const;
   int op_ni_dn(const int& site) const;
@@ -105,23 +101,23 @@ public:
   RandomGenerator& rng(void) const { return rng_; }
   friend std::ostream& operator<<(std::ostream& os, const BasisState& bs);
 private:
+  enum class pjn_t {DOUBLON, HOLON, NONE};
   mutable RandomGenerator rng_;
   int num_sites_{0};
   int num_upspins_{0};
   int num_dnspins_{0};
   int num_upholes_{0};
   int num_dnholes_{0};
-  int num_dblocc_sites_{0};
-  bool double_occupancy_{true};
-  mutable std::vector<SiteState> site_states_;
-  std::vector<pjn> site_projection_;
+  //int num_dblocc_sites_{0};
+  //bool double_occupancy_{true};
+  std::vector<SiteState> site_states_;
+  std::vector<pjn_t> site_projection_;
   std::vector<int> upspin_sites_;
   std::vector<int> dnspin_sites_;
   std::vector<int> uphole_sites_;
   std::vector<int> dnhole_sites_;
-  std::vector<proj_t> projections_;
   mutable move_t proposed_move_;
-  mutable int dblocc_increament_{0};
+  //mutable int dblocc_increament_{0};
   mutable int mv_upspin_;
   mutable int up_frsite_;
   mutable int up_tosite_;
@@ -132,6 +128,7 @@ private:
   mutable int mv_dnhole_;
 
   // temporary change of state
+  /*
   mutable move_t temporary_move_{move_t::null};
   mutable int tmp_mv_upspin_;
   mutable int tmp_up_frsite_;
@@ -141,6 +138,7 @@ private:
   mutable int tmp_dn_frsite_;
   mutable int tmp_dn_tosite_;
   mutable int tmp_mv_dnhole_;
+  */
 
   void clear(void); 
 };

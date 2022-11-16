@@ -184,7 +184,7 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
                 ja_c = lattice.bond(id2).tgt_id();
                 j_phase = lattice.bond(id2).sign();
                 double term = std::real(config.apply_bondsinglet_hop(i_cdag,ia_cdag,
-                              i_phase,j_c,ja_c,j_phase));
+                              j_c,ja_c));
                 corr_data_(d,m) += term;
                 //double term = std::real(config.apply_cdagc_up(i_cdag,j_c,1));
                 //corr_data_(d,m) += term;

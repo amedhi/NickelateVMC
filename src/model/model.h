@@ -22,7 +22,7 @@
 namespace model {
 
 enum class model_id {
-  UNDEFINED, HUBBARD, HUBBARD_IONIC, TJ, DISORDERED_TJ
+  UNDEFINED, HUBBARD, HUBBARD_IONIC, TJ, TJ_IONIC, DISORDERED_TJ
 };
 
 class Hamiltonian 
@@ -58,6 +58,7 @@ public:
     { constants_.insert({cname, val}); return constants_.size(); }
   unsigned add_siteterm(const std::string& name, const CouplingConstant& cc, const op::quantum_op& op);
   unsigned add_bondterm(const std::string& name, const CouplingConstant& cc, const op::quantum_op& op);
+  unsigned set_projection_op(const ProjectionOp& pjn);
   unsigned add_disorder_term(const std::string& name, const op::quantum_op& op);
   void set_no_dbloccupancy(void) { double_occupancy_=false; }
 
@@ -84,6 +85,7 @@ public:
     { return std::make_pair(bond_terms_.cbegin(), bond_terms_.cend()); }
   std::pair<siteterm_iterator, siteterm_iterator> disorder_terms(void) const 
     { return std::make_pair(disorder_terms_.cbegin(), disorder_terms_.cend()); }
+  const ProjectionOp& projection(void) const { return projection_; }
   unsigned num_siteterms(void) const { return site_terms_.size(); }
   unsigned num_bondterms(void) const { return bond_terms_.size(); }
   unsigned num_disorder_terms(void) const { return disorder_terms_.size(); }
@@ -103,9 +105,11 @@ private:
   //BasisDescriptor basis_;
   std::map<unsigned, unsigned> sitetypes_map_;
   std::map<unsigned, unsigned> bondtypes_map_;
-  //BondTerm::BondSiteMap bond_sites_map_;  
+  // bond & site operator terms  
   std::vector<HamiltonianTerm> bond_terms_;
   std::vector<HamiltonianTerm> site_terms_;
+  // projection operator
+  ProjectionOp projection_;
 
   bool double_occupancy_{true};
   bool have_siteterm_{false};

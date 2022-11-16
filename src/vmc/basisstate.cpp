@@ -11,80 +11,92 @@
 
 namespace vmc {
 
-BasisState::BasisState(void) 
+void BasisState::init(const lattice::Lattice& lattice, const model::Hamiltonian& model)
 {
-  set_vaccuum(0);
-} 
-
-BasisState::BasisState(const int& num_sites) 
-{
-  set_vaccuum(num_sites);
-} 
-
-BasisState::BasisState(const int& num_sites, const bool& allow_dbl) 
-{
-  set_vaccuum(num_sites, allow_dbl);
-} 
-
-void BasisState::set_vaccuum(const int& num_sites, const bool& allow_dbl) 
-{
-  num_sites_ = num_sites;
-  double_occupancy_ = allow_dbl;
+  num_sites_ = lattice.num_sites();
   site_states_.resize(num_sites_);
-  projections_.resize(num_sites_);
+  for (auto& state : site_states_) state.reset();
+
+  // set model projection
   site_projection_.resize(num_sites_);
-  for (auto& p : site_projection_) p = pjn::NONE;
-
-
-  if (double_occupancy_)  {
-    for (auto& p : projections_) p = proj_t::partial;
+  if (model.projection()) {
+    for (int i=0; i<num_sites_; ++i) {
+      int stype = lattice.site(i).type();
+      switch (model.projection().get(stype)) {
+        case model::projection_t::DOUBLON:
+          site_projection_[i] = pjn_t::DOUBLON;
+          break;
+        case model::projection_t::HOLON:
+          site_projection_[i] = pjn_t::HOLON;
+          break;
+        default:
+          site_projection_[i] = pjn_t::NONE;
+      }
+    }
   }
   else {
-    for (auto& p : projections_) p = proj_t::full;
-  } 
+    for (int i=0; i<num_sites_; ++i) {
+      site_projection_[i] = pjn_t::NONE;
+    }
+  }
+
+  // clear
   upspin_sites_.clear();
   dnspin_sites_.clear();
   uphole_sites_.clear();
   dnhole_sites_.clear();
+
   // rng site generator
   if (num_sites_>0) rng_.set_site_generator(0,num_sites_-1);
 }
 
 void BasisState::clear(void)
 {
+  for (auto& state : site_states_) state.reset();
   upspin_sites_.clear();
   dnspin_sites_.clear();
   uphole_sites_.clear();
   dnhole_sites_.clear();
 } 
 
-void BasisState::set_projection(const int& site, const proj_t& p) 
-{ 
-  projections_[site]=p; 
-}
-
 void BasisState::init_spins(const int& num_upspins, const int& num_dnspins)
 {
+  // constraint checks
+  if (num_upspins>num_sites_ || num_dnspins>num_sites_) {
+    throw std::range_error(" BasisState::init_spins: spin number exceed capacity");
+  }
+
+  // max states considering DOUBLON projection
+  int max_states = 0;
+  for (const auto& p : site_projection_) {
+    if (p == pjn_t::DOUBLON) max_states += 1;
+    else max_states += 2;
+  }
+  if (num_upspins+num_dnspins>max_states) {
+    throw std::range_error(" BasisState::init_spins: spin number exceed capacity");
+  }
+
+  // min particle number considering HOLON projection
+  int min_particles = 0;
+  for (const auto& p : site_projection_) {
+    if (p == pjn_t::HOLON) min_particles += 1;
+  }
+  if (num_upspins+num_dnspins<min_particles) {
+    throw std::range_error(" BasisState::init_spins: spin number not enough to meet projection");
+  }
+
+  // things fine, go ahead
   num_upspins_ = num_upspins;
   num_dnspins_ = num_dnspins;
-  if (num_upspins_>num_sites_ || num_dnspins_>num_sites_)
-    throw std::range_error("* BasisState::init_spins: spin number exceed capacity");
-  int num_states = 0;
-  for (int i=0; i<num_sites_; ++i) {
-    if (projections_[i]==proj_t::full) num_states += 1;
-    else num_states += 2;
-  }
-  if (num_upspins_+num_dnspins_>num_states) {
-    throw std::range_error("* BasisState::init_spins: spin number exceed capacity");
-  }
   num_upholes_ = num_sites_ - num_upspins;
   num_dnholes_ = num_sites_ - num_dnspins;
-  // resizing
+
   upspin_sites_.resize(num_upspins_);
   dnspin_sites_.resize(num_dnspins_);
   uphole_sites_.resize(num_upholes_);
   dnhole_sites_.resize(num_dnholes_);
-  // random generator
+
+  // random generators
   // rng site generator
   rng_.set_site_generator(0,num_sites_-1);
   // assuming 'num_upspins>0', 'num_dnspins>0'
@@ -97,74 +109,131 @@ void BasisState::init_spins(const int& num_upspins, const int& num_dnspins)
   rng_.set_dnhole_generator(0,n-1);
 } 
 
-void BasisState::allow_double_occupancy(const bool& allow)
-{
-  double_occupancy_ = allow;
-} 
-
 void BasisState::set_random(void)
 {
+  // reset state
   for (auto& state : site_states_) state.reset();
+
+  // HOLON projected sites must be filled first
+  int next_up = 0;
+  int next_dn = 0;
+  std::vector<int> no_holon_sites;
+  for (int n=0; n<num_sites_; ++n) {
+    if (site_projection_[n]==pjn_t::HOLON) {
+      no_holon_sites.push_back(n);
+    }
+  }
+  if (no_holon_sites.size() > 0) {
+    std::shuffle(no_holon_sites.begin(),no_holon_sites.end(),rng_);
+    // UP spins & holes
+    int m;
+    int idx = 0;
+    for (m=0; m<num_upspins_; ++m) {
+      if (idx >= no_holon_sites.size()) break;
+      int site = no_holon_sites[idx];
+      site_states_[site].put_upspin(m);
+      upspin_sites_[m] = site;
+      idx++;
+    }
+    next_up = m;
+    // if all 'no_holon_sites' are not filled
+    for (m=0; m<num_dnspins_; ++m) {
+      if (idx >= no_holon_sites.size()) break;
+      int site = no_holon_sites[idx];
+      site_states_[site].put_dnspin(m);
+      dnspin_sites_[m] = site;
+      idx++;
+    }
+    next_dn = m;
+  }
+
+  // fill all other states
   std::vector<int> all_sites(num_sites_);
   for (int i=0; i<num_sites_; ++i) all_sites[i] = i;
   std::shuffle(all_sites.begin(),all_sites.end(),rng_);
-  // UP spins & holes
-  for (int i=0; i<num_upspins_; ++i) {
-    int site = all_sites[i];
-    site_states_[site].put_upspin(i);
-    upspin_sites_[i] = site;
+
+  // fill the remaining UP spins  
+  for (const auto& site : all_sites) {
+    if (next_up >= num_upspins_) break;
+    if (site_states_[site].have_upspin()) continue;
+    if (site_projection_[site] != pjn_t::DOUBLON) {
+      site_states_[site].put_upspin(next_up);
+      upspin_sites_[next_up] = site;
+      next_up++;
+    }
   }
-  int j = 0;
-  for (int i=num_upspins_; i<num_sites_; ++i) {
-    int site = all_sites[i];
-    site_states_[site].put_uphole(j);
-    uphole_sites_[j++] = site;
-  }
-  // DN spins & holes
+
+  // fill the remaining DN spins  
   std::shuffle(all_sites.begin(),all_sites.end(),rng_);
-  int id = 0;
-  j = 0;
-  for (int i=0; i<num_sites_; ++i) {
-    int site = all_sites[i];
-    if (id < num_dnspins_) {
-      if (projections_[site]==proj_t::full && site_states_[site].have_upspin()) {
-        site_states_[site].put_dnhole(j);
-        dnhole_sites_[j++] = site;
-      }
-      else {
-        site_states_[site].put_dnspin(id);
-        dnspin_sites_[id++] = site;
-      }
-    }
-    else {
-      site_states_[site].put_dnhole(j);
-      dnhole_sites_[j++] = site;
+  for (const auto& site : all_sites) {
+    if (next_dn >= num_dnspins_) break;
+    if (site_states_[site].have_dnspin()) continue;
+    if (site_projection_[site] != pjn_t::DOUBLON) {
+      site_states_[site].put_dnspin(next_dn);
+      dnspin_sites_[next_dn] = site;
+      next_dn++;
     }
   }
-  // consistency check
-  if (id != num_dnspins_) {
-    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+
+  // sanity check
+  if (next_up!=num_upspins_ && next_dn!=num_dnspins_) {
+    throw std::logic_error(" BasisState::set_random: ivalid state status-1");
   }
-  if (j != num_dnholes_) {
-    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+  int n_up=0;
+  int n_dn=0;
+  for (const auto& state : site_states_) {
+    if (state.have_upspin()) n_up++;
+    if (state.have_dnspin()) n_dn++;
   }
-  // number of doubly occupied sites
-  num_dblocc_sites_ = 0;
-  for (int i=0; i<num_sites_; ++i) {
-    if (projections_[i] != proj_t::null) {
-      if (site_states_[i].occupancy()==2) num_dblocc_sites_++;
+  if (n_up!=num_upspins_ && n_dn!=num_dnspins_) {
+    throw std::logic_error(" BasisState::set_random: ivalid state status-2");
+  }
+
+  // allotment of 'holes' 
+  next_up = 0;
+  for (const auto& site : all_sites) {
+    if (next_up >= num_upholes_) break;
+    if (!site_states_[site].have_upspin()) {
+      site_states_[site].put_uphole(next_up);
+      uphole_sites_[next_up] = site;
+      next_up++;
     }
   }
+  next_dn = 0;
+  for (const auto& site : all_sites) {
+    if (next_dn >= num_dnholes_) break;
+    if (!site_states_[site].have_dnspin()) {
+      site_states_[site].put_dnhole(next_dn);
+      dnhole_sites_[next_dn] = site;
+      next_dn++;
+    }
+  }
+
+  // sanity check
+  if (next_up!=num_upholes_ && next_dn!=num_dnholes_) {
+    throw std::logic_error(" BasisState::set_random: ivalid state status-3");
+  }
+  n_up=0;
+  n_dn=0;
+  for (const auto& state : site_states_) {
+    if (state.have_uphole() && state.uphole_id()>=0) n_up++;
+    if (state.have_dnhole() && state.dnhole_id()>=0) n_dn++;
+  }
+  if (n_up!=num_upholes_ && n_dn!=num_dnholes_) {
+    throw std::logic_error(" BasisState::set_random: ivalid state status-4");
+  }
+
   // in case there are no holes
   if (num_upholes_==0) {
     uphole_sites_.resize(1);
-    upspin_sites_[0] = -1;
+    uphole_sites_[0] = -1;
   }
   if (num_dnholes_==0) {
     dnhole_sites_.resize(1);
-    dnspin_sites_[0] = -1;
+    dnhole_sites_[0] = -1;
   }
 }
+
 
 void BasisState::set_custom(void)
 {
@@ -194,7 +263,7 @@ void BasisState::set_custom(void)
   j = 0;
   for (int i=0; i<num_sites_; ++i) {
     int site = all_sites[i];
-    if (id<num_dnspins_ && projections_[site] != proj_t::full) {
+    if (id<num_dnspins_ && site_projection_[site] != pjn_t::DOUBLON) {
       site_states_[site].put_dnspin(id);
       dnspin_sites_[id] = site;
       id++;
@@ -206,90 +275,93 @@ void BasisState::set_custom(void)
   }
   // consistency check
   if (id != num_dnspins_) {
-    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+    throw std::logic_error("* BasisState::set_custom: consistency check failed!");
   }
   if (j != num_dnholes_) {
-    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+    throw std::logic_error("* BasisState::set_custom: consistency check failed!");
   }
-  // number of doubly occupied sites
-  num_dblocc_sites_ = 0;
-  for (int i=0; i<num_sites_; ++i) {
-    if (projections_[i] != proj_t::null) {
-      if (site_states_[i].occupancy()==2) num_dblocc_sites_++;
-    }
-  }
+
   // in case there are no holes
   if (num_upholes_==0) {
     uphole_sites_.resize(1);
-    upspin_sites_[0] = -1;
+    uphole_sites_[0] = -1;
   }
   if (num_dnholes_==0) {
     dnhole_sites_.resize(1);
-    dnspin_sites_[0] = -1;
+    dnhole_sites_[0] = -1;
   }
 }
 
 bool BasisState::gen_upspin_hop(void)
 {
-  //if (proposed_move_!=move_t::null) undo_last_move();
   if (num_upholes_==0 || num_upspins_==0) {
     proposed_move_ = move_t::null;
     return false;
   }
+
+  // choose a spin
   mv_upspin_ = rng_.random_upspin();
-  mv_uphole_ = rng_.random_uphole();
   up_frsite_ = upspin_sites_[mv_upspin_]; 
+  // check projection constraint
+  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+    if (site_states_[up_frsite_].occupancy()==1) {
+      proposed_move_ = move_t::null;
+      return false;
+    }
+  }
+
+  // choose a hole
+  mv_uphole_ = rng_.random_uphole();
   up_tosite_ = uphole_sites_[mv_uphole_]; 
-  int n_occ = site_states_[up_tosite_].occupancy();
-  if (projections_[up_tosite_]==proj_t::full && n_occ==1) {
-    proposed_move_ = move_t::null;
-    return false;
-  }
-  else {
-    proposed_move_=move_t::upspin_hop;
-    if (projections_[up_tosite_]!=proj_t::null) {
-      dblocc_increament_ = n_occ; // must be 0 or 1
+  // check projection constraint
+  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[up_tosite_].occupancy()==1) {
+      proposed_move_ = move_t::null;
+      return false;
     }
-    else dblocc_increament_ = 0;
-    if (projections_[up_frsite_]!=proj_t::null) {
-      if (site_states_[up_frsite_].have_dnspin()) dblocc_increament_--;
-    }
-    return true;
   }
+
+  // move possible
+  proposed_move_=move_t::upspin_hop;
+  return true;
 }
 
 bool BasisState::gen_dnspin_hop(void)
 {
-  //if (proposed_move_!=move_t::null) undo_last_move();
   if (num_dnholes_==0 || num_dnspins_==0) {
     proposed_move_ = move_t::null;
     return false;
   }
+
+  // choose a spin
   mv_dnspin_ = rng_.random_dnspin();
-  mv_dnhole_ = rng_.random_dnhole();
   dn_frsite_ = dnspin_sites_[mv_dnspin_]; 
+  // check projection constraint
+  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+    if (site_states_[dn_frsite_].occupancy()==1) {
+      proposed_move_ = move_t::null;
+      return false;
+    }
+  }
+
+  // choose a hole
+  mv_dnhole_ = rng_.random_dnhole();
   dn_tosite_ = dnhole_sites_[mv_dnhole_]; 
-  int n_occ = site_states_[dn_tosite_].occupancy();
-  if (projections_[dn_tosite_]==proj_t::full && n_occ==1) {
-    proposed_move_ = move_t::null;
-    return false;
-  }
-  else {
-    proposed_move_=move_t::dnspin_hop;
-    if (projections_[dn_tosite_]!=proj_t::null) {
-      dblocc_increament_ = n_occ; // must be 0 or 1
+  // check projection constraint
+  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[dn_tosite_].occupancy()==1) {
+      proposed_move_ = move_t::null;
+      return false;
     }
-    else dblocc_increament_ = 0;
-    if (projections_[dn_frsite_]!=proj_t::null) {
-      if (site_states_[dn_frsite_].have_upspin()) dblocc_increament_--;
-    }
-    return true;
   }
+
+  // move possible
+  proposed_move_=move_t::dnspin_hop;
+  return true;
 }
 
 bool BasisState::gen_exchange_move(void)
 {
-  //if (proposed_move_!=move_t::null) undo_last_move();
   if (num_upholes_==0 || num_upspins_==0) return false;
   if (num_dnholes_==0 || num_dnspins_==0) return false;
   mv_upspin_ = rng_.random_upspin();
@@ -307,7 +379,6 @@ bool BasisState::gen_exchange_move(void)
     return false;
   }
   proposed_move_ = move_t::exchange;
-  dblocc_increament_ = 0;
   return true;
 }
 
@@ -363,7 +434,7 @@ const int& BasisState::which_upsite(void) const
     return up_tosite_;
   }
   else {
-    throw std::logic_error("BasisState::which_site: no existing move");
+    throw std::logic_error("BasisState::which_upsite: no existing move");
   }
 }
 
@@ -373,19 +444,20 @@ const int& BasisState::which_dnsite(void) const
     return dn_tosite_;
   }
   else {
-    throw std::logic_error("BasisState::which_site: no existing move");
+    throw std::logic_error("BasisState::which_dnsite: no existing move");
   }
 }
 
 void BasisState::accept_last_move(void)
 {
+  /*
   if (temporary_move_ != move_t::null) {
     throw std::range_error(" BasisState::accept_last_move: temporary change found, serious problem");
-  }
-  // double occupancy count
+  }*/
+
   switch (proposed_move_) {
     case move_t::upspin_hop:
-      num_dblocc_sites_ += dblocc_increament_;
+      //num_dblocc_sites_ += dblocc_increament_;
       site_states_[up_frsite_].put_uphole(mv_uphole_);
       uphole_sites_[mv_uphole_] = up_frsite_;
       site_states_[up_tosite_].put_upspin(mv_upspin_);
@@ -393,7 +465,7 @@ void BasisState::accept_last_move(void)
       proposed_move_ = move_t::null;
       break;
     case move_t::dnspin_hop:
-      num_dblocc_sites_ += dblocc_increament_;
+      //num_dblocc_sites_ += dblocc_increament_;
       site_states_[dn_frsite_].put_dnhole(mv_dnhole_);
       dnhole_sites_[mv_dnhole_] = dn_frsite_;
       site_states_[dn_tosite_].put_dnspin(mv_dnspin_);
@@ -420,6 +492,7 @@ void BasisState::accept_last_move(void)
   }
 }
 
+/*
 void BasisState::temporary_upspin_hop(const int& fr_site, const int& to_site) const
 {
   if (temporary_move_ != move_t::null) {
@@ -467,6 +540,7 @@ void BasisState::undo_dnspin_hop(void) const
   site_states_[tmp_dn_tosite_].put_dnhole(tmp_mv_dnhole_);
   temporary_move_ = move_t::null;
 }
+*/
 
 int BasisState::op_ni_up(const int& site) const
 {
@@ -501,8 +575,12 @@ int BasisState::op_Sz(const int& site) const
   return site_states_[site].num_upspins()-site_states_[site].num_dnspins();
 }
 
+/*-----------------------------------------------------------
+* Apply: (c^\dag_{i\up} c_{j\up} + c^\dag_{j\up} c_{i\up})
+*-----------------------------------------------------------*/
 bool BasisState::op_cdagc_up_plus(const int& site_i, const int& site_j) const
 {
+  proposed_move_ = move_t::null;
   if (site_states_[site_i].have_uphole() && site_states_[site_j].have_upspin()) {
     up_frsite_ = site_j;
     up_tosite_ = site_i;
@@ -512,80 +590,62 @@ bool BasisState::op_cdagc_up_plus(const int& site_i, const int& site_j) const
     up_tosite_ = site_j;
   }
   else return false;
-  int n_occ = site_states_[up_tosite_].occupancy();
-  if (projections_[up_tosite_]==proj_t::full && n_occ==1) {
-    return false;
+
+  // check projection constraint 
+  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+    if (site_states_[up_frsite_].occupancy()==1) {
+      return false;
+    }
   }
+  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[up_tosite_].occupancy()==1) {
+      return false;
+    }
+  }
+
+  // successfull hop
   mv_upspin_ = site_states_[up_frsite_].upspin_id(); 
-  if (projections_[up_tosite_]!=proj_t::null) {
-    dblocc_increament_ = n_occ; // must be 0 or 1
-  }
-  else dblocc_increament_ = 0;
-  if (projections_[up_frsite_]!=proj_t::null) {
-    if (site_states_[up_frsite_].have_dnspin()) dblocc_increament_--;
-  }
   proposed_move_ = move_t::upspin_hop;
   return true;
 }
 
+/*-----------------------------------------------------------
+* Apply: c^\dag_{i\up} c_{i\up}
+*-----------------------------------------------------------*/
 bool BasisState::op_cdagc_up(const int& fr_site, const int& to_site) const
 {
+  proposed_move_ = move_t::null;
   if (site_states_[fr_site].have_upspin() && site_states_[to_site].have_uphole()) {
     up_frsite_ = fr_site;
     up_tosite_ = to_site;
   }
   else return false;
-  int n_occ = site_states_[up_tosite_].occupancy();
-  if (projections_[up_tosite_]==proj_t::full && n_occ==1) {
-    return false;
+
+  // check projection constraint 
+  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+    if (site_states_[up_frsite_].occupancy()==1) {
+      return false;
+    }
   }
+  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[up_tosite_].occupancy()==1) {
+      return false;
+    }
+  }
+
+  // successfull hop
   mv_upspin_ = site_states_[up_frsite_].upspin_id(); 
-  if (projections_[up_tosite_]!=proj_t::null) {
-    dblocc_increament_ = n_occ; // must be 0 or 1
-  }
-  else dblocc_increament_ = 0;
-  if (projections_[up_frsite_]!=proj_t::null) {
-    if (site_states_[up_frsite_].have_dnspin()) dblocc_increament_--;
-  }
   proposed_move_ = move_t::upspin_hop;
   return true;
 }
 
 
-/*
-bool BasisState::op_cdagc_up(const int& frsite, const int& tosite) const
-{
-  if (!site_states_[frsite].have_upspin()) {
-    return false;
-  }
-  if (frsite==tosite) {
-    mv_upspin_ = site_states_[frsite].upspin_id(); 
-    dblocc_increament_ = 0;
-    proposed_move_ = move_t::upspin_hop;
-    return true;
-  }
-  if (projections_[tosite]==proj_t::full && site_states_[tosite].have_dnspin()) {
-    return false;
-  }
-  if (site_states_[tosite].have_uphole()) {
-    mv_upspin_ = site_states_[frsite].upspin_id(); 
-    int n_occ = site_states_[tosite].occupancy();
-    if (projections_[tosite]!=proj_t::null) {
-      dblocc_increament_ = n_occ; // must be 0 or 1
-    }
-    else dblocc_increament_ = 0;
-    if (projections_[frsite]!=proj_t::null) {
-      if (site_states_[frsite].have_dnspin()) dblocc_increament_--;
-    }
-    proposed_move_ = move_t::upspin_hop;
-    return true;
-  }
-  return false;
-} 
-*/
-
+/*-----------------------------------------------------------
+* Apply: (c^\dag_{i\dn} c_{j\dn} + c^\dag_{j\dn} c_{i\dn})
+*-----------------------------------------------------------*/
 bool BasisState::op_cdagc_dn_plus(const int& site_i, const int& site_j) const
 {
+  proposed_move_ = move_t::null;
   if (site_states_[site_i].have_dnhole() && site_states_[site_j].have_dnspin()) {
     dn_frsite_ = site_j;
     dn_tosite_ = site_i;
@@ -595,18 +655,21 @@ bool BasisState::op_cdagc_dn_plus(const int& site_i, const int& site_j) const
     dn_tosite_ = site_j;
   }
   else return false;
-  int n_occ = site_states_[dn_tosite_].occupancy();
-  if (projections_[dn_tosite_]==proj_t::full && n_occ==1) {
-    return false;
+
+  // check projection constraint
+  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+    if (site_states_[dn_frsite_].occupancy()==1) {
+      return false;
+    }
   }
+  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[dn_tosite_].occupancy()==1) {
+      return false;
+    }
+  }
+
+  // successfull hop
   mv_dnspin_ = site_states_[dn_frsite_].dnspin_id(); 
-  if (projections_[dn_tosite_]!=proj_t::null) {
-    dblocc_increament_ = n_occ; // must be 0 or 1
-  }
-  else dblocc_increament_ = 0;
-  if (projections_[dn_frsite_]!=proj_t::null) {
-    if (site_states_[dn_frsite_].have_upspin()) dblocc_increament_--;
-  }
   proposed_move_ = move_t::dnspin_hop;
   return true;
 }
@@ -614,59 +677,30 @@ bool BasisState::op_cdagc_dn_plus(const int& site_i, const int& site_j) const
 
 bool BasisState::op_cdagc_dn(const int& fr_site, const int& to_site) const
 {
+  proposed_move_ = move_t::null;
   if (site_states_[fr_site].have_dnspin() && site_states_[to_site].have_dnhole()) {
     dn_frsite_ = fr_site;
     dn_tosite_ = to_site;
   }
   else return false;
-  int n_occ = site_states_[dn_tosite_].occupancy();
-  if (projections_[dn_tosite_]==proj_t::full && n_occ==1) {
-    return false;
+
+  // check projection constraint
+  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+    if (site_states_[dn_frsite_].occupancy()==1) {
+      return false;
+    }
   }
+  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+    if (site_states_[dn_tosite_].occupancy()==1) {
+      return false;
+    }
+  }
+
+  // successfull hop
   mv_dnspin_ = site_states_[dn_frsite_].dnspin_id(); 
-  if (projections_[dn_tosite_]!=proj_t::null) {
-    dblocc_increament_ = n_occ; // must be 0 or 1
-  }
-  else dblocc_increament_ = 0;
-  if (projections_[dn_frsite_]!=proj_t::null) {
-    if (site_states_[dn_frsite_].have_upspin()) dblocc_increament_--;
-  }
   proposed_move_ = move_t::dnspin_hop;
   return true;
 }
-
-
-/*
-bool BasisState::op_cdagc_dn(const int& frsite, const int& tosite) const
-{
-  if (!site_states_[frsite].have_dnspin()) {
-    return false;
-  }
-  if (frsite==tosite) {
-    mv_dnspin_ = site_states_[frsite].dnspin_id(); 
-    dblocc_increament_ = 0;
-    proposed_move_ = move_t::dnspin_hop;
-    return true;
-  }
-  if (projections_[tosite]==proj_t::full && site_states_[tosite].have_upspin()) {
-    return false;
-  }
-  if (site_states_[tosite].have_dnhole()) {
-    mv_dnspin_ = site_states_[frsite].dnspin_id(); 
-    int n_occ = site_states_[tosite].occupancy();
-    if (projections_[tosite]!=proj_t::null) {
-      dblocc_increament_ = n_occ; // must be 0 or 1
-    }
-    else dblocc_increament_ = 0;
-    if (projections_[frsite]!=proj_t::null) {
-      if (site_states_[frsite].have_upspin()) dblocc_increament_--;
-    }
-    proposed_move_ = move_t::dnspin_hop;
-    return true;
-  }
-  return false;
-}
-*/
 
 bool BasisState::op_exchange_ud(const int& site_i, const int& site_j) const
 {
