@@ -20,6 +20,7 @@ void BasisState::init(const lattice::Lattice& lattice, const model::Hamiltonian&
   // set model projection
   site_projection_.resize(num_sites_);
   if (model.projection()) {
+    have_projection_ = true;
     for (int i=0; i<num_sites_; ++i) {
       int stype = lattice.site(i).type();
       switch (model.projection().get(stype)) {
@@ -35,6 +36,7 @@ void BasisState::init(const lattice::Lattice& lattice, const model::Hamiltonian&
     }
   }
   else {
+    have_projection_ = false;
     for (int i=0; i<num_sites_; ++i) {
       site_projection_[i] = pjn_t::NONE;
     }
@@ -111,8 +113,10 @@ void BasisState::init_spins(const int& num_upspins, const int& num_dnspins)
 
 void BasisState::set_random(void)
 {
+  //set_random_old(); return;
+
   // reset state
-  for (auto& state : site_states_) state.reset();
+  for (auto& state : site_states_)  state.reset();
 
   // HOLON projected sites must be filled first
   int next_up = 0;
@@ -156,11 +160,11 @@ void BasisState::set_random(void)
   for (const auto& site : all_sites) {
     if (next_up >= num_upspins_) break;
     if (site_states_[site].have_upspin()) continue;
-    if (site_projection_[site] != pjn_t::DOUBLON) {
-      site_states_[site].put_upspin(next_up);
-      upspin_sites_[next_up] = site;
-      next_up++;
-    }
+    if (site_projection_[site]==pjn_t::DOUBLON 
+     && site_states_[site].is_not_empty()) continue;
+    site_states_[site].put_upspin(next_up);
+    upspin_sites_[next_up] = site;
+    next_up++;
   }
 
   // fill the remaining DN spins  
@@ -168,15 +172,17 @@ void BasisState::set_random(void)
   for (const auto& site : all_sites) {
     if (next_dn >= num_dnspins_) break;
     if (site_states_[site].have_dnspin()) continue;
-    if (site_projection_[site] != pjn_t::DOUBLON) {
-      site_states_[site].put_dnspin(next_dn);
-      dnspin_sites_[next_dn] = site;
-      next_dn++;
-    }
+    if (site_projection_[site]==pjn_t::DOUBLON 
+     && site_states_[site].is_not_empty()) continue;
+    site_states_[site].put_dnspin(next_dn);
+    dnspin_sites_[next_dn] = site;
+    next_dn++;
   }
 
   // sanity check
   if (next_up!=num_upspins_ && next_dn!=num_dnspins_) {
+    std::cout << next_up << "  " << num_upspins_ << "\n";
+    std::cout << next_dn << "  " << num_dnspins_ << "\n";
     throw std::logic_error(" BasisState::set_random: ivalid state status-1");
   }
   int n_up=0;
@@ -231,6 +237,70 @@ void BasisState::set_random(void)
   if (num_dnholes_==0) {
     dnhole_sites_.resize(1);
     dnhole_sites_[0] = -1;
+  }
+}
+
+void BasisState::set_random_old(void)
+{
+  for (auto& state : site_states_) state.reset();
+  std::vector<int> all_sites(num_sites_);
+  for (int i=0; i<num_sites_; ++i) all_sites[i] = i;
+  std::shuffle(all_sites.begin(),all_sites.end(),rng_);
+  // UP spins & holes
+  for (int i=0; i<num_upspins_; ++i) {
+    int site = all_sites[i];
+    site_states_[site].put_upspin(i);
+    upspin_sites_[i] = site;
+  }
+  int j = 0;
+  for (int i=num_upspins_; i<num_sites_; ++i) {
+    int site = all_sites[i];
+    site_states_[site].put_uphole(j);
+    uphole_sites_[j++] = site;
+  }
+  // DN spins & holes
+  std::shuffle(all_sites.begin(),all_sites.end(),rng_);
+  int id = 0;
+  j = 0;
+  for (int i=0; i<num_sites_; ++i) {
+    int site = all_sites[i];
+    if (id < num_dnspins_) {
+      if (site_projection_[site]==pjn_t::DOUBLON && site_states_[site].have_upspin()) {
+        site_states_[site].put_dnhole(j);
+        dnhole_sites_[j++] = site;
+      }
+      else {
+        site_states_[site].put_dnspin(id);
+        dnspin_sites_[id++] = site;
+      }
+    }
+    else {
+      site_states_[site].put_dnhole(j);
+      dnhole_sites_[j++] = site;
+    }
+  }
+  // consistency check
+  if (id != num_dnspins_) {
+    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+  }
+  if (j != num_dnholes_) {
+    throw std::logic_error("* BasisState::set_random: consistency check failed!");
+  }
+  // number of doubly occupied sites
+  /*num_dblocc_sites_ = 0;
+  for (int i=0; i<num_sites_; ++i) {
+    if (site_projection_[i] != proj_t::null) {
+      if (site_states_[i].occupancy()==2) num_dblocc_sites_++;
+    }
+  }*/
+  // in case there are no holes
+  if (num_upholes_==0) {
+    uphole_sites_.resize(1);
+    upspin_sites_[0] = -1;
+  }
+  if (num_dnholes_==0) {
+    dnhole_sites_.resize(1);
+    dnspin_sites_[0] = -1;
   }
 }
 
@@ -302,22 +372,24 @@ bool BasisState::gen_upspin_hop(void)
   // choose a spin
   mv_upspin_ = rng_.random_upspin();
   up_frsite_ = upspin_sites_[mv_upspin_]; 
-  // check projection constraint
-  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
-    if (site_states_[up_frsite_].occupancy()==1) {
-      proposed_move_ = move_t::null;
-      return false;
-    }
-  }
 
   // choose a hole
   mv_uphole_ = rng_.random_uphole();
   up_tosite_ = uphole_sites_[mv_uphole_]; 
+
   // check projection constraint
-  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[up_tosite_].occupancy()==1) {
-      proposed_move_ = move_t::null;
-      return false;
+  if (have_projection_) {
+    if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+      if (site_states_[up_frsite_].occupancy()==1) {
+        proposed_move_ = move_t::null;
+        return false;
+      }
+    }
+    if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[up_tosite_].occupancy()==1) {
+        proposed_move_ = move_t::null;
+        return false;
+      }
     }
   }
 
@@ -336,22 +408,24 @@ bool BasisState::gen_dnspin_hop(void)
   // choose a spin
   mv_dnspin_ = rng_.random_dnspin();
   dn_frsite_ = dnspin_sites_[mv_dnspin_]; 
-  // check projection constraint
-  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
-    if (site_states_[dn_frsite_].occupancy()==1) {
-      proposed_move_ = move_t::null;
-      return false;
-    }
-  }
 
   // choose a hole
   mv_dnhole_ = rng_.random_dnhole();
   dn_tosite_ = dnhole_sites_[mv_dnhole_]; 
+
   // check projection constraint
-  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[dn_tosite_].occupancy()==1) {
-      proposed_move_ = move_t::null;
-      return false;
+  if (have_projection_) {
+    if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+      if (site_states_[dn_frsite_].occupancy()==1) {
+        proposed_move_ = move_t::null;
+        return false;
+      }
+    }
+    if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[dn_tosite_].occupancy()==1) {
+        proposed_move_ = move_t::null;
+        return false;
+      }
     }
   }
 
@@ -592,14 +666,16 @@ bool BasisState::op_cdagc_up_plus(const int& site_i, const int& site_j) const
   else return false;
 
   // check projection constraint 
-  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
-    if (site_states_[up_frsite_].occupancy()==1) {
-      return false;
+  if (have_projection_) {
+    if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+      if (site_states_[up_frsite_].occupancy()==1) {
+        return false;
+      }
     }
-  }
-  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[up_tosite_].occupancy()==1) {
-      return false;
+    if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[up_tosite_].occupancy()==1) {
+        return false;
+      }
     }
   }
 
@@ -622,14 +698,16 @@ bool BasisState::op_cdagc_up(const int& fr_site, const int& to_site) const
   else return false;
 
   // check projection constraint 
-  if (site_projection_[up_frsite_]==pjn_t::HOLON) {
-    if (site_states_[up_frsite_].occupancy()==1) {
-      return false;
+  if (have_projection_) {
+    if (site_projection_[up_frsite_]==pjn_t::HOLON) {
+      if (site_states_[up_frsite_].occupancy()==1) {
+        return false;
+      }
     }
-  }
-  if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[up_tosite_].occupancy()==1) {
-      return false;
+    if (site_projection_[up_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[up_tosite_].occupancy()==1) {
+        return false;
+      }
     }
   }
 
@@ -657,14 +735,16 @@ bool BasisState::op_cdagc_dn_plus(const int& site_i, const int& site_j) const
   else return false;
 
   // check projection constraint
-  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
-    if (site_states_[dn_frsite_].occupancy()==1) {
-      return false;
+  if (have_projection_) {
+    if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+      if (site_states_[dn_frsite_].occupancy()==1) {
+        return false;
+      }
     }
-  }
-  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[dn_tosite_].occupancy()==1) {
-      return false;
+    if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[dn_tosite_].occupancy()==1) {
+        return false;
+      }
     }
   }
 
@@ -685,14 +765,16 @@ bool BasisState::op_cdagc_dn(const int& fr_site, const int& to_site) const
   else return false;
 
   // check projection constraint
-  if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
-    if (site_states_[dn_frsite_].occupancy()==1) {
-      return false;
+  if (have_projection_) {
+    if (site_projection_[dn_frsite_]==pjn_t::HOLON) {
+      if (site_states_[dn_frsite_].occupancy()==1) {
+        return false;
+      }
     }
-  }
-  if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
-    if (site_states_[dn_tosite_].occupancy()==1) {
-      return false;
+    if (site_projection_[dn_tosite_]==pjn_t::DOUBLON) {
+      if (site_states_[dn_tosite_].occupancy()==1) {
+        return false;
+      }
     }
   }
 
@@ -745,7 +827,6 @@ std::ostream& operator<<(std::ostream& os, const BasisState& bs)
   os << std::string(60,'-') << std::endl;
   return os;
 }
-
 
 
 

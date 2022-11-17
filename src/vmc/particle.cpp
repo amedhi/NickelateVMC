@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-09-26 13:53:41
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-11-12 23:10:52
+* @Last Modified time: 2022-11-17 20:17:59
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "./particle.h"
@@ -87,8 +87,8 @@ void DoublonDensity::measure(const lattice::Lattice& lattice, const SysConfig& c
   for (const auto& s : lattice.sites()) {
     int site = s.id();
     int type = s.type();
-    dblon_count[type] += config.op_ni_dblon(site);
-    holon_count[type] += config.op_ni_holon(site);
+    dblon_count[type] += config.apply_ni_dblon(site);
+    holon_count[type] += config.apply_ni_holon(site);
     num_subsites[type] += 1;
   }
   for (int i=0; i<num_site_types_; ++i) {

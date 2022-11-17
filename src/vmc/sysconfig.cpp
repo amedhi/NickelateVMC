@@ -379,22 +379,14 @@ int SysConfig::inv_update_dnspin(const int& dnspin, const RowVector& psi_col,
   return 0;
 }
 
-amplitude_t SysConfig::apply(const model::op::quantum_op& qn_op, const int& fr_site, 
-    const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const
+int SysConfig::apply_ni_dblon(const int& site_i) const
 {
-  amplitude_t term(0); 
-  switch (qn_op.id()) {
-    case model::op_id::cdagc_sigma:
-      term = apply_upspin_hop(fr_site,to_site,bc_state,bc_phase);
-      term+= apply_dnspin_hop(fr_site,to_site,bc_state,bc_phase);
-      break;
-    case model::op_id::sisj_plus:
-      term = apply_sisj_plus(fr_site,to_site); 
-      break;
-    default: 
-      throw std::range_error("SysConfig::apply: undefined bond operator.");
-  }
-  return term;
+  return op_ni_dblon(site_i);
+}
+
+int SysConfig::apply_ni_holon(const int& site_i) const
+{
+  return op_ni_holon(site_i);
 }
 
 int SysConfig::apply(const model::op::quantum_op& qn_op, const int& site_i) const
@@ -415,9 +407,22 @@ int SysConfig::apply(const model::op::quantum_op& qn_op, const int& site_i) cons
   }
 }
 
-int SysConfig::apply_niup_nidn(const int& site_i) const
+amplitude_t SysConfig::apply(const model::op::quantum_op& qn_op, const int& fr_site, 
+    const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const
 {
-  return op_ni_updn(site_i); 
+  amplitude_t term(0); 
+  switch (qn_op.id()) {
+    case model::op_id::cdagc_sigma:
+      term = apply_upspin_hop(fr_site,to_site,bc_state,bc_phase);
+      term+= apply_dnspin_hop(fr_site,to_site,bc_state,bc_phase);
+      break;
+    case model::op_id::sisj_plus:
+      term = apply_sisj_plus(fr_site,to_site); 
+      break;
+    default: 
+      throw std::range_error("SysConfig::apply: undefined bond operator.");
+  }
+  return term;
 }
 
 amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,

@@ -21,7 +21,7 @@ namespace vmc {
 class symmetry_site_pairs
 {
 public:
-  using site_t = unsigned;
+  using site_t = int;
   using site_pair_t = std::pair<site_t,site_t>;
   using site_pair_list = std::vector<site_pair_t>;
   symmetry_site_pairs() { data_.clear(); }
@@ -51,13 +51,16 @@ public:
 private:
   var::MF_Order::pairing_t pair_symm_{var::MF_Order::pairing_t::DWAVE};
   int num_basis_sites_{1};
+  //int num_site_types_{1};
   int max_dist_{0};
+  symmetry_site_pairs sitepair_list_;
   symmetry_site_pairs symm1_pairs_;
   symmetry_site_pairs symm2_pairs_;
   std::vector<symmetry_site_pairs> symm_list_;
 
   std::vector<std::pair<int,int> > bondpair_types_;
   Eigen::MatrixXd corr_data_;
+  Eigen::MatrixXi count_;
 
   /*
   unsigned num_bond_types_{0};

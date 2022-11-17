@@ -11,30 +11,30 @@
 namespace var {
 
 
-/*--------------------------------------------------
+/*----------------------------------------------------------------
 * Gutzwiller Projection
-*---------------------------------------------------*/
+*----------------------------------------------------------------*/
 int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters& inputs,
   VariationalParms& vparms)
 {
   // check if present
   int info;
   is_present_ = inputs.set_value("gw_projector",false,info);
-  if (!is_present_) {
-    // set inert values & quit
-    uniform_projection_ = true;
-    num_site_types_ = 1;
-    projection_.resize(1);
-    gw_factor_.resize(1);
-    projection_[0] = pjn::DOUBLON;
-    gw_factor_[0] = 1.0;
-    set_ratio_table();
-    return 0;
-  }
+  if (!is_present_) return 0;
 
-  // Check if uniform or not
+  // initialize  
   num_sites_ = lattice.num_sites();
   num_site_types_ = lattice.num_site_types();
+  site_projection_.resize(num_sites_);
+  for (auto& p : site_projection_) p = pjn_t::NONE;
+  site_typeid_.resize(num_sites_);
+  for (int i=0; i<num_sites_; ++i) {
+    site_typeid_[i] = lattice.site(i).type();
+  }
+  gw_ratio_.resize(num_sites_,5);
+  gw_ratio_.setConstant(1.0);
+
+  // check if uniform or not
   if (num_site_types_ == 1) {
     uniform_projection_ = true;
   }
@@ -51,69 +51,89 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
     }
   }
 
-  // Set up the projector & add variational parameters
+  // Set up the projector & add to variational parameters
   std::string strval, pname;
   if (uniform_projection_) {
-    projection_.resize(1); 
+    pjn_t pjn;
     gw_factor_.resize(1);
-    ratio_table_.resize(1,5);
-
-    // read gw_factor
-    gw_factor_[0] = inputs.set_value("gw_factor", 1.0);
-    if (gw_factor_[0] < gw_cutoff()) {
-      throw std::range_error("GW_Projector::init: `gw_factor' value out of range");
-    }
-    vparms.add("gw_factor", gw_factor_[0], gw_cutoff(), 10.0);
 
     // read projection type
     strval = inputs.set_value("gw_projection", "DOUBLON", info);
     boost::to_upper(strval);
     if (strval == "DOUBLON") {
-      projection_[0] = pjn::DOUBLON;
+      pjn = pjn_t::DOUBLON;
     }
     else if (strval == "HOLON") {
-      projection_[0] = pjn::HOLON;
+      pjn = pjn_t::HOLON;
+    }
+    else if (strval == "NONE") {
+      pjn = pjn_t::NONE;
     }
     else {
       throw std::range_error("GW_Projector::init: invalid projection");
     }
-  }
-  // site type specific projection
-  else {
-    projection_.resize(num_site_types_); 
-    gw_factor_.resize(num_site_types_);
-    ratio_table_.resize(num_site_types_,5);
-    sitetype_list_.resize(num_sites_);
-    for (const auto& s : lattice.sites()) {
-      sitetype_list_[s.id()] = s.type();
-    }
+    // set same projection at all sites
+    for (auto& p : site_projection_) p = pjn;
 
     // read gw_factor
+    if (pjn != pjn_t::NONE) {
+      gw_factor_[0] = inputs.set_value("gw_factor", 1.0); 
+    }
+    else gw_factor_[0] = 1.0; 
+    if (gw_factor_[0] < gw_cutoff()) {
+      throw std::range_error("GW_Projector::init: `gw_factor' value out of range");
+    }
+    vparms.add("gw_factor", gw_factor_[0], gw_cutoff(), 10.0);
+  }
+
+  // site-type specific projection
+  else {
+    gw_factor_.resize(num_site_types_);
+    std::vector<pjn_t> pjn(num_site_types_);
+
     for (int n=0; n<num_site_types_; ++n) {
+      // read projection type
+      pname = "gw_projection"+std::to_string(n+1);
+      strval = inputs.set_value(pname, "DOUBLON", info);
+      boost::to_upper(strval);
+      if (strval == "DOUBLON") {
+        pjn[n] = pjn_t::DOUBLON;
+      }
+      else if (strval == "HOLON") {
+        pjn[n] = pjn_t::HOLON;
+      }
+      else if (strval == "NONE") {
+        pjn[n] = pjn_t::NONE;
+      }
+      else {
+        throw std::range_error("GW_Projector::init: invalid projection");
+      }
+
+      // read gw_factor
       pname = "gw_factor"+std::to_string(n+1);
-      gw_factor_[n] = inputs.set_value(pname, 1.0);
+      if (pjn[n] != pjn_t::NONE) {
+        gw_factor_[n] = inputs.set_value(pname, 1.0);
+      }
+      else gw_factor_[n] = 1.0; 
       if (gw_factor_[n] < gw_cutoff()) {
-        throw std::range_error("GW_Projector::init: `gw_factor' value out of range");
+        throw std::range_error("GW_Projector::init: 'gw_factor' value out of range");
       }
       vparms.add(pname, gw_factor_[n], gw_cutoff(), 10.0);
-
-      // read projection type
-      for (int n=0; n<num_site_types_; ++n) {
-        pname = "gw_projection"+std::to_string(n+1);
-        strval = inputs.set_value(pname, "DOUBLON", info);
-        boost::to_upper(strval);
-        if (strval == "DOUBLON") {
-          projection_[n] = pjn::DOUBLON;
-        }
-        else if (strval == "HOLON") {
-          projection_[n] = pjn::HOLON;
-        }
-        else {
-          throw std::range_error("GW_Projector::init: invalid projection");
-        }
-      }
+    }
+    // set site-type specific projection 
+    for (int i=0; i<num_sites_; ++i) {
+      site_projection_[i] = pjn[site_typeid_[i]];
     }
   }
+
+  // 'default_case' true if  present & uniform & DOUBLON
+  if (is_present_ && uniform_projection_ && site_projection_[0]==pjn_t::DOUBLON) {
+    default_case_ = true;
+  }
+  else {
+    default_case_ = false;
+  }
+
   // GW ratio table
   set_ratio_table();
 
@@ -123,42 +143,52 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
 void GW_Projector::switch_off(void)
 {
   is_present_ = false;
-  // set inert values 
-  uniform_projection_ = true;
-  num_site_types_ = 1;
-  projection_.resize(1);
-  gw_factor_.resize(1);
-  projection_[0] = pjn::DOUBLON;
-  gw_factor_[0] = 1.0;
-  set_ratio_table();
+  default_case_ = false;
 }
 
 void GW_Projector::set_ratio_table(void)
 {
-  if (uniform_projection_) {
-    ratio_table_.resize(1,5);
+  if (default_case_) {
     double g = gw_factor_[0];
     if ( g<0.0 ) {
       throw std::range_error("GW_Projector::set_ratio_table: out of range 'gw_factor' value");
     }
-    ratio_table_(0,0) = 1.0/(g*g); // nd_increament = -2
-    ratio_table_(0,1) = 1.0/g; // nd_increament = -1
-    ratio_table_(0,2) = 1.0; // nd_increament =  0
-    ratio_table_(0,3) = g; // nd_increament =  1
-    ratio_table_(0,4) = g*g; // nd_increament =  2
+    gw_ratio_(0,0) = 1.0/(g*g); // nd_increament = -2
+    gw_ratio_(0,1) = 1.0/g; // nd_increament = -1
+    gw_ratio_(0,2) = 1.0; // nd_increament =  0
+    gw_ratio_(0,3) = g; // nd_increament =  1
+    gw_ratio_(0,4) = g*g; // nd_increament =  2
+  }
+  else if (uniform_projection_) {
+    double g = gw_factor_[0];
+    if ( g<0.0 ) {
+      throw std::range_error("GW_Projector::set_ratio_table: out of range 'gw_factor' value");
+    }
+    // ratio
+    for (int i=0; i<num_sites_; ++i) {
+      gw_ratio_(i,0) = 1.0/(g*g); // nd_increament = -2
+      gw_ratio_(i,1) = 1.0/g; // nd_increament = -1
+      gw_ratio_(i,2) = 1.0; // nd_increament =  0
+      gw_ratio_(i,3) = g; // nd_increament =  1
+      gw_ratio_(i,4) = g*g; // nd_increament =  2
+    }
   }
   else {
-    ratio_table_.resize(num_site_types_,5);
+    // non-uniform projecton
+    // sanity check
     for (int n=0; n<num_site_types_; ++n) {
-      double g = gw_factor_[n];
-      if ( g<0.0 ) {
+      if (gw_factor_[n]<0.0 ){
         throw std::range_error("GW_Projector::set_ratio_table: out of range 'gw_factor' value");
       }
-      ratio_table_(n,0) = 1.0/(g*g); // nd_increament = -2
-      ratio_table_(n,1) = 1.0/g; // nd_increament = -1
-      ratio_table_(n,2) = 1.0; // nd_increament =  0
-      ratio_table_(n,3) = g; // nd_increament =  1
-      ratio_table_(n,4) = g*g; // nd_increament =  2
+    }
+    // set the ratio
+    for (int i=0; i<num_sites_; ++i) {
+      double g = gw_factor_[site_typeid_[i]];
+      gw_ratio_(i,0) = 1.0/(g*g); // nd_increament = -2
+      gw_ratio_(i,1) = 1.0/g; // nd_increament = -1
+      gw_ratio_(i,2) = 1.0; // nd_increament =  0
+      gw_ratio_(i,3) = g; // nd_increament =  1
+      gw_ratio_(i,4) = g*g; // nd_increament =  2
     }
   }
 }
@@ -176,14 +206,6 @@ bool GW_Projector::is_strong(void) const
   }
 }
 
-bool GW_Projector::have_holon_projection(void) const
-{
-  for (const auto& p : projection_) {
-    if (p == pjn::HOLON) return true;
-  }
-  return false;
-}
-
 int GW_Projector::update_parameters(const VariationalParms& vparms)
 {
   if (!is_present_) return 0;
@@ -191,9 +213,9 @@ int GW_Projector::update_parameters(const VariationalParms& vparms)
     gw_factor_[0] = vparms["gw_factor"].value();
   }
   else {
-   for (int n=0; n<num_site_types_; ++n) {
-     gw_factor_[n] = vparms["gw_factor"+std::to_string(n+1)].value();
-   }
+    for (int n=0; n<num_site_types_; ++n) {
+      gw_factor_[n] = vparms["gw_factor"+std::to_string(n+1)].value();
+    }
   }
   set_ratio_table();
   return 0;
@@ -203,143 +225,128 @@ double GW_Projector::gw_ratio(const vmc::BasisState& state,
   const int& fr_site, const int& to_site) const
 {
   double gw_ratio = 1.0;
+  if (default_case_) {
+    if (state.op_ni_dblon(fr_site)) {
+      // one doublon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(0,1);
+    }
+    if (!state.op_ni_holon(to_site)) {
+      // one doublon to be created (change = +1)
+      gw_ratio *= gw_ratio_(0,3);
+    }
+    return gw_ratio;
+  }
+
   if (!is_present_) return gw_ratio;
   if (fr_site == to_site) return gw_ratio;
 
-  if (uniform_projection_) {
-    if (projection_[0] == pjn::DOUBLON) {
-      if (state.op_ni_dblon(fr_site)) {
-        // one doublon to be annihilated (change = -1)
-        gw_ratio *= ratio_table_(0,1);
-      }
-      if (!state.op_ni_holon(to_site)) {
-        // one doublon to be created (change = +1)
-        gw_ratio *= ratio_table_(0,3);
-      }
+  // fr_site
+  pjn_t pjn = site_projection_[fr_site];
+  if (pjn == pjn_t::DOUBLON) {
+    if (state.op_ni_dblon(fr_site)) {
+      // one doublon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(fr_site,1);
     }
-    else if (projection_[0] == pjn::HOLON) {
-      if (!state.op_ni_dblon(fr_site)) {
-        // one holon to be created (change = 1)
-        gw_ratio *= ratio_table_(0,3);
-      }
-      if (state.op_ni_holon(to_site)) {
-        // one holon to be annihilated (change = -1)
-        gw_ratio *= ratio_table_(0,1);
-      }
+  }
+  else if (pjn == pjn_t::HOLON) {
+    if (!state.op_ni_dblon(fr_site)) {
+      // one holon to be created (change = 1)
+      gw_ratio *= gw_ratio_(fr_site,3);
     }
-    return gw_ratio;
   }
 
-  else {
-    // Non-uniform projection
-    // fr_site
-    int stype = sitetype_list_[fr_site];
-    if (projection_[stype] == pjn::DOUBLON) {
-      if (state.op_ni_dblon(fr_site)) {
-        // one doublon to be annihilated (change = -1)
-        gw_ratio *= ratio_table_(stype,1);
-      }
+  // to_site
+  pjn = site_projection_[to_site];
+  if (pjn == pjn_t::DOUBLON) {
+    if (!state.op_ni_holon(to_site)) {
+      // one doublon to be created (change = +1)
+      gw_ratio *= gw_ratio_(to_site,3);
     }
-    else if (projection_[stype] == pjn::HOLON) {
-      if (!state.op_ni_dblon(fr_site)) {
-        // one holon to be created (change = 1)
-        gw_ratio *= ratio_table_(stype,3);
-      }
-    }
-
-    // to_site
-    stype = sitetype_list_[to_site];
-    if (projection_[stype] == pjn::DOUBLON) {
-      if (!state.op_ni_holon(to_site)) {
-        // one doublon to be created (change = +1)
-        gw_ratio *= ratio_table_(stype,3);
-      }
-    }
-    else if (projection_[stype] == pjn::HOLON) {
-      if (state.op_ni_holon(to_site)) {
-        // one holon to be annihilated (change = -1)
-        gw_ratio *= ratio_table_(stype,1);
-      }
-    }
-    return gw_ratio;
   }
+  else if (pjn == pjn_t::HOLON) {
+    if (state.op_ni_holon(to_site)) {
+      // one holon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(to_site,1);
+    }
+  }
+  return gw_ratio;
 }
 
 double GW_Projector::gw_ratio_pairhop(const int& fr_site, const int& to_site) const
 {
   double gw_ratio = 1.0;
+  if (default_case_) return gw_ratio;
+  if (!is_present_) return gw_ratio;
   if (uniform_projection_) return gw_ratio;
-  //if (!is_present_) return gw_ratio;
   if (fr_site == to_site) return gw_ratio;
 
   // for non-uniform projection
   // fr_site
-  int stype = sitetype_list_[fr_site];
-  if (projection_[stype] == pjn::DOUBLON) {
+  pjn_t pjn = site_projection_[fr_site];
+  if (pjn == pjn_t::DOUBLON) {
     // one doublon to be annihilated (change = -1)
-    gw_ratio *= ratio_table_(stype,1);
+    gw_ratio *= gw_ratio_(fr_site,1);
   }
-  else if (projection_[stype] == pjn::HOLON) {
+  else if (pjn == pjn_t::HOLON) {
     // one holon to be created (change = 1)
-    gw_ratio *= ratio_table_(stype,3);
+    gw_ratio *= gw_ratio_(fr_site,3);
   }
 
   // to_site
-  stype = sitetype_list_[to_site];
-  if (projection_[stype] == pjn::DOUBLON) {
+  pjn = site_projection_[to_site];
+  if (pjn == pjn_t::DOUBLON) {
     // one doublon to be created (change = +1)
-    gw_ratio *= ratio_table_(stype,3);
+    gw_ratio *= gw_ratio_(to_site,3);
   }
-  else if (projection_[stype] == pjn::HOLON) {
+  else if (pjn == pjn_t::HOLON) {
     // one holon to be annihilated (change = -1)
-    gw_ratio *= ratio_table_(stype,1);
+    gw_ratio *= gw_ratio_(to_site,1);
   }
   return gw_ratio;
 }
 
 void GW_Projector::get_grad_logp(const vmc::BasisState& state, RealVector& grad) const
 {
+  if (default_case_) {
+    int nd = 0;
+    for (int n=0; n<num_sites_; ++n) {
+      nd += state.op_ni_dblon(n);
+    } 
+    grad(0) = static_cast<double>(nd)/gw_factor_[0];
+    return;
+  }
+  if (!is_present_) return;
   if (uniform_projection_) {
     int nd = 0;
-    if (projection_[0] == pjn::DOUBLON) {
+    pjn_t pjn = site_projection_[0]; 
+    if (pjn == pjn_t::DOUBLON) {
       for (int n=0; n<num_sites_; ++n) {
-        if (state.op_ni_dblon(n)) nd += 1;
+        nd += state.op_ni_dblon(n);
       } 
     }
-    else if (projection_[0] == pjn::HOLON) {
-      if (projection_[0] == pjn::DOUBLON) {
-        for (int n=0; n<num_sites_; ++n) {
-          if (state.op_ni_holon(n)) nd += 1;
-        }  
-      }
+    else if (pjn == pjn_t::HOLON) {
+      for (int n=0; n<num_sites_; ++n) {
+        nd += state.op_ni_holon(n);
+      }  
     }
     grad(0) = static_cast<double>(nd)/gw_factor_[0];
   }
   else {
-    // sublattice-selective projection case
-    std::vector<int> num_dblon(num_site_types_,0);
-    std::vector<int> num_holon(num_site_types_,0);
-
-    for (int n=0; n<num_sites_; ++n) {
-      int sublatt = sitetype_list_[n];
-      if (projection_[sublatt] == pjn::DOUBLON) {
-        if (state.op_ni_dblon(n)) num_dblon[sublatt] += 1;
+    // For each sublattice: total no of DOUBLON or HOLON
+    std::vector<int> N_total(num_site_types_,0);
+    for (int i=0; i<num_sites_; ++i) {
+      pjn_t pjn = site_projection_[i];
+      int stype = site_typeid_[i];
+      if (pjn == pjn_t::DOUBLON) {
+        N_total[stype] += state.op_ni_dblon(i);
       }
-      if (projection_[sublatt] == pjn::HOLON) {
-        if (state.op_ni_holon(n)) num_holon[sublatt] += 1;
+      else if (pjn == pjn_t::HOLON) {
+        N_total[stype] += state.op_ni_holon(i);
       }
     }
-
+    // Gradient. (in case of pjn_t::NONE, N_total[n]=0, hence grad[n]=0)
     for (int n=0; n<num_site_types_; ++n) {
-      if (projection_[n] == pjn::DOUBLON) {
-        grad(n) = static_cast<double>(num_dblon[n])/gw_factor_[n];
-      }
-      else if (projection_[n] == pjn::HOLON) {
-        grad(n) = static_cast<double>(num_holon[n])/gw_factor_[n];
-      }
-      else {
-        throw std::logic_error("WavefunProjector::get_grad_logp: logic error");
-      }
+      grad(n) = static_cast<double>(N_total[n])/gw_factor_[n];
     }
   }
 }

@@ -67,6 +67,7 @@ public:
   //void allow_double_occupancy(const bool& allow);
   void init_spins(const int& num_upspins, const int& num_dnspins);
   void set_random(void);
+  void set_random_old(void);
   void set_custom(void);
   //const bool& double_occupancy(void) const { return double_occupancy_; }
   bool gen_upspin_hop(void);
@@ -102,6 +103,7 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const BasisState& bs);
 private:
   enum class pjn_t {DOUBLON, HOLON, NONE};
+  bool have_projection_{false};
   mutable RandomGenerator rng_;
   int num_sites_{0};
   int num_upspins_{0};

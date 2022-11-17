@@ -23,8 +23,6 @@ constexpr double gw_cutoff(void) { return 1.0E-3; }
 
 enum class pp {gutzwiller, end};
 
-enum class gw_ptype {DOUBLON, HOLON};
-
 class NNTable
 {
 public:
@@ -53,22 +51,22 @@ public:
   void switch_off(void);
   bool is_present(void) const { return is_present_; }
   bool is_strong(void) const; 
-  bool have_holon_projection(void) const;
   int update_parameters(const VariationalParms& vparms);
   double gw_ratio(const vmc::BasisState& state, 
     const int& fr_site, const int& to_site) const;
   double gw_ratio_pairhop(const int& fr_site, const int& to_site) const;
   void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
 private:
-  enum class pjn {DOUBLON, HOLON};
+  enum class pjn_t {DOUBLON, HOLON, NONE};
+  bool default_case_{true};
   bool is_present_{false};
   bool uniform_projection_{true};
   int num_sites_;
   int num_site_types_;
-  std::vector<pjn> projection_; 
+  std::vector<pjn_t> site_projection_; 
+  std::vector<int> site_typeid_;
   std::vector<double> gw_factor_;
-  std::vector<int> sitetype_list_;
-  RealMatrix ratio_table_;
+  RealMatrix gw_ratio_;
 
   void set_ratio_table(void); 
 };
@@ -87,7 +85,6 @@ public:
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   bool gw_projection(void) const { return gw_projector_.is_present(); }
   bool gw_projection_strong(void) const { return gw_projector_.is_strong(); }
-  bool have_holon_projection(void) const { return gw_projector_.have_holon_projection(); }
   double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
     { return gw_projector_.gw_ratio(state, fr_site, to_site); }
   double gw_ratio_pairhop(const int& fr_site, const int& to_site) const

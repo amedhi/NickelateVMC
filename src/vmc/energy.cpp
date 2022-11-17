@@ -79,7 +79,7 @@ void Energy::measure(const lattice::Lattice& lattice,
       // special treatment for hubbard
       if (it->qn_operator().id()==op_id::niup_nidn) {
         for (const auto& s : lattice.sites()) {
-          hubbard_nd(s.type()) += config.apply_niup_nidn(s.id());
+          hubbard_nd(s.type()) += config.apply_ni_dblon(s.id());
         }
       }
       else {

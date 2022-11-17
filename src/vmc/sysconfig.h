@@ -8,6 +8,7 @@
 #ifndef SYSCONFIG_H
 #define SYSCONFIG_H
 
+#include <memory>
 #include "../scheduler/worker.h"
 #include "../lattice/lattice.h"
 #include "../model/model.h"
@@ -45,13 +46,14 @@ public:
   int update_state(void);
   double accept_ratio(void);
   void reset_accept_ratio(void);
+  int apply_ni_dblon(const int& site_i) const;
+  int apply_ni_holon(const int& site_i) const;
   int apply(const model::op::quantum_op& qn_op, const int& site_i) const;
   amplitude_t apply(const model::op::quantum_op& op, const int& fr_site, 
     const int& to_site, const int& bc_state, const std::complex<double>& bc_phase) const;
   amplitude_t apply_bondsinglet_hop(const int& fr_site_i, 
     const int& fr_site_ia, const int& to_site_j, const int& to_site_jb) const;
   amplitude_t apply_sitepair_hop(const int& fr_site, const int& to_site) const;
-  int apply_niup_nidn(const int& site_i) const;
   amplitude_t apply_upspin_hop(const int& i, const int& j,
     const int& bc_state, const std::complex<double>& bc_phase) const;
   amplitude_t apply_dnspin_hop(const int& i, const int& j,

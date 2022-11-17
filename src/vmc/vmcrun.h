@@ -40,8 +40,6 @@ public:
   void set_bc_list(const std::vector<int>& bc_list) { bc_list_=bc_list; }
   void set_mpi_mode(const mpi_mode& mode) { mpi_mode_=mode; }
 private:
-  bool serial_run_{true};
-
   // for MPI run
   mpi::mpi_communicator mpi_comm_;
   mpi_mode mpi_mode_{mpi_mode::NORMAL};

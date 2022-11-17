@@ -299,7 +299,14 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     // projection operator
     //ProjectionOp pjn = projection_t::DOUBLON; 
     set_projection_op(projection_t::DOUBLON);
-    if (lattice.id() == lattice::lattice_id::SQUARE_NNN) {
+    if (lattice.id() == lattice::lattice_id::SQUARE) {
+      add_parameter(name="t", defval=1.0, inputs);
+      add_parameter(name="J", defval=0.0, inputs);
+      // bond operator terms
+      add_bondterm(name="hopping", cc="-t", op::spin_hop());
+      add_bondterm(name="exchange", cc="J", op::sisj_plus());
+    }
+    else if (lattice.id() == lattice::lattice_id::SQUARE_NNN) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="tp", defval=1.0, inputs);
       add_parameter(name="J", defval=0.0, inputs);
@@ -387,12 +394,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_bondterm(name="exchange", cc, op::sisj_plus());
     }
     else {
-      // model parameters
-      add_parameter(name="t", defval=1.0, inputs);
-      add_parameter(name="J", defval=0.0, inputs);
-      // bond operator terms
-      add_bondterm(name="hopping", cc="-t", op::spin_hop());
-      add_bondterm(name="exchange", cc="J", op::sisj_plus());
+      throw std::range_error("*error: modellibrary: model not defined for this lattice");
     }
   } // end model_name == "TJ"
   else {
