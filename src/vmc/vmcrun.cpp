@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-11-07 22:37:03
+* @Last Modified time: 2022-11-17 21:19:19
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -63,6 +63,7 @@ int VMCRun::run(const input::Parameters& inputs, const mpi::mpi_communicator& mp
   if (mpi_comm.is_master()) {
     if (!inputs.have_option_quiet()) {
       std::cout << " collecting data from other procs...";
+      std::cout << std::flush;
     }
     for (const mpi::proc& p : worker_procs_) {
       //std::cout << "reciving results from p = " << p << "\n";

@@ -884,9 +884,19 @@ void SysConfig::print_stats(std::ostream& os) const
   long accepted_hops = num_accepted_moves_[move_t::uphop] 
                      + num_accepted_moves_[move_t::dnhop];
   long accepted_exch = num_accepted_moves_[move_t::exch];
-  double accept_ratio = 100.0*double(accepted_hops+accepted_exch)/(proposed_hops+proposed_exch);
-  double hop_ratio = double(100.0*accepted_hops)/(proposed_hops);
-  double exch_ratio = double(100.0*accepted_exch)/(proposed_exch);
+  double accept_ratio, hop_ratio, exch_ratio;
+  if (proposed_hops+proposed_exch>0) {
+    accept_ratio = 100.0*double(accepted_hops+accepted_exch)/(proposed_hops+proposed_exch);
+  }
+  else  accept_ratio = 0.0;
+  if (proposed_hops>0) {
+    hop_ratio = double(100.0*accepted_hops)/(proposed_hops);
+  }
+  else hop_ratio = 0.0;
+  if (proposed_exch>0) {
+    exch_ratio = double(100.0*accepted_exch)/(proposed_exch);
+  }
+  else exch_ratio = 0.0;
   std::ios state(NULL);
   state.copyfmt(os);
   os <<std::fixed<<std::setprecision(1)<<std::right;

@@ -52,6 +52,7 @@ private:
   var::MF_Order::pairing_t pair_symm_{var::MF_Order::pairing_t::DWAVE};
   int num_basis_sites_{1};
   //int num_site_types_{1};
+  int min_dist_{0};
   int max_dist_{0};
   symmetry_site_pairs sitepair_list_;
   symmetry_site_pairs symm1_pairs_;

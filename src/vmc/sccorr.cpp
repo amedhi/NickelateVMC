@@ -66,6 +66,7 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
   }
 
   if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
+    min_dist_ = 1;
     throw std::range_error("SC_Correlation::setup: not implemented for this symmetry");
     /*
     bondpair_types_.resize(num_basis_sites_);
@@ -73,6 +74,9 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
       bondpair_types_[i] = std::make_pair(i,i);
     }
     */
+  }
+  else {
+    min_dist_ = 2;
   }
 
   // allocate storages
@@ -116,7 +120,7 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
   count_.setZero();
   double ampl;
   int fr_site_i, fr_site_ia, to_site_j, to_site_jb;
-  for (int d=0; d<=max_dist_; ++d) {
+  for (int d=min_dist_; d<=max_dist_; ++d) {
     for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
       // pairs of two sites
       fr_site_i  = p.first;
@@ -170,7 +174,7 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
   }
 
   // average over number of bonds
-  for (int d=0; d<=max_dist_; ++d) {
+  for (int d=min_dist_; d<=max_dist_; ++d) {
     for (int m=0;  m<bondpair_types_.size(); ++m) {
       if (count_(d,m) != 0) {
         corr_data_(d,m) /= count_(d,m);
@@ -194,7 +198,7 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
 {
   corr_data_.setZero();
   int i_cdag, i_c;
-  for (int d=1; d<max_dist_; ++d) {
+  for (int d=min_dist_; d<max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
         i_cdag = p.first;
@@ -207,7 +211,7 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
       }
     }
   }
-  for (int d=1; d<max_dist_; ++d) {
+  for (int d=min_dist_; d<max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
     }
@@ -260,17 +264,9 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   if (!is_open()) open_file();
   fs_ << std::right;
   fs_ << std::scientific << std::uppercase << std::setprecision(6);
-  /*if (xvals.size()>0) {
-    fs_ << "#";
-    for (const auto& p : xvals) fs_ << std::setw(14) << p;
-    fs_ << std::endl;
-  }*/
-
-  // reshape back
-  //corr_data_ = Eigen::Map<Eigen::MatrixXd>(MC_Data::mean_data(), corr_data_.size());
 
   std::vector<double> odlro;
-  for (int d=0; d<=max_dist_; ++d) {
+  for (int d=min_dist_; d<=max_dist_; ++d) {
     for (const auto& p : xvals) fs_ << std::setw(14) << p;
     fs_ << std::setw(6) << d; 
     int n = d;
@@ -299,17 +295,19 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
   util::CurveFit curve_fit;
   for (int i=0; i<bondpair_types_.size(); ++i) {
-    Eigen::VectorXd xv(max_dist_-2);
-    Eigen::VectorXd yv(max_dist_-2);
-    Eigen::VectorXd yerr(max_dist_-2);
+    Eigen::VectorXd xv(max_dist_-min_dist_+1);
+    Eigen::VectorXd yv(max_dist_-min_dist_+1);
+    Eigen::VectorXd yerr(max_dist_-min_dist_+1);
     int j = 0;
-    int n = max_dist_*i;
-    for (int d=2; d<max_dist_; ++d) {
+    int n = (max_dist_+2)*i;
+    for (int d=min_dist_; d<=max_dist_; ++d) {
       xv(j) = d;
       yv(j) = MC_Data::mean(n+d);
       yerr(j) = MC_Data::stddev(n+d);
+      //std::cout << d << "  " << yv(j) << "  " << yerr(j) << "\n";
       j++;
     }
+    //std::cout << "\n";
     //std::cout << yv.transpose() << "\n";
     //std::cout << yerr.transpose() << "\n\n";
     // fit
@@ -325,7 +323,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
       phi = std::sqrt(std::abs(p2(0)));
     }
     else {
-      phi = std::sqrt(std::abs(yv(max_dist_-1)));
+      phi = std::sqrt(std::abs(yv(max_dist_)));
     }
     err = std::sqrt(yerr.sum()/yerr.size());
     fs_ << std::scientific << std::setw(15) << phi;
