@@ -616,6 +616,11 @@ void BasisState::undo_dnspin_hop(void) const
 }
 */
 
+int BasisState::op_ni(const int& site) const
+{
+  return site_states_[site].occupancy();
+}
+
 int BasisState::op_ni_up(const int& site) const
 {
   return site_states_[site].num_upspins();

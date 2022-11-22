@@ -26,10 +26,11 @@ class BCS_State : public GroundState
 public:
   BCS_State() {}
   BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
-    const input::Parameters& inputs, const lattice::Lattice& lattice); 
+    const input::Parameters& inputs, const lattice::Lattice& lattice,
+    const model::Hamiltonian& model); 
   virtual ~BCS_State() {} 
   int init(const input::Parameters& inputs, 
-    const lattice::Lattice& lattice);
+    const lattice::Lattice& lattice, const model::Hamiltonian& model); 
   std::string info_str(void) const override; 
   void update(const input::Parameters& inputs) override;
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;

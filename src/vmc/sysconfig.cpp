@@ -14,7 +14,7 @@ namespace vmc {
 SysConfig::SysConfig(const input::Parameters& inputs, 
   const lattice::Lattice& lattice, const model::Hamiltonian& model)
   : BasisState(lattice, model)
-  , wf(lattice, inputs)
+  , wf(lattice, inputs, model)
   , pj(lattice, inputs)
   , num_sites_(lattice.num_sites())
 {
@@ -418,6 +418,9 @@ amplitude_t SysConfig::apply(const model::op::quantum_op& qn_op, const int& fr_s
       break;
     case model::op_id::sisj_plus:
       term = apply_sisj_plus(fr_site,to_site); 
+      break;
+    case model::op_id::ni_nj:
+      term = op_ni(fr_site)*op_ni(to_site); 
       break;
     default: 
       throw std::range_error("SysConfig::apply: undefined bond operator.");

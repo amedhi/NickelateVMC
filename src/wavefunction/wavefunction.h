@@ -34,7 +34,7 @@ class Wavefunction
 public:
   //Wavefunction() {}
   Wavefunction(const lattice::Lattice& lattice, const input::Parameters& inputs,
-    const bool& site_disorder=false);
+    const model::Hamiltonian& model, const bool& site_disorder=false);
   ~Wavefunction() {}
   const MF_Order::pairing_t& pair_symmetry(void) const { return groundstate_->pair_symm(); }
   const VariationalParms& varparms(void) const { return groundstate_->varparms(); }

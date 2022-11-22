@@ -266,6 +266,11 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="W", defval=0.0, inputs);
       add_parameter(name="U", defval=0.0, inputs);
 
+      // projection operator
+      ProjectionOp pjn;
+      pjn.set({0,projection_t::HOLON}, {1,projection_t::DOUBLON});
+      set_projection_op(pjn);
+
       // hopping term
       cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
       add_bondterm(name="hopping", cc, op::spin_hop());
@@ -277,12 +282,27 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       cc.add_type(2, "4.0*tp*tp/U");
       add_bondterm(name="exchange", cc, op::sisj_plus());
 
+      // NN density-density terms
+      cc.create(3);
+      cc.add_type(0, "t*t/(U+W)-2.0*t*t/W");
+      cc.add_type(1, "t*t/(U+W)-2.0*t*t/W");
+      cc.add_type(2, "0");
+      add_bondterm(name="ni_nj", cc, op::ni_nj());
+
+      // Hubbard interaction
+      cc.create(2);
+      cc.add_type(0, "0.5*(U-W)");
+      cc.add_type(1, "0.5*(U-W)");
+      add_siteterm(name="hubbard", cc, op::hubbard_int());
+
+      // extra onsite terms
+      cc.create(2);
+      cc.add_type(0, "8.0*tp*tp/U+2.0*t*t/W");
+      cc.add_type(1, "6.0*t*t/W-0.5*(U-W)-2.0*t*t/(U+W)");
+      add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+
       // extra terms
       //add_siteterm(name="hubbard", cc="U", op::hubbard_int());
-
-      // projection operator
-      ProjectionOp pjn({0,projection_t::HOLON}, {1,projection_t::DOUBLON});
-      set_projection_op(pjn);
     }
     else {
       throw std::range_error("*error: modellibrary: model not defined for this lattice");
@@ -292,10 +312,6 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
   //------------------------TJ-------------------------------------
   else if (model_name == "TJ") {
     mid = model_id::TJ;
-    int nowarn;
-    if (inputs.set_value("no_double_occupancy",true,nowarn)) {
-      set_no_dbloccupancy();
-    }
     // projection operator
     //ProjectionOp pjn = projection_t::DOUBLON; 
     set_projection_op(projection_t::DOUBLON);

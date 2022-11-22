@@ -12,7 +12,7 @@
 namespace var {
 
 Wavefunction::Wavefunction(const lattice::Lattice& lattice,
-  const input::Parameters& inputs, const bool& site_disorder)
+  const input::Parameters& inputs, const model::Hamiltonian& model, const bool& site_disorder)
   : num_sites_(lattice.num_sites())
 {
   name_ = inputs.set_value("wavefunction", "NONE");
@@ -26,22 +26,22 @@ Wavefunction::Wavefunction(const lattice::Lattice& lattice,
     groundstate_.reset(new Fermisea(order_t::AF,inputs,lattice));
   }
   else if (name_ == "SC_SWAVE") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,lattice,model));
   }
   else if (name_ == "SC_EXTENDED_S") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::EXTENDED_S,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::EXTENDED_S,inputs,lattice,model));
   }
   else if (name_ == "SC_DWAVE") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,lattice,model));
   }
   else if (name_ == "SC_D+ID") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,lattice,model));
   }
   else if (name_ == "CUSTOM_SC") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::CUSTOM,inputs,lattice,model));
   }
   else if (name_ == "SC_CDW_SDW") {
-    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SC_CDW_SDW,inputs,lattice));
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SC_CDW_SDW,inputs,lattice,model));
   }
   else if (name_ == "DISORDERED_SC") {
     groundstate_.reset(new DisorderedSC(order_t::SC,pairing_t::DWAVE,inputs,lattice));

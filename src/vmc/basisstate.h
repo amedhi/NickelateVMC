@@ -82,6 +82,7 @@ public:
   //const int& dblocc_count(void) const { return num_dblocc_sites_; }
   //const int& dblocc_increament(void) const { return dblocc_increament_; }
   void accept_last_move(void);
+  int op_ni(const int& site) const;
   int op_ni_up(const int& site) const;
   int op_ni_dn(const int& site) const;
   int op_ni_updn(const int& site) const;

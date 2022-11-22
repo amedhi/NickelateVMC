@@ -13,13 +13,15 @@
 namespace var {
 
 BCS_State::BCS_State(const MF_Order::order_t& order, const MF_Order::pairing_t& pair_symm,
-    const input::Parameters& inputs, const lattice::Lattice& lattice)
+    const input::Parameters& inputs, const lattice::Lattice& lattice,
+    const model::Hamiltonian& model) 
   : GroundState(order,pair_symm)
 {
-  init(inputs, lattice);
+  init(inputs, lattice, model);
 }
 
-int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lattice)
+int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lattice,
+  const model::Hamiltonian& model) 
 {
   name_ = "BCS";
   lattice_id_ = lattice.id();
@@ -88,11 +90,13 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
 
   else if (lattice.id()==lattice::lattice_id::SQUARE_4SITE) {
     std::string modelname = inputs.set_value("model","");
-    if (modelname == "HUBBARD_IONIC") {
+    if (model.id()==model::model_id::HUBBARD_IONIC || 
+        model.id()== model::model_id::TJ_IONIC) {
       mf_model_.add_parameter(name="tv", defval=1.0, inputs);
       mf_model_.add_parameter(name="tpv", defval=1.0, inputs);
-      mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
-      mf_model_.add_parameter(name="P", defval=0.0, inputs);
+      mf_model_.add_parameter(name="dSC", defval=1.0, inputs);
+      mf_model_.add_parameter(name="PA", defval=0.0, inputs);
+      mf_model_.add_parameter(name="PB", defval=0.0, inputs);
       mf_model_.add_parameter(name="dAF", defval=0.0, inputs);
 
       // bond operator terms
@@ -101,23 +105,23 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
 
       // site term
       cc.create(2);
-      cc.add_type(0, "-(P+dAF)");
-      cc.add_type(1, "(P+dAF)");
+      cc.add_type(0, "-(PA+dAF)");
+      cc.add_type(1, "(PB+dAF)");
       mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
       cc.create(2);
-      cc.add_type(0, "-(P-dAF)");
-      cc.add_type(1, "(P-dAF)");
+      cc.add_type(0, "-(PA-dAF)");
+      cc.add_type(1, "(PB-dAF)");
       mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
       
       // SC pairing term
       if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
         order_name_ = "SC-DWAVE";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"}, {2,"0"});
+        cc = CouplingConstant({0, "dSC"}, {1, "-dSC"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
         order_name_ = "SC-Extended_S";
-        cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"}, {2,"0"});
+        cc = CouplingConstant({0, "dSC"}, {1, "dSC"}, {2,"0"});
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else {
@@ -125,10 +129,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       }
 
       // variational parameters
-      defval = mf_model_.get_parameter_value("delta_sc");
-      varparms_.add("delta_sc",defval,lb=1.0E-3,ub=2.0,dh=0.01);
-      defval = mf_model_.get_parameter_value("P");
-      varparms_.add("P", defval,lb=-5.0,ub=+5.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("dSC");
+      varparms_.add("dSC",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("PA");
+      varparms_.add("PA", defval,lb=-5.0,ub=+5.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("PB");
+      varparms_.add("PB", defval,lb=-5.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("tv");

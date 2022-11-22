@@ -17,7 +17,7 @@ enum class spin {UP, DN, UD, SIGMA, SINGLET, MIXED};
 
 enum class op_id {
   ni_up, ni_dn, ni_sigma, ni, Sz, cdagc_up, cdagc_dn, cdagc_sigma, sisj, sisj_plus, 
-  niup_nidn, cdagup_cdagdn, null
+  niup_nidn, ni_nj, cdagup_cdagdn, null
 };
 
 enum class op_type { quadratic, pairing, quartic };
@@ -150,6 +150,12 @@ class hubbard_int : public quantum_op
 {
 public:
   hubbard_int() : quantum_op("hubbard", op_id::niup_nidn, spin::UD, op_type::quartic) {}
+};
+
+class ni_nj : public quantum_op
+{
+public:
+  ni_nj() : quantum_op("ni_nj", op_id::ni_nj, spin::UD, op_type::quartic) {}
 };
 
 } // end namespace op
