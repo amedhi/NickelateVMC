@@ -50,6 +50,9 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   using namespace model;
   model::CouplingConstant cc;
 
+  // SC form
+  correlation_pairs().clear();
+  const std::pair<int,int> anypair{-1,-1};
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
   bool mf_model_finalized = false;
@@ -66,16 +69,21 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     if (order()==order_t::SC && pair_symm()==pairing_t::SWAVE) {
       order_name_ = "SC-SWAVE";
       mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
+      correlation_pairs().push_back(anypair);
     }
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
       order_name_ = "SC-DWAVE";
       cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"});
       mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
     }
     else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
       order_name_ = "SC-Extended_S";
       cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"});
       mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
     }
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
@@ -127,6 +135,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       else {
         throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
       }
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("dSC");
@@ -144,7 +154,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       add_chemical_potential(inputs);
     }
 
-    else if (modelname == "HUBBARD") {
+    else if (model.id()==model::model_id::HUBBARD) {
       mf_model_.add_parameter(name="t", defval=1.0, inputs);
       mf_model_.add_parameter(name="tp", defval=0.0, inputs);
       mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
@@ -177,6 +187,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       else {
         throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
       }
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("delta_sc");
@@ -317,6 +329,9 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       // pairing term
       mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
 
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({1,1});
+
       // variational parameters
       defval = mf_model_.get_parameter_value("dSC_x");
       varparms_.add("dSC_x", defval,lb=1.0E-3,ub=2.0,dh=0.01);
@@ -358,6 +373,10 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     varparms_.add("theta1", defval, lb=0.0, ub=two_pi(), dh=0.2);
     defval = mf_model_.get_parameter_value("theta2");
     varparms_.add("theta2", defval, lb=0.0, ub=two_pi(), dh=0.2);
+
+    correlation_pairs().push_back({0,0});
+    correlation_pairs().push_back({1,1});
+    correlation_pairs().push_back({2,2});
 
     add_chemical_potential(inputs);
   }
@@ -402,6 +421,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.add_type(1, "delta_R");
       //cc.add_type(1, "0");
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({1,1});
     }
 
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
@@ -415,6 +436,10 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.add_type(5, "0");
       cc.add_type(6, "0");
       mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
+      correlation_pairs().push_back({3,3});
+      correlation_pairs().push_back({3,4});
     }
 
     else {
@@ -459,6 +484,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
     // pairing
     mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
+    correlation_pairs().push_back({0,0});
+
     // variational parameters
     defval = mf_model_.get_parameter_value("delta_sc");
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);

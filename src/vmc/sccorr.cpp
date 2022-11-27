@@ -11,11 +11,32 @@
 
 namespace vmc {
 
-void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm,
+void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order& mf_order,
   const int& sample_size)
 {
   // SC pairing symmetry
-  pair_symm_ = pairsymm;
+  switch (mf_order.pair_symm()) {
+    case var::MF_Order::pairing_t::SWAVE: 
+      bondsinglet_corr_ = false; break;
+    case var::MF_Order::pairing_t::DWAVE: 
+      bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::EXTENDED_S: 
+      bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::null: 
+      bondsinglet_corr_ = true; break;
+    default:
+      throw std::range_error("SC_Correlation::setup: not defined for the pairing symmetry");
+  }
+
+  // pairs of 'site/bond type' values, for which correlations are computed
+  corr_pairs_ = mf_order.correlation_pairs();
+  assert(corr_pairs_.size()>0);
+  anypair_corr_ = false;
+  if (corr_pairs_.size()==1) {
+    if (corr_pairs_[0].first==-1 || corr_pairs_[0].second==-1) {
+      anypair_corr_ = true;
+    }
+  }
 
   // max distance (catch sites along a1)
   Vector3d R = lattice.size1() * lattice.vector_a1();
@@ -44,48 +65,12 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
     }
   }
 
-  // bond pair types for this different lattces 
-  if (lattice.id()==lattice::lattice_id::NICKELATE) {
-    bondpair_types_.resize(4);
-    bondpair_types_[0] = std::make_pair(0,0);
-    bondpair_types_[1] = std::make_pair(0,1);
-    bondpair_types_[2] = std::make_pair(5,5);
-    bondpair_types_[3] = std::make_pair(5,6);
-  }
-  else if (lattice.id()==lattice::lattice_id::NICKELATE_2D ||
-           lattice.id()==lattice::lattice_id::NICKELATE_2L) {
-    bondpair_types_.resize(4);
-    bondpair_types_[0] = std::make_pair(0,0);
-    bondpair_types_[1] = std::make_pair(0,1);
-    bondpair_types_[2] = std::make_pair(3,3);
-    bondpair_types_[3] = std::make_pair(3,4);
-  }
-  else {
-    bondpair_types_.resize(2);
-    bondpair_types_[0] = std::make_pair(0,0);
-    bondpair_types_[1] = std::make_pair(0,1);
-  }
-
-  if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
-    min_dist_ = 1;
-    throw std::range_error("SC_Correlation::setup: not implemented for this symmetry");
-    /*
-    bondpair_types_.resize(num_basis_sites_);
-    for (int i=0; i<num_basis_sites_; ++i) {
-      bondpair_types_[i] = std::make_pair(i,i);
-    }
-    */
-  }
-  else {
-    min_dist_ = 2;
-  }
-
   // allocate storages
-  corr_data_.resize(max_dist_+1, bondpair_types_.size());
-  count_.resize(max_dist_+1, bondpair_types_.size());
+  corr_data_.resize(max_dist_+1, corr_pairs_.size());
+  count_.resize(max_dist_+1, corr_pairs_.size());
 
   std::vector<std::string> elem_names;
-  for (const auto& p : bondpair_types_)
+  for (const auto& p : corr_pairs_)
     elem_names.push_back(std::to_string(p.first)+"-"+std::to_string(p.second));
   this->resize(corr_data_.size(), elem_names);
 
@@ -93,9 +78,9 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
   assert(sample_size>=0);
   batch_size_ = std::min(sample_size,5000);
   bool no_error_bar = true;
-  infd_corr_.init("infd_corr",bondpair_types_.size(),no_error_bar);
-  odlro_.init("odlro",bondpair_types_.size());
-  config_value_.resize(bondpair_types_.size());
+  infd_corr_.init("infd_corr",corr_pairs_.size(),no_error_bar);
+  odlro_.init("odlro",corr_pairs_.size());
+  config_value_.resize(corr_pairs_.size());
 }
 
 void SC_Correlation::reset(void) 
@@ -114,30 +99,21 @@ void SC_Correlation::reset_batch_limit(const int& sample_size)
 void SC_Correlation::measure(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
-  if (pair_symm_==var::MF_Order::pairing_t::SWAVE) {
-    measure_swave(lattice, model, config);
-  }
-  else if (pair_symm_==var::MF_Order::pairing_t::DWAVE) {
-    measure_dwave(lattice, model, config);
-  }
-  else if (pair_symm_==var::MF_Order::pairing_t::EXTENDED_S) {
-    measure_dwave(lattice, model, config);
-  }
-  else if (pair_symm_==var::MF_Order::pairing_t::null) {
-    measure_dwave(lattice, model, config);
+  if (bondsinglet_corr_) {
+    measure_bondsinglet_corr(lattice, model, config);
   }
   else {
-    throw std::range_error("SC_Correlation::measure: not implemented for this symmetry");
+    measure_sitesinglet_corr(lattice, model, config);
   }
 
   //------------ODLRO from batch avg------------
-  for (int m=0;  m<bondpair_types_.size(); ++m) {
+  for (int m=0;  m<corr_pairs_.size(); ++m) {
     config_value_[m] = corr_data_(max_dist_,m);
   }
   infd_corr_ << config_value_;
   if (infd_corr_.num_samples()>=batch_size_) {
     config_value_ = infd_corr_.mean_data(); 
-    for (int m=0;  m<bondpair_types_.size(); ++m) {
+    for (int m=0;  m<corr_pairs_.size(); ++m) {
       config_value_[m] = std::sqrt(std::abs(config_value_[m]));
     }
     // add sample
@@ -147,7 +123,7 @@ void SC_Correlation::measure(const lattice::Lattice& lattice,
   }
 }
 
-void SC_Correlation::measure_dwave(const lattice::Lattice& lattice, 
+void SC_Correlation::measure_bondsinglet_corr(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
   corr_data_.setZero();
@@ -167,8 +143,8 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
         int t1 = lattice.bond(id1).type();
         // check if SC pair defined for this bond 
         bool sc_pair = false;
-        for (int m=0;  m<bondpair_types_.size(); ++m) {
-          if (t1==bondpair_types_[m].first) {
+        for (int m=0;  m<corr_pairs_.size(); ++m) {
+          if (t1==corr_pairs_[m].first || anypair_corr_) {
             sc_pair = true; break;
           }
         }
@@ -186,8 +162,8 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
           to_site_jb = lattice.bond(id2).tgt_id();
 
           // calculate bond-singlet hopping amplitude
-          for (int m=0;  m<bondpair_types_.size(); ++m) {
-            if (t1==bondpair_types_[m].first && t2==bondpair_types_[m].second) {
+          for (int m=0;  m<corr_pairs_.size(); ++m) {
+            if ((t1==corr_pairs_[m].first && t2==corr_pairs_[m].second) || anypair_corr_) {
               ampl = std::real(config.apply_bondsinglet_hop(fr_site_i,
                   fr_site_ia, to_site_j, to_site_jb));
               // Hermitian conjugate term
@@ -207,9 +183,9 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
     }
   }
 
-  // average over number of bonds
+  // average over different pairs
   for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (int m=0;  m<bondpair_types_.size(); ++m) {
+    for (int m=0;  m<corr_pairs_.size(); ++m) {
       if (count_(d,m) != 0) {
         corr_data_(d,m) /= count_(d,m);
       }
@@ -220,11 +196,41 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
 }
 
-void SC_Correlation::measure_swave(const lattice::Lattice& lattice, 
+void SC_Correlation::measure_sitesinglet_corr(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
   corr_data_.setZero();
-  int i_cdag, i_c;
+  count_.setZero();
+  double ampl;
+  int fr_site, to_site;
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
+      fr_site  = p.first;
+      to_site  = p.second;
+      int t1 = lattice.site(fr_site).type();
+      int t2 = lattice.site(to_site).type();
+      for (int m=0;  m<corr_pairs_.size(); ++m) {
+        if (anypair_corr_ || (t1==corr_pairs_[m].first && t2==corr_pairs_[m].second)) {
+          ampl = std::real(config.apply_sitepair_hop(fr_site, to_site));
+          // Hermitian conjugate term
+          ampl += std::real(config.apply_sitepair_hop(to_site, fr_site));
+          corr_data_(d,m) += 0.5*ampl; // average of HC terms
+          count_(d,m) += 1;
+        }
+      }
+    }
+  }
+
+  // average over different pairs
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (int m=0;  m<corr_pairs_.size(); ++m) {
+      if (count_(d,m) != 0) {
+        corr_data_(d,m) /= count_(d,m);
+      }
+    }
+  }
+
+  /*
   for (int d=min_dist_; d<=max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
@@ -243,11 +249,7 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
       corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
     }
   }
-
-  //std::cout << max_dist_ << "\n\n";
-  //std::cout << corr_data_ << "\n\n";
-  //std::cout << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size()) << "\n";
-  //getchar();
+  */
 
   // reshape add to databin
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
@@ -323,7 +325,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
     for (const auto& p : xvals) fs_ << std::setw(14) << p;
     fs_ << std::setw(6) << d; 
     int n = d;
-    for (int i=0; i<bondpair_types_.size(); ++i) {
+    for (int i=0; i<corr_pairs_.size(); ++i) {
       fs_ << MC_Data::result_str(n);
       n += (max_dist_+1);
     }
@@ -334,7 +336,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   // ODLRO from batch computation
   fs_ << "\n# phi(1)"; 
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
-  for (int m=0; m<bondpair_types_.size(); ++m) {
+  for (int m=0; m<corr_pairs_.size(); ++m) {
     fs_ << odlro_.result_str(m);
   }
   fs_ << odlro_.conv_str(0); 
@@ -344,7 +346,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
   //fs_ << std::setw(6) << max_dist_-1; 
   int n=max_dist_;
-  for (int m=0; m<bondpair_types_.size(); ++m) {
+  for (int m=0; m<corr_pairs_.size(); ++m) {
     double x = MC_Data::mean(n);
     double phi = std::sqrt(std::abs(x));
     fs_ << std::scientific << std::setw(15) << phi;
@@ -359,7 +361,7 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   fs_ << "# phi(3)"; 
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
   util::CurveFit curve_fit;
-  for (int m=0; m<bondpair_types_.size(); ++m) {
+  for (int m=0; m<corr_pairs_.size(); ++m) {
     Eigen::VectorXd xv(max_dist_-min_dist_+1);
     Eigen::VectorXd yv(max_dist_-min_dist_+1);
     Eigen::VectorXd yerr(max_dist_-min_dist_+1);

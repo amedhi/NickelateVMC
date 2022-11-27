@@ -40,7 +40,7 @@ public:
   using site_t = unsigned;
   using MC_Observable::MC_Observable;
   void reset(void) override;
-  void setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm,
+  void setup(const lattice::Lattice& lattice, const var::MF_Order& mf_order,
     const int& sample_size=5000);
   void measure(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
@@ -54,8 +54,9 @@ public:
     const std::vector<std::string>& xvars) override;
   void print_result(const std::vector<double>& xvals) override; 
 private:
-  var::MF_Order::pairing_t pair_symm_{var::MF_Order::pairing_t::DWAVE};
-  int num_basis_sites_{1};
+  bool bondsinglet_corr_{true};
+  bool anypair_corr_{false};
+  //int num_basis_sites_{1};
   //int num_site_types_{1};
   int min_dist_{0};
   int max_dist_{0};
@@ -64,7 +65,7 @@ private:
   symmetry_site_pairs symm2_pairs_;
   std::vector<symmetry_site_pairs> symm_list_;
 
-  std::vector<std::pair<int,int> > bondpair_types_;
+  std::vector<std::pair<int,int>> corr_pairs_;
   Eigen::MatrixXd corr_data_;
   Eigen::MatrixXi count_;
   // for ODLRO
@@ -81,9 +82,9 @@ private:
   std::vector<Eigen::MatrixXd> bond_pair_corr_;
   std::vector<Eigen::MatrixXi> num_symm_pairs_;
   */
-  void measure_swave(const lattice::Lattice& lattice, const model::Hamiltonian& model,
+  void measure_bondsinglet_corr(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
-  void measure_dwave(const lattice::Lattice& lattice, const model::Hamiltonian& model,
+  void measure_sitesinglet_corr(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
 };
 

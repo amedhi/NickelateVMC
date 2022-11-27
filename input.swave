@@ -40,7 +40,7 @@ as_func_of = "hole_doping"
 Energy = "YES"
 EnergyGradient = "NO"
 SpinCorrelation = "NO"
-SC_Correlation = "NO"
+SC_Correlation = "YES"
 ParticleDenisity = "NO"
 #---------------------------------------
 rng_seed = 0

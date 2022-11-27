@@ -37,6 +37,7 @@ public:
     const model::Hamiltonian& model, const bool& site_disorder=false);
   ~Wavefunction() {}
   const MF_Order::pairing_t& pair_symmetry(void) const { return groundstate_->pair_symm(); }
+  const MF_Order& mf_order(void) const { return *groundstate_; }
   const VariationalParms& varparms(void) const { return groundstate_->varparms(); }
   std::string info_str(void) const { return groundstate_->info_str(); } 
   int compute(const lattice::Lattice& lattice, const input::Parameters& inputs, 

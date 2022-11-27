@@ -29,15 +29,18 @@ public:
   void set_order(const MF_Order::order_t& order) { order_=order; }
   void set_pair_symmetry(const MF_Order::pairing_t& pairsymm) { pairing_=pairsymm; }
   const MF_Order::order_t& order(void) const { return order_; }
-  const MF_Order::pairing_t& pair_symm(void) { return pairing_; } 
+  const MF_Order::pairing_t& pair_symm(void) const { return pairing_; } 
   bool pairing_type(void) const 
   { 
     if (pairing_==MF_Order::pairing_t::null) return false;
     else return true;
   }
+  std::vector<std::pair<int,int>>& correlation_pairs(void) { return correlation_pairs_; }
+  const std::vector<std::pair<int,int>>& correlation_pairs(void) const { return correlation_pairs_; }
 private:
   order_t order_{order_t::null};
   pairing_t pairing_{pairing_t::null};
+  std::vector<std::pair<int,int>> correlation_pairs_;
 };
 
 class GroundState : public MF_Order

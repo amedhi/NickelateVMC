@@ -8,13 +8,6 @@
 #ifndef BCS_STATE_H
 #define BCS_STATE_H
 
-//#include <string>
-//#include <complex>
-//#include <vector>
-//#include <map>
-//#include <stdexcept>
-//#include <Eigen/Eigenvalues>
-//#include "../scheduler/task.h"
 #include "./groundstate.h"
 #include "./mf_model.h"
 #include "./matrix.h"
