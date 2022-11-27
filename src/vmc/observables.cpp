@@ -61,7 +61,7 @@ void ObservableSet::init(const input::Parameters& inputs,
   if (energy_) energy_.setup(lattice,model);
   if (energy_grad_) energy_grad_.setup(config,sample_size);
   if (spin_corr_) spin_corr_.setup(lattice);
-  if (sc_corr_) sc_corr_.setup(lattice,config.wavefunc().pair_symmetry());
+  if (sc_corr_) sc_corr_.setup(lattice,config.wavefunc().pair_symmetry(),sample_size);
   if (sr_matrix_) sr_matrix_.setup(lattice,config);
   if (particle_density_) particle_density_.setup(lattice,config);
   if (doublon_density_) doublon_density_.setup(lattice,config);
@@ -81,6 +81,7 @@ void ObservableSet::reset(void)
 void ObservableSet::reset_batch_limit(const int& sample_size)
 {
   if (energy_grad_) energy_grad_.reset_batch_limit(sample_size);
+  if (sc_corr_) sc_corr_.reset_batch_limit(sample_size);
   if (sr_matrix_) sr_matrix_.reset_batch_limit(sample_size);
 }
 

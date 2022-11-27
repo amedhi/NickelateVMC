@@ -61,6 +61,8 @@ void Energy::measure(const lattice::Lattice& lattice,
     for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
       for (unsigned btype=0; btype<lattice.num_bond_types(); ++btype) {
         config_value_(component) += std::real(it->coupling(btype)*matrix_elem(bterm,btype));
+        //std::cout << matrix_elem(bterm,btype) << "\n";
+        //std::cout << btype << "  " << it->coupling(btype) << "\n"; getchar();
       }
       bterm++;
       component++;

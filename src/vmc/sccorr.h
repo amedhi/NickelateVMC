@@ -39,12 +39,17 @@ class SC_Correlation : public mcdata::MC_Observable
 public:
   using site_t = unsigned;
   using MC_Observable::MC_Observable;
-  void setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm);
+  void reset(void) override;
+  void setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm,
+    const int& sample_size=5000);
   void measure(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config);
   //const unsigned& num_site_pairs(void) const { return src_pairs_size_; }
   //const std::pair<site_t,site_t>& site_pair(const unsigned& i) const 
   //  { return src_pairs_[i]; }
+  void reset_batch_limit(const int& sample_size);
+  void MPI_send_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
+  void MPI_add_data(const mpi::mpi_communicator& mpi_comm, const mpi::proc& proc, const int& msg_tag) override;
   void print_heading(const std::string& header, 
     const std::vector<std::string>& xvars) override;
   void print_result(const std::vector<double>& xvals) override; 
@@ -62,6 +67,11 @@ private:
   std::vector<std::pair<int,int> > bondpair_types_;
   Eigen::MatrixXd corr_data_;
   Eigen::MatrixXi count_;
+  // for ODLRO
+  int batch_size_{5000};
+  mcdata::MC_Observable infd_corr_{"infd_corr"};
+  mcdata::MC_Observable odlro_{"odlro"};
+  mcdata::data_t config_value_;
 
   /*
   unsigned num_bond_types_{0};

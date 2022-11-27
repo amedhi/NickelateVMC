@@ -11,7 +11,8 @@
 
 namespace vmc {
 
-void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm)
+void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order::pairing_t& pairsymm,
+  const int& sample_size)
 {
   // SC pairing symmetry
   pair_symm_ = pairsymm;
@@ -80,19 +81,36 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order:
   }
 
   // allocate storages
-  //corr_data_.resize(max_dist_+1, bondpair_types_.size());
-  //count_.resize(max_dist_+1, bondpair_types_.size());
-
-  // At location 'max_dist_+1': to store the value of 'phi'
-  corr_data_.resize(max_dist_+2, bondpair_types_.size());
-  count_.resize(max_dist_+2, bondpair_types_.size());
+  corr_data_.resize(max_dist_+1, bondpair_types_.size());
+  count_.resize(max_dist_+1, bondpair_types_.size());
 
   std::vector<std::string> elem_names;
   for (const auto& p : bondpair_types_)
     elem_names.push_back(std::to_string(p.first)+"-"+std::to_string(p.second));
   this->resize(corr_data_.size(), elem_names);
+
+  // for measuring 'ODLRO' from batch avg
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,5000);
+  bool no_error_bar = true;
+  infd_corr_.init("infd_corr",bondpair_types_.size(),no_error_bar);
+  odlro_.init("odlro",bondpair_types_.size());
+  config_value_.resize(bondpair_types_.size());
 }
 
+void SC_Correlation::reset(void) 
+{
+  MC_Observable::reset(); 
+  infd_corr_.reset(); 
+  odlro_.reset();
+}
+
+void SC_Correlation::reset_batch_limit(const int& sample_size)
+{
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,5000);
+}
+  
 void SC_Correlation::measure(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model, const SysConfig& config)
 {
@@ -110,6 +128,22 @@ void SC_Correlation::measure(const lattice::Lattice& lattice,
   }
   else {
     throw std::range_error("SC_Correlation::measure: not implemented for this symmetry");
+  }
+
+  //------------ODLRO from batch avg------------
+  for (int m=0;  m<bondpair_types_.size(); ++m) {
+    config_value_[m] = corr_data_(max_dist_,m);
+  }
+  infd_corr_ << config_value_;
+  if (infd_corr_.num_samples()>=batch_size_) {
+    config_value_ = infd_corr_.mean_data(); 
+    for (int m=0;  m<bondpair_types_.size(); ++m) {
+      config_value_[m] = std::sqrt(std::abs(config_value_[m]));
+    }
+    // add sample
+    odlro_ << config_value_;
+    // reset batch data sum
+    infd_corr_.reset();
   }
 }
 
@@ -182,13 +216,6 @@ void SC_Correlation::measure_dwave(const lattice::Lattice& lattice,
     }
   }
 
-  // SC order parameters
-  int d = max_dist_+1;
-  for (int m=0;  m<bondpair_types_.size(); ++m) {
-    double phi = std::sqrt(std::abs(corr_data_(max_dist_,m)));
-    corr_data_(d,m) = phi;
-  }
-
   // reshape add to databin
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
 }
@@ -198,7 +225,7 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
 {
   corr_data_.setZero();
   int i_cdag, i_c;
-  for (int d=min_dist_; d<max_dist_; ++d) {
+  for (int d=min_dist_; d<=max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
         i_cdag = p.first;
@@ -211,7 +238,7 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
       }
     }
   }
-  for (int d=min_dist_; d<max_dist_; ++d) {
+  for (int d=min_dist_; d<=max_dist_; ++d) {
     for (int n=0; n<num_basis_sites_; ++n) {
       corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
     }
@@ -225,6 +252,33 @@ void SC_Correlation::measure_swave(const lattice::Lattice& lattice,
   // reshape add to databin
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
 }
+
+#ifdef HAVE_BOOST_MPI
+void SC_Correlation::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  mcdata::MC_Observable::MPI_send_data(mpi_comm, p, msg_tag);
+  odlro_.MPI_send_data(mpi_comm, p, msg_tag);
+}
+
+void SC_Correlation::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  mcdata::MC_Observable::MPI_add_data(mpi_comm, p, msg_tag);
+  odlro_.MPI_add_data(mpi_comm, p, msg_tag);
+}
+#else
+void SC_Correlation::MPI_send_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  mcdata::MC_Observable::MPI_send_data(mpi_comm, p, msg_tag);
+}
+void SC_Correlation::MPI_add_data(const mpi::mpi_communicator& mpi_comm, 
+  const mpi::proc& p, const int& msg_tag)
+{
+  mcdata::MC_Observable::MPI_add_data(mpi_comm, p, msg_tag);
+}
+#endif
 
 
 void SC_Correlation::print_heading(const std::string& header,
@@ -265,41 +319,52 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   fs_ << std::right;
   fs_ << std::scientific << std::uppercase << std::setprecision(6);
 
-  std::vector<double> odlro;
   for (int d=min_dist_; d<=max_dist_; ++d) {
     for (const auto& p : xvals) fs_ << std::setw(14) << p;
     fs_ << std::setw(6) << d; 
     int n = d;
     for (int i=0; i<bondpair_types_.size(); ++i) {
       fs_ << MC_Data::result_str(n);
-      n += (max_dist_+2);
+      n += (max_dist_+1);
     }
     fs_ << MC_Data::conv_str(d); 
     fs_ << std::endl; 
   }
 
-  // Order parameter (from max_distance value)
+  // ODLRO from batch computation
   fs_ << "\n# phi(1)"; 
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
-  //fs_ << std::setw(6) << max_dist_-1; 
-  int n=max_dist_+1;
-  for (int i=0; i<bondpair_types_.size(); ++i) {
-    fs_ << MC_Data::result_str(n);
-    n += (max_dist_+2);
+  for (int m=0; m<bondpair_types_.size(); ++m) {
+    fs_ << odlro_.result_str(m);
   }
-  fs_ << MC_Data::conv_str(max_dist_+1); 
+  fs_ << odlro_.conv_str(0); 
+
+  // ODLRO from full computation
+  fs_ << "\n# phi(2)"; 
+  for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
+  //fs_ << std::setw(6) << max_dist_-1; 
+  int n=max_dist_;
+  for (int m=0; m<bondpair_types_.size(); ++m) {
+    double x = MC_Data::mean(n);
+    double phi = std::sqrt(std::abs(x));
+    fs_ << std::scientific << std::setw(15) << phi;
+    double err = 0.5*phi*MC_Data::stddev(n)/std::abs(x);
+    fs_ << std::fixed << std::setw(10) << err;
+    n += (max_dist_+1);
+  }
+  fs_ << MC_Data::conv_str(max_dist_); 
   fs_ << std::endl; 
 
-  // Order parameter 'phi': obtained by fitting the data
-  fs_ << "# phi(2)"; 
+  // ODLRO by fitting the correlation data
+  fs_ << "# phi(3)"; 
   for (const auto& p : xvals) fs_ << std::scientific << std::setw(14) << p;
   util::CurveFit curve_fit;
-  for (int i=0; i<bondpair_types_.size(); ++i) {
+  for (int m=0; m<bondpair_types_.size(); ++m) {
     Eigen::VectorXd xv(max_dist_-min_dist_+1);
     Eigen::VectorXd yv(max_dist_-min_dist_+1);
     Eigen::VectorXd yerr(max_dist_-min_dist_+1);
     int j = 0;
-    int n = (max_dist_+2)*i;
+    int n = (max_dist_+1)*m;
     for (int d=min_dist_; d<=max_dist_; ++d) {
       xv(j) = d;
       yv(j) = MC_Data::mean(n+d);
