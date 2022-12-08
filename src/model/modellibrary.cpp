@@ -27,6 +27,7 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
   CouplingConstant cc;
 
   // define the models 
+  int info;
   model_name = inputs.set_value("model", "HUBBARD");
   boost::to_upper(model_name);
 
@@ -267,13 +268,20 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_parameter(name="U", defval=0.0, inputs);
 
       // projection operator
-      ProjectionOp pjn;
-      pjn.set({0,projection_t::HOLON}, {1,projection_t::DOUBLON});
-      set_projection_op(pjn);
+      if (inputs.set_value("projection",true,info)) {
+        ProjectionOp pjn;
+        pjn.set({0,projection_t::HOLON}, {1,projection_t::DOUBLON});
+        set_projection_op(pjn);
+      }
 
       // hopping term
-      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
-      add_bondterm(name="hopping", cc, op::spin_hop());
+      //cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
+      //add_bondterm(name="hopping", cc, op::spin_hop());
+      // hopping term - split into NN & NNN
+      cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"0"});
+      add_bondterm(name="hopping-1", cc, op::spin_hop());
+      cc = CouplingConstant({0,"0"},{1,"0"},{2,"-tp"});
+      add_bondterm(name="hopping-2", cc, op::spin_hop());
 
       // exchange term
       cc.create(3);
@@ -314,7 +322,10 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
     mid = model_id::TJ;
     // projection operator
     //ProjectionOp pjn = projection_t::DOUBLON; 
-    set_projection_op(projection_t::DOUBLON);
+    if (inputs.set_value("projection",true,info)) {
+      set_projection_op(projection_t::DOUBLON);
+    }
+
     if (lattice.id() == lattice::lattice_id::SQUARE) {
       add_parameter(name="t", defval=1.0, inputs);
       add_parameter(name="J", defval=0.0, inputs);

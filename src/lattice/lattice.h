@@ -119,6 +119,7 @@ public:
   // getter functions
   const int& id(void) const { return id_; }
   const unsigned& type(void) const {return type_;}
+  const unsigned& ngb(void) const {return ngb_;}
   unsigned src_id(void) const { return first.id(); }
   unsigned tgt_id(void) const { return second.id(); }
   const Site& src(void) const { return first; }

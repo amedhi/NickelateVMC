@@ -38,6 +38,9 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order&
     }
   }
 
+  // min distance 
+  min_dist_ = bondsinglet_corr_? 2 : 1;
+
   // max distance (catch sites along a1)
   Vector3d R = lattice.size1() * lattice.vector_a1();
   max_dist_ = std::nearbyint(R.norm());

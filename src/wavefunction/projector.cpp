@@ -20,7 +20,10 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
   // check if present
   int info;
   is_present_ = inputs.set_value("gw_projector",false,info);
-  if (!is_present_) return 0;
+  if (!is_present_) {
+    default_case_ = false;
+    return 0;
+  }
 
   // initialize  
   num_sites_ = lattice.num_sites();
@@ -236,7 +239,6 @@ double GW_Projector::gw_ratio(const vmc::BasisState& state,
     }
     return gw_ratio;
   }
-
   if (!is_present_) return gw_ratio;
   if (fr_site == to_site) return gw_ratio;
 

@@ -20,12 +20,13 @@ class Energy : public mcdata::MC_Observable
 {
 public:
   using MC_Observable::MC_Observable;
-  void setup(const lattice::Lattice& lattice, const model::Hamiltonian& model);
+  void setup(const lattice::Lattice& lattice, const model::Hamiltonian& model, const bool& only_total=false);
   void measure(const lattice::Lattice& lattice, const model::Hamiltonian& model,
     const SysConfig& config, const SiteDisorder& site_disorder);
   const mcdata::data_t& config_value(void) const { return config_value_; }
 private:
   bool setup_done_{false};
+  bool only_total_{false};
   unsigned num_sites_{0};
   mcdata::data_t config_value_;
 };

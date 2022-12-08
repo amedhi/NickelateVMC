@@ -191,10 +191,6 @@ void ObservableSet::print_results(const std::vector<double>& xvals)
     energy_grad_.print_heading(headstream_.rdbuf()->str(),xvars_);
     energy_grad_.print_result(xvals);
   }
-  if (particle_density_) {
-    particle_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
-    particle_density_.print_result(xvals);
-  }
   if (spin_corr_) {
     spin_corr_.print_heading(headstream_.rdbuf()->str(),xvars_);
     spin_corr_.print_result(xvals);

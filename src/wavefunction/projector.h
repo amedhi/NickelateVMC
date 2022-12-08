@@ -58,7 +58,7 @@ public:
   void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
 private:
   enum class pjn_t {DOUBLON, HOLON, NONE};
-  bool default_case_{true};
+  bool default_case_{false};
   bool is_present_{false};
   bool uniform_projection_{true};
   int num_sites_;

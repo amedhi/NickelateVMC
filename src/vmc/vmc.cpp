@@ -102,12 +102,12 @@ int VMC::set_run_mode(const run_mode& mode)
       break;
     case run_mode::en_function:
       observables.switch_off();
-      observables.energy().setup(lattice,model);
+      observables.energy().setup(lattice,model,true); // total energy
       observables.energy_grad().setup(config);
       break;
     case run_mode::sr_function:
       observables.switch_off();
-      observables.energy().setup(lattice,model);
+      observables.energy().setup(lattice,model,true); // total energy
       observables.energy_grad().setup(config);
       observables.sr_matrix().setup(lattice,config);
       break;

@@ -11,6 +11,151 @@ namespace vmc {
 
 //-------------------ENERGY--------------------------------
 void Energy::setup(const lattice::Lattice& lattice, 
+  const model::Hamiltonian& model, const bool& only_total)
+{
+  MC_Observable::switch_on();
+  if (setup_done_) return;
+  num_sites_ = lattice.num_sites();
+  std::vector<std::string> elem_names;
+  std::vector<std::string> term_names;
+  //model.get_term_names(elem_names);
+  //this->resize(elem_names.size(), elem_names);
+  //this->set_have_total();
+
+  // include the 'Total' as seperate component
+  elem_names.push_back("Total");
+  model.get_term_names(term_names);
+  for (const auto& s : term_names) elem_names.push_back(s);
+  config_value_.resize(elem_names.size());
+
+  // if only total component is required
+  only_total_ = only_total;
+  if (only_total_) {
+    elem_names.clear();
+    elem_names.push_back("Energy");
+    this->resize(elem_names.size(), elem_names);
+  }
+  else {
+    this->resize(elem_names.size(), elem_names);
+  }
+
+  setup_done_ = true;
+}
+  
+void Energy::measure(const lattice::Lattice& lattice, 
+  const model::Hamiltonian& model, const SysConfig& config, 
+  const SiteDisorder& site_disorder)
+{
+  using op_id = model::op_id;
+  // In the energy components below, 0-th component is for the total
+  int component = 1;
+  config_value_.setZero();
+  // bond energies
+  if (model.have_bondterm()) {
+    Matrix matrix_elem(model.num_bondterms(),lattice.num_bond_types());
+    matrix_elem.setZero();
+    for (const auto& b : lattice.bonds()) {
+      unsigned type = b.type();
+      unsigned site_i = b.src_id();
+      unsigned site_j = b.tgt_id();
+      // matrix elements each term & bond type
+      int bterm = 0;
+      for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
+        // compute only if non-zero coupling constant
+        if (std::abs(it->coupling(type))>1.0E-8) {
+          matrix_elem(bterm,type) += config.apply(it->qn_operator(),site_i,site_j,
+            b.sign(),b.phase());
+        }
+        bterm++;
+      }
+    }
+    // sum the contributions
+    int bterm = 0;
+    for (auto it=model.bondterms_begin(); it!=model.bondterms_end(); ++it) {
+      for (unsigned btype=0; btype<lattice.num_bond_types(); ++btype) {
+        config_value_(component) += std::real(it->coupling(btype)*matrix_elem(bterm,btype));
+        //std::cout << matrix_elem(bterm,btype) << "\n";
+        //std::cout << btype << "  " << it->coupling(btype) << "\n"; getchar();
+      }
+      bterm++;
+      component++;
+    }
+  }
+
+  // site energies
+  if (model.have_siteterm()) {
+    Matrix matrix_elem(model.num_siteterms(),lattice.num_site_types());
+    matrix_elem.setZero();
+    Eigen::VectorXi hubbard_nd(lattice.num_site_types());
+    hubbard_nd.setZero();
+    // do it little differently
+    int sterm = 0;
+    for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
+      // special treatment for hubbard
+      if (it->qn_operator().id()==op_id::niup_nidn) {
+        for (const auto& s : lattice.sites()) {
+          hubbard_nd(s.type()) += config.apply_ni_dblon(s.id());
+        }
+      }
+      else {
+        for (const auto& s : lattice.sites()) {
+          matrix_elem(sterm,s.type()) += config.apply(it->qn_operator(), s.id());
+          //std::cout << config.apply(it->qn_operator(),site) << "\n"; getchar();
+        }
+      }
+      sterm++;
+    }
+    sterm = 0;
+    for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
+      // special treatment for hubbard
+      if (it->qn_operator().id()==op_id::niup_nidn) {
+        for (int stype=0; stype<lattice.num_site_types(); ++stype) {
+          config_value_(component) += std::real(it->coupling(stype))*hubbard_nd(stype);
+        }
+      }
+      else {
+        for (unsigned stype=0; stype<lattice.num_site_types(); ++stype) {
+          config_value_(component) += std::real(it->coupling(stype)*matrix_elem(sterm,stype));
+        }
+      }
+      sterm++;
+      component++;
+    }
+  }
+
+  // disorder term
+  if (site_disorder) {
+    //std::cout << "\ndisorder energy\n"; 
+    double disorder_en = 0.0;
+    for (const auto& s : lattice.sites()) {
+      int n_i = config.apply(model::op::ni_sigma(), s.id());
+      disorder_en += std::real(n_i * site_disorder.potential(s.id()));
+      //std::cout <<"site= "<<site<<" ni= "<<n_i;
+      //std::cout <<" V= "<<site_disorder.potential(site)<<"\n";
+      //std::cout << "E+ = " << disorder_en << "\n"; 
+    }
+    config_value_(component) = disorder_en;
+    //std::cout << "\ndisorder_en = " << disorder_en << "\n"; getchar();
+  }
+
+  // energy per site
+  double total = config_value_.sum();
+
+  // add to databin
+  if (only_total_) {
+    *this << total/num_sites_;
+  }
+  else {
+    config_value_(0) = total;
+    config_value_ /= num_sites_;
+    *this << config_value_;
+  }
+  //std::cout << "config_energy = " << config_value_.transpose() << "\n"; 
+  //getchar();
+}
+
+/*
+void Energy::setup(const lattice::Lattice& lattice, 
   const model::Hamiltonian& model)
 {
   MC_Observable::switch_on();
@@ -18,11 +163,10 @@ void Energy::setup(const lattice::Lattice& lattice,
   num_sites_ = lattice.num_sites();
   std::vector<std::string> elem_names;
   std::vector<std::string> term_names;
-  /*
-  model.get_term_names(elem_names);
-  this->resize(elem_names.size(), elem_names);
-  this->set_have_total();
-  */
+  //model.get_term_names(elem_names);
+  //this->resize(elem_names.size(), elem_names);
+  //this->set_have_total();
+
   // include the 'Total' as seperate component
   model.get_term_names(term_names);
   elem_names.push_back("Total");
@@ -135,6 +279,7 @@ void Energy::measure(const lattice::Lattice& lattice,
   // add to databin
   *this << config_value_;
 }
+*/
 
 //-------------------ENERGY GRADIENT--------------------------------
 void EnergyGradient::setup(const SysConfig& config, const int& sample_size)

@@ -97,7 +97,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   //---------------------------------------------------------------------------
 
   else if (lattice.id()==lattice::lattice_id::SQUARE_4SITE) {
-    std::string modelname = inputs.set_value("model","");
     if (model.id()==model::model_id::HUBBARD_IONIC || 
         model.id()== model::model_id::TJ_IONIC) {
       mf_model_.add_parameter(name="tv", defval=1.0, inputs);
@@ -148,7 +147,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("tv");
-      varparms_.add("tv", defval,lb=0.1,ub=3.0,dh=0.02);
+      varparms_.add("tv", defval,lb=0.1,ub=5.0,dh=0.02);
       defval = mf_model_.get_parameter_value("tpv");
       varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
       add_chemical_potential(inputs);
