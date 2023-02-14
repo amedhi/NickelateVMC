@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-11-17 21:19:19
+* @Last Modified time: 2023-02-14 11:53:09
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -39,7 +39,7 @@ int VMCRun::run(const input::Parameters& inputs, const mpi::mpi_communicator& mp
 
   bool silent;
   if (mpi_comm.is_master() && !inputs.have_option_quiet()) {
-    std::cout << " progress in master\n";
+    std::cout << " *progress in master*\n";
     silent = false;
     start(inputs,run_mode::normal,silent);
   }

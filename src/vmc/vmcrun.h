@@ -45,7 +45,7 @@ private:
   mpi_mode mpi_mode_{mpi_mode::NORMAL};
   std::vector<mpi::proc> worker_procs_; // only for master
   std::vector<int> bc_list_;
-  int measure_samples_{-1};
+  int measure_samples_{0};
 
   int master_run(const var::parm_vector& vparms, double& en, double& en_err,
 	RealVector& grad, RealVector& grad_err, RealMatrix& sr_matrix, const bool& silent_mode=false);

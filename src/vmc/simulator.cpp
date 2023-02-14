@@ -53,12 +53,17 @@ int Simulator::start(const mpi::mpi_communicator& mpi_comm)
         // distribute equally (master takes lesser load)
         proc_samples = total_samples/num_procs;
         int excess_samples = total_samples-proc_samples*num_procs;
+        // assign the excess samples (except for the master)
+        if (!mpi_comm.is_master() && mpi_comm.rank()<=excess_samples) {
+          proc_samples += 1;
+        }
+        /*
         if (mpi_comm.is_master()) {
           proc_samples -= num_procs-excess_samples-1;
         }
         else {
           proc_samples += 1;
-        }
+        }*/
         vmc_.set_measure_steps(proc_samples);
         // list of workers 
         if (mpi_comm.is_master()) {
@@ -70,7 +75,7 @@ int Simulator::start(const mpi::mpi_communicator& mpi_comm)
       }
       else {
         if (mpi_comm.is_master()) {
-          std::cout << ">> alert: redundant processes in MPI run\n"; 
+          std::cout << " >> alert: redundant processes in MPI run\n"; 
         }
         if (mpi_comm.rank() >= total_samples) return 0; // no work for you
         proc_samples = 1; // for the remaining guys
@@ -118,7 +123,7 @@ int Simulator::start(const mpi::mpi_communicator& mpi_comm)
       }
       else {
         if (mpi_comm.is_master()) {
-          std::cout << ">> alert: redundant processes in MPI run\n"; 
+          std::cout << " >> alert: redundant processes in MPI run\n"; 
         }
         if (mpi_comm.rank() >= num_bcs) return 0; // no work for you
         bc_list.push_back(mpi_comm.rank());
