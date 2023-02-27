@@ -28,7 +28,9 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
   // initialize  
   num_sites_ = lattice.num_sites();
   num_site_types_ = lattice.num_site_types();
+  basis_projection_.resize(num_site_types_);
   site_projection_.resize(num_sites_);
+  for (auto& p : basis_projection_) p = pjn_t::NONE;
   for (auto& p : site_projection_) p = pjn_t::NONE;
   site_typeid_.resize(num_sites_);
   for (int i=0; i<num_sites_; ++i) {
@@ -76,6 +78,7 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
       throw std::range_error("GW_Projector::init: invalid projection");
     }
     // set same projection at all sites
+    for (auto& p : basis_projection_) p = pjn;
     for (auto& p : site_projection_) p = pjn;
 
     // read gw_factor
@@ -86,13 +89,14 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
     if (gw_factor_[0] < gw_cutoff()) {
       throw std::range_error("GW_Projector::init: `gw_factor' value out of range");
     }
-    vparms.add("gw_factor", gw_factor_[0], gw_cutoff(), 10.0);
+    if (basis_projection_[0] != pjn_t::NONE) {
+      vparms.add("gw_factor", gw_factor_[0], gw_cutoff(), 10.0);
+    }
   }
 
   // site-type specific projection
   else {
     gw_factor_.resize(num_site_types_);
-    std::vector<pjn_t> pjn(num_site_types_);
 
     for (int n=0; n<num_site_types_; ++n) {
       // read projection type
@@ -100,13 +104,13 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
       strval = inputs.set_value(pname, "DOUBLON", info);
       boost::to_upper(strval);
       if (strval == "DOUBLON") {
-        pjn[n] = pjn_t::DOUBLON;
+        basis_projection_[n] = pjn_t::DOUBLON;
       }
       else if (strval == "HOLON") {
-        pjn[n] = pjn_t::HOLON;
+        basis_projection_[n] = pjn_t::HOLON;
       }
       else if (strval == "NONE") {
-        pjn[n] = pjn_t::NONE;
+        basis_projection_[n] = pjn_t::NONE;
       }
       else {
         throw std::range_error("GW_Projector::init: invalid projection");
@@ -114,18 +118,20 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
 
       // read gw_factor
       pname = "gw_factor"+std::to_string(n+1);
-      if (pjn[n] != pjn_t::NONE) {
+      if (basis_projection_[n] != pjn_t::NONE) {
         gw_factor_[n] = inputs.set_value(pname, 1.0);
       }
       else gw_factor_[n] = 1.0; 
       if (gw_factor_[n] < gw_cutoff()) {
         throw std::range_error("GW_Projector::init: 'gw_factor' value out of range");
       }
-      vparms.add(pname, gw_factor_[n], gw_cutoff(), 10.0);
+      if (basis_projection_[n] != pjn_t::NONE) {
+        vparms.add(pname, gw_factor_[n], gw_cutoff(), 10.0);
+      }
     }
     // set site-type specific projection 
     for (int i=0; i<num_sites_; ++i) {
-      site_projection_[i] = pjn[site_typeid_[i]];
+      site_projection_[i] = basis_projection_[site_typeid_[i]];
     }
   }
 
@@ -213,11 +219,15 @@ int GW_Projector::update_parameters(const VariationalParms& vparms)
 {
   if (!is_present_) return 0;
   if (uniform_projection_) {
-    gw_factor_[0] = vparms["gw_factor"].value();
+    if (basis_projection_[0] != pjn_t::NONE) {
+      gw_factor_[0] = vparms["gw_factor"].value();
+    }
   }
   else {
     for (int n=0; n<num_site_types_; ++n) {
-      gw_factor_[n] = vparms["gw_factor"+std::to_string(n+1)].value();
+      if (basis_projection_[n] != pjn_t::NONE) {
+        gw_factor_[n] = vparms["gw_factor"+std::to_string(n+1)].value();
+      }
     }
   }
   set_ratio_table();

@@ -63,6 +63,7 @@ private:
   bool uniform_projection_{true};
   int num_sites_;
   int num_site_types_;
+  std::vector<pjn_t> basis_projection_; 
   std::vector<pjn_t> site_projection_; 
   std::vector<int> site_typeid_;
   std::vector<double> gw_factor_;

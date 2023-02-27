@@ -463,10 +463,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       mf_model_.update_site_parameter("mu_R", mu_0);
       mf_model_finalized = true;
     }
-    defval = mf_model_.get_parameter_value("mu_N");
-    varparms_.add("mu_N",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
-    defval = mf_model_.get_parameter_value("mu_R");
-    varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
+    if (inputs.set_value("mu_variational", true)) {
+      defval = mf_model_.get_parameter_value("mu_N");
+      varparms_.add("mu_N",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("mu_R");
+      varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
+    }
   }
 //---------------------------------------------------------------------------
 

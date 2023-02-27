@@ -18,7 +18,7 @@ bc1_twists = 8
 bc2_twists = 8
 #---------------------------------------
 model = "HUBBARD"
-e_R   =   2.0 #  -2.500000
+e_R   =  -2.500000
 t     =   1.000000
 tp    =  -0.100000
 th    =   0.200000
@@ -27,10 +27,14 @@ U     =  -6.000000
 wavefunction = "SC_SWAVE"
 #wavefunction = "FERMISEA"
 gw_projector = "YES"
-gw_factor = 1.0 # 1.267940E+00
-hole_doping = -0.5
-delta_N = 1.00  # 1.162792E+00 
-delta_R = 0.50  # 0.02
+gw_projection1 = "DOUBLON"
+gw_projection2 = "NONE"
+gw_factor1 = 1.267940E+00
+gw_factor2 = 1.0
+
+hole_doping = 0.3
+delta_N = 1.162792E+00 
+delta_R = 0.02
 mu_N = -3.289974E+00 #  -3.263835E+00
 mu_R = -4.072136E+00 #  -3.781384E+00
 mu_default = "NO"
@@ -45,7 +49,7 @@ ParticleDenisity = "NO"
 #---------------------------------------
 rng_seed = 0
 measure_steps = 5000
-warmup_steps = 5000
+warmup_steps = 3000
 min_interval = 3
 max_interval = 10 
 #---------------------------------------

@@ -164,6 +164,7 @@ int Optimizer::init_sample(const VMCRun& vmc, const int& sample)
 
   // Mann-Kendall statistic for converegence test
   mk_statistic_.reset();
+  mk_statistic_en_.reset();
   iter_energy_.clear();
   iter_energy_err_.clear();
   iter_gnorm_.clear();
@@ -253,6 +254,10 @@ int Optimizer::optimize(VMCRun& vmc)
     // initialize quantities for this sample
     init_sample(vmc, sample);
 
+    // reset MK statistics
+    mk_statistic_.reset();
+    mk_statistic_en_.reset();
+
     // starting parameters (for 1 sample, already initialized)
     if (num_opt_samples_>1) vparms = vparms_start;
 
@@ -267,8 +272,8 @@ int Optimizer::optimize(VMCRun& vmc)
       RealVector previous_grad(num_parms_);
       RealVector stochastic_grad(num_parms_);
 
-      if (print_progress_) print_progress(std::cout, iter_count, "Stochastic CG");
-      if (print_log_) print_progress(logfile_, iter_count, "Stochastic CG");
+      //if (print_progress_) print_progress(std::cout, iter_count, "Stochastic CG");
+      //if (print_log_) print_progress(logfile_, iter_count, "Stochastic CG");
 
       // compute initial quantities 
       vmc.run(vparms,en,en_err,grad,grad_err,silent);
@@ -357,13 +362,30 @@ int Optimizer::optimize(VMCRun& vmc)
         * Step ahead by either Line Search OR by a fixed sized step. 
         *----------------------------------------------------------------*/
         previous_grad = grad;
-        line_search(vmc,vparms,en,en_err,grad,grad_err,search_dir);
-
+        if (cg_iter <= num_probls_steps_) {
+          line_search(vmc,vparms,en,en_err,grad,grad_err,search_dir);
+        }
+        else {
+          // Fixed sized step beyond this iteration
+          vparms.noalias() += search_tstep_ * search_dir;
+          vparms = lbound_.cwiseMax(vparms.cwiseMin(ubound_));
+          vmc.run(vparms,en,en_err,grad,grad_err,silent);
+          fixedstep_iter_++;
+          if (print_progress_) {
+            std::cout<<" line search =  constant step\n";
+            std::cout<<" step size   =  "<<search_tstep_<<"\n";
+          } 
+          if (print_log_) {
+            logfile_<<" line search =  constant step\n";
+            logfile_<<" step size   =  "<<search_tstep_<<"\n";
+          }
+          // run vmc at updated parameters
+          vmc.run(vparms,en,en_err,grad,grad_err,silent);
+        }
        /*----------------------------------------------------------------
         * New search direction from Stochastic CG
         *----------------------------------------------------------------*/
         stochastic_CG(grad, previous_grad, stochastic_grad, search_dir);
-
       } // CG iterations
     }
 

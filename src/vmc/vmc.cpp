@@ -276,6 +276,8 @@ int VMC::run_simulation(const int& sample_size, const std::vector<int>& bc_list)
    * *****************************************/
   else {
     // initialize
+    observables.reset();
+
     for (const auto& bc: bc_twists) {
       if (!silent_mode_) {
         std::cout << "\n-------------------------------------" << std::endl;
