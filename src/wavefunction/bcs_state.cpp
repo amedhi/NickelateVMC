@@ -55,6 +55,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   const std::pair<int,int> anypair{-1,-1};
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
+  bool mu_term_finalized = false;
   bool mf_model_finalized = false;
   // read parameter
   strMatrix expr_mat;
@@ -92,7 +93,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     //std::cout << " ALERT: 'delta_sc' variational param switched OFF\n";
     defval = mf_model_.get_parameter_value("delta_sc");
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=6.0,dh=0.02);
-    add_chemical_potential(inputs);
   }
   //---------------------------------------------------------------------------
 
@@ -150,7 +150,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       varparms_.add("tv", defval,lb=0.1,ub=5.0,dh=0.02);
       defval = mf_model_.get_parameter_value("tpv");
       varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
-      add_chemical_potential(inputs);
+
+      /*-----------------------------------------------------
+       * NOT adding an extra ch_potential term as it 
+       * is already included in the site terms above 
+       *-----------------------------------------------------*/
+      mu_term_finalized = true;
     }
 
     else if (model.id()==model::model_id::HUBBARD) {
@@ -194,7 +199,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       varparms_.add("delta_sc", defval,lb=1.0E-3,ub=2.0,dh=0.02);
       defval = mf_model_.get_parameter_value("delta_af");
       varparms_.add("delta_af",defval,lb=0.0,ub=2.0,dh=0.02);
-      add_chemical_potential(inputs);
     }
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
@@ -342,8 +346,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       varparms_.add("dCDW", defval,lb=0,ub=2.0,dh=0.01);
       defval = mf_model_.get_parameter_value("dSDW");
       varparms_.add("dSDW", defval,lb=0,ub=2.0,dh=0.01);
-
-      add_chemical_potential(inputs);
     }
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
@@ -376,8 +378,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     correlation_pairs().push_back({0,0});
     correlation_pairs().push_back({1,1});
     correlation_pairs().push_back({2,2});
-
-    add_chemical_potential(inputs);
   }
 
 //---------------------------------------------------------------------------
@@ -422,6 +422,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
       correlation_pairs().push_back({0,0});
       correlation_pairs().push_back({1,1});
+      correlation_pairs().push_back({0,1});
     }
 
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
@@ -469,6 +470,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       defval = mf_model_.get_parameter_value("mu_R");
       varparms_.add("mu_R",defval,lb=defval-10.0,ub=defval+10.0,dh=0.1);
     }
+    mu_term_finalized = true;
   }
 //---------------------------------------------------------------------------
 
@@ -490,13 +492,34 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     // variational parameters
     defval = mf_model_.get_parameter_value("delta_sc");
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
-
-    add_chemical_potential(inputs);
   }
 
 //---------------------------------------------------------------------------
   else {
     throw std::range_error("BCS_State::BCS_State: undefined for the lattice");
+  }
+
+  // chemical potential term
+  if (!mu_term_finalized) {
+    double mu0 = 0.0;
+    mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+    mf_model_.add_parameter(name="mu", defval=mu0, inputs, info);
+    if (info == 0) {
+      noninteracting_mu_ = false;
+      mu0 = mf_model_.get_parameter_value("mu");
+    }
+    else {
+      noninteracting_mu_ = true;
+      mf_model_.finalize(lattice);
+      mf_model_.update_site_parameter("mu", 0.0);
+      mu0 = get_noninteracting_mu();
+      mf_model_.update_site_parameter("mu", mu0);
+    }
+    if (inputs.set_value("mu_variational", false, info)) {
+      varparms_.add("mu",defval=mu0,lb=-5.0,ub=+5.0,dh=0.1);
+    }
+    mu_term_finalized = true;
+    mf_model_finalized = true;
   }
 
   // finalize MF Hamiltonian
@@ -534,6 +557,7 @@ void BCS_State::update(const lattice::Lattice& lattice)
   set_ft_matrix(lattice);
 }
 
+/*
 void BCS_State::add_chemical_potential(const input::Parameters& inputs)
 {
   // default handling
@@ -544,12 +568,20 @@ void BCS_State::add_chemical_potential(const input::Parameters& inputs)
   using namespace model;
   mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
   mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-  if (info == 0) noninteracting_mu_ = false;
-  else noninteracting_mu_ = true;
+  double mu0;
+  if (info == 0) {
+    noninteracting_mu_ = false;
+    mu0 = mf_model_.get_parameter_value("mu");
+  }
+  else {
+    noninteracting_mu_ = true;
+    mu0 = 0.0;
+  }
   if (inputs.set_value("mu_variational", false, info)) {
-    varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
+    varparms_.add("mu",defval=mu0,lb=-5.0,ub=+5.0,dh=0.1);
   }
 }
+*/
 
 std::string BCS_State::info_str(void) const
 {
@@ -587,7 +619,7 @@ void BCS_State::update(const input::Parameters& inputs)
   for (auto& p : varparms_) 
     p.change_value(mf_model_.get_parameter_value(p.name()));
   // chemical potential
-  if (noninteracting_mu_) {
+  if (mf_model_.exist_parameter("mu") && noninteracting_mu_) {
     /*int nowarn;
     if (inputs.set_value("custom_mu", false, nowarn)) {
       mf_model_.update_site_parameter("mu_N", 0.0);
@@ -754,7 +786,8 @@ void BCS_State::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& 
       //getchar();
     }
   }
-  getchar();
+  //exit(0);
+  //getchar();
   */
 }
 

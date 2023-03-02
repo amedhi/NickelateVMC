@@ -197,6 +197,12 @@ int Hamiltonian::finalize(const lattice::Lattice& L)
   if (it != parms_.end()) it->second = pval;
 }*/
 
+bool Hamiltonian::exist_parameter(const std::string& pname) const
+{
+  if (parms_.find(pname)!=parms_.end()) return true;
+  else return false;
+}
+
 void Hamiltonian::update_parameter(const std::string& pname, const double& val)
 {
   parms_.at(pname) = val; 

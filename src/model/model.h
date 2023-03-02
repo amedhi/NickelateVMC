@@ -49,6 +49,7 @@ public:
     { parms_[pname] = inputs.set_value(pname, defval, info); return parms_.size(); }
   unsigned add_parameter(const std::string& pname, const double& val) 
     { parms_[pname] = val; return parms_.size(); }
+  bool exist_parameter(const std::string& pname) const;
   void update_parameters(const input::Parameters& inputs);
   void update_parameter(const std::string& pname, const double& val); 
   virtual void update_terms(void);

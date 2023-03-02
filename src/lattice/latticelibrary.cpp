@@ -431,15 +431,26 @@ int Lattice::construct(const input::Parameters& parms)
   int bc1_twists = parms.set_value("bc1_twists", 1, info);
   int bc2_twists = parms.set_value("bc2_twists", 1, info);
   int bc3_twists = parms.set_value("bc3_twists", 1, info);
+  if (bc1_twists==0 || bc2_twists==0 || bc3_twists==0) {
+    throw std::range_error("Lattice::construct: 'bc_twists' value must be > 0");
+  }
+
   if (extent[dim1].size==1) bc1_twists = 1;
   if (extent[dim2].size==1) bc2_twists = 1;
   if (extent[dim3].size==1) bc3_twists = 1;
   num_total_twists_ = bc1_twists*bc2_twists*bc3_twists;
   twist_angles_.resize(num_total_twists_,3);
   // twist angles
+  /*
   double dtheta1 = two_pi()/extent[dim1].size;
   double dtheta2 = two_pi()/extent[dim2].size;
   double dtheta3 = two_pi()/extent[dim3].size;
+  */
+  double dtheta1 = two_pi()/bc1_twists;
+  double dtheta2 = two_pi()/bc2_twists;
+  double dtheta3 = two_pi()/bc3_twists;
+
+
   int n = 0;
   for (int k=0; k<bc3_twists; ++k) {
     double step3 = k*dtheta3;

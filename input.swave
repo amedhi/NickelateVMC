@@ -32,20 +32,22 @@ gw_projection2 = "NONE"
 gw_factor1 = 1.267940E+00
 gw_factor2 = 1.0
 
-hole_doping = 0.3
+hole_doping = 0.30
 delta_N = 1.162792E+00 
 delta_R = 0.02
 mu_N = -3.289974E+00 #  -3.263835E+00
 mu_R = -4.072136E+00 #  -3.781384E+00
 mu_default = "NO"
+mu_variational = "YES"
 as_func_of = "hole_doping"
 #as_func_of = "mu_N"
 #---------------------------------------
 Energy = "YES"
 EnergyGradient = "NO"
-SpinCorrelation = "NO"
+SpinCorrelation = "YES"
 SC_Correlation = "YES"
-ParticleDenisity = "NO"
+ParticleDensity = "YES"
+DoublonDensity = "YES"
 #---------------------------------------
 rng_seed = 0
 measure_steps = 5000

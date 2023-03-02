@@ -50,7 +50,7 @@ private:
   std::vector<ComplexMatrix> work_k_;
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_bdg_;
 
-  void add_chemical_potential(const input::Parameters& inputs);
+  //void add_chemical_potential(const input::Parameters& inputs);
   void get_pair_amplitudes_oneband(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_intraband(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k);

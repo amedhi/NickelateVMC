@@ -168,8 +168,8 @@ int VMC::sr_function(const var::parm_vector& varp, double& en_mean,
   // run the simulation
   run_simulation();
   // energy
-  en_mean = observables.energy().mean();
-  en_err = observables.energy().stddev();
+  en_mean = observables.energy().mean(0);
+  en_err = observables.energy().stddev(0);
   // gradient
   grad = observables.energy_grad().mean_data();
   grad_err = observables.energy_grad().stddev_data();
@@ -191,8 +191,8 @@ int VMC::en_function(const var::parm_vector& varp, double& en_mean,
   // run the simulation
   run_simulation();
   // results
-  en_mean = observables.energy().mean();
-  en_stddev = observables.energy().stddev();
+  en_mean = observables.energy().mean(0);
+  en_stddev = observables.energy().stddev(0);
   // gradient
   grad = observables.energy_grad().mean_data();
   grad_stddev = observables.energy_grad().stddev_data();
