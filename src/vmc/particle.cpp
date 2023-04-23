@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-09-26 13:53:41
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-12-09 00:19:42
+* @Last Modified time: 2023-04-22 23:16:41
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include "./particle.h"
@@ -115,6 +115,35 @@ void DoublonDensity::measure(const lattice::Lattice& lattice, const SysConfig& c
     config_value_[2*i] = static_cast<double>(dblon_count[i])/num_subsites[i];
     config_value_[2*i+1] = static_cast<double>(holon_count[i])/num_subsites[i];
   }
+
+  // add to databin
+  *this << config_value_;
+}
+
+//-------------------Momentum Distribution--------------------------------
+void MomentumDist::setup(const lattice::Lattice& lattice, const SysConfig& config)
+{
+  MC_Observable::switch_on();
+  if (setup_done_) return;
+  num_sites_ = lattice.num_sites();
+  num_site_types_ = lattice.num_site_types();
+  num_particles_ = config.num_particles();
+  std::vector<std::string> elem_names; 
+  elem_names.push_back("total");
+  for (int i=0; i<num_site_types_; ++i) {
+    std::ostringstream ss;
+    ss << "<nk>["<<i<<"]";
+    elem_names.push_back(ss.str());
+  }
+  this->resize(elem_names.size(), elem_names);
+  //this->set_have_total();
+  config_value_.resize(elem_names.size());
+  setup_done_ = true;
+}
+
+void MomentumDist::measure(const lattice::Lattice& lattice, const SysConfig& config) 
+{
+  config_value_.setZero();
 
   // add to databin
   *this << config_value_;

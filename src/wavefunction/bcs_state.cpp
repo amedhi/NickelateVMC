@@ -472,8 +472,53 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     }
     mu_term_finalized = true;
   }
-//---------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------
+  else if (lattice.id()==lattice::lattice_id::NICKELATE) {
+    std::string tname;
+    // model parameters
+    mf_model_.add_parameter(name="U", defval=0.0, inputs);
+    mf_model_.add_parameter(name="es", defval=0.0, inputs);
+    mf_model_.add_parameter(name="ed", defval=0.0, inputs);
+    for (int m=0; m<=1; ++m) {
+      tname = "t_001_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_100_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_101_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_110_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_111_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_002_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_102_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = "t_200_"+std::to_string(m)+std::to_string(m);
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+    }
+    mf_model_.add_parameter(name="t_001_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_100_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_101_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_110_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_111_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_002_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_102_01", defval=1.0, inputs);
+    mf_model_.add_parameter(name="t_200_01", defval=1.0, inputs);
+
+    // sc gap
+    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+    // chemical potential
+    bool mu_default = inputs.set_value("mu_default", false);
+    mf_model_.add_parameter(name="mu_s", defval=0.0, inputs, info);
+    if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu_s`\n";
+    mf_model_.add_parameter(name="mu_d", defval=0.0, inputs, info);
+    if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu_d`\n";
+  }
+
+
+//---------------------------------------------------------------------------
   else if (lattice.id()==lattice::lattice_id::SW_GRAPHENE) {
     mf_model_.add_parameter(name="t0", defval=1.0, inputs);
     mf_model_.add_parameter(name="t1", defval=1.0, inputs);
@@ -493,6 +538,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     defval = mf_model_.get_parameter_value("delta_sc");
     varparms_.add("delta_sc",defval,lb=1.0E-4,ub=2.0,dh=0.01);
   }
+
 
 //---------------------------------------------------------------------------
   else {
@@ -547,6 +593,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   } 
   return 0;
 }
+
 
 void BCS_State::update(const lattice::Lattice& lattice)
 {

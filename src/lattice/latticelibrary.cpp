@@ -214,7 +214,162 @@ int Lattice::define_lattice(void)
     add_bond(type=2, ngb=1, src=1, src_offset=pos(0,0,0), tgt=0, tgt_offset=pos(0,1,0));
   }
 
-  else if (lname == "NICKELATE") {
+  else if (lname == "NICKELATE_2BAND") {
+    lid = lattice_id::NICKELATE;
+
+    // basis vectors
+    double a = 3.9207999706;
+    double c = 3.2809998989;
+    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,c));
+
+    // sites
+    add_basis_site(type=0, coord=vec(0,0,0)); // d-orbital
+    add_basis_site(type=1, coord=vec(0,0,0)); // s-orbital
+
+    // INTRA-ORBITAL bonds
+    int p = 0;
+    for (int m=0; m<=1; ++m) {
+      // 1-NN 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,0,1));
+      p++;
+
+      // 2-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,0,0));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,1,0)); 
+      p++;
+
+      // 3-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,0,1)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(-1,0,1)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,1,1)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,-1,1)); 
+      p++;
+
+      // 4-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,1,0)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(-1,1,0)); 
+      p++;
+
+      // 5-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,1,1));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(-1,1,1));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,-1,1));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,1,-1)); 
+      p++;
+
+      // 6-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,0,2)); 
+      p++;
+
+      // 7-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,0,2));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(-1,0,2)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,1,2));
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,-1,2)); 
+      p++;
+
+      // 8-NN
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(2,0,0)); 
+      add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,2,0)); 
+      p++;
+    }
+
+    // INTER-ORBITAL bonds
+    for (int m=0; m<=1; ++m) {
+      int n = (m+1)%2;  // (m,n) = (0,1) & (1,0)
+      int q = p; // same type value for s-d & d-s bonds
+
+      // 1-NN 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,0,1));
+      q++;
+
+      // 2-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,0,0));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,1,0)); 
+      q++;
+
+      // 3-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,0,1)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(-1,0,1)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,1,1)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,-1,1)); 
+      q++;
+
+      // 4-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,1,0)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(-1,1,0)); 
+      q++;
+
+      // 5-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,1,1));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(-1,1,1));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,-1,1));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,1,-1)); 
+      q++;
+
+      // 6-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,0,2)); 
+      q++;
+
+      // 7-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,0,2));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(-1,0,2)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,1,2));
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,-1,2)); 
+      q++;
+
+      // 8-NN
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(2,0,0)); 
+      add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,2,0)); 
+    }
+  }
+
+  else if (lname == "NICKELATE_2D") {
+    lid = lattice_id::NICKELATE_2D;
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    // sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=0.5*(basis_vector_a1()+basis_vector_a2()));
+
+    // Ni-Ni bonds
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
+    // R-R bonds
+    add_bond(type=3,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=4,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
+    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
+    // Ni-R bonds
+    add_bond(type=6,ngb=2,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=6,ngb=2,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+  }
+
+  else if (lname == "NICKELATE_2L") {
+    lid = lattice_id::NICKELATE_2L;
+    // basis vectors
+    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
+    // sites
+    add_basis_site(type=0, coord=vec(0,0,0));
+    add_basis_site(type=1, coord=vec(0,0,1));
+
+    // Ni-Ni bonds
+    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
+    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
+    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
+    // R-R bonds
+    add_bond(type=3,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
+    add_bond(type=4,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
+    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
+    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
+    // Ni-R bonds
+    add_bond(type=6,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
+  }
+
+  else if (lname == "NICKELATE_v2021") {
     lid = lattice_id::NICKELATE;
     // basis vectors
     set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,1));
@@ -271,50 +426,6 @@ int Lattice::define_lattice(void)
     add_bond(type=14,ngb=5,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,-2,2));
   }
 
-  else if (lname == "NICKELATE_2D") {
-    lid = lattice_id::NICKELATE_2D;
-    // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
-    // sites
-    add_basis_site(type=0, coord=vec(0,0,0));
-    add_basis_site(type=1, coord=0.5*(basis_vector_a1()+basis_vector_a2()));
-
-    // Ni-Ni bonds
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
-    // R-R bonds
-    add_bond(type=3,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=4,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
-    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
-    // Ni-R bonds
-    add_bond(type=6,ngb=2,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=6,ngb=2,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-  }
-
-  else if (lname == "NICKELATE_2L") {
-    lid = lattice_id::NICKELATE_2L;
-    // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,0));
-    // sites
-    add_basis_site(type=0, coord=vec(0,0,0));
-    add_basis_site(type=1, coord=vec(0,0,1));
-
-    // Ni-Ni bonds
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
-    // R-R bonds
-    add_bond(type=3,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=4,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
-    add_bond(type=5,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
-    // Ni-R bonds
-    add_bond(type=6,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
-  }
 
   else if (lname == "SW_GRAPHENE") {
     // type

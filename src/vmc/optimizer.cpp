@@ -659,6 +659,17 @@ std::ostream& Optimizer::print_progress(std::ostream& os,
 }
 
 
+/*
+int Optimizer::genetic_algorthim(const RealVector& grad, RealMatrix& srmat, 
+  RealMatrix& srmat_inv, RealVector& search_dir)
+{
+  while (not converged) {
+    vmc.run(vparms,en,en_err,true);
+  }
+}
+*/
+
+
 int Optimizer::stochastic_reconf(const RealVector& grad, RealMatrix& srmat, 
   RealMatrix& srmat_inv, RealVector& search_dir)
 {
