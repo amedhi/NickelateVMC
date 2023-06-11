@@ -16,6 +16,7 @@ ObservableSet::ObservableSet()
   , sr_matrix_("SR_Matrix")
   , particle_density_("ParticleDensity")
   , doublon_density_("DoublonDensity")
+  , momentum_dist_("MomentumDist")
 {
 }
 
@@ -46,6 +47,7 @@ void ObservableSet::init(const input::Parameters& inputs,
   sr_matrix_.set_ofstream(prefix);
   particle_density_.set_ofstream(prefix);
   doublon_density_.set_ofstream(prefix);
+  momentum_dist_.set_ofstream(prefix);
 
   // switch on required observables
   energy_.check_on(inputs, replace_mode_);
@@ -56,6 +58,7 @@ void ObservableSet::init(const input::Parameters& inputs,
   sr_matrix_.check_on(inputs,replace_mode_);
   particle_density_.check_on(inputs,replace_mode_);
   doublon_density_.check_on(inputs,replace_mode_);
+  momentum_dist_.check_on(inputs,replace_mode_);
 
   // set up observables
   if (energy_) energy_.setup(lattice,model);
@@ -65,6 +68,7 @@ void ObservableSet::init(const input::Parameters& inputs,
   if (sr_matrix_) sr_matrix_.setup(lattice,config);
   if (particle_density_) particle_density_.setup(lattice,config);
   if (doublon_density_) doublon_density_.setup(lattice,config);
+  if (momentum_dist_) momentum_dist_.setup(lattice,config);
 }
 
 void ObservableSet::reset(void)
@@ -76,6 +80,7 @@ void ObservableSet::reset(void)
   if (sr_matrix_) sr_matrix_.reset();
   if (particle_density_) particle_density_.reset();
   if (doublon_density_) doublon_density_.reset();
+  if (momentum_dist_) momentum_dist_.reset();
 }
 
 void ObservableSet::reset_batch_limit(const int& sample_size)
@@ -94,6 +99,7 @@ void ObservableSet::reset_grand_data(void)
   if (sr_matrix_) sr_matrix_.reset_grand_data();
   if (particle_density_) particle_density_.reset_grand_data();
   if (doublon_density_) doublon_density_.reset_grand_data();
+  if (momentum_dist_) momentum_dist_.reset_grand_data();
 }
 
 void ObservableSet::save_results(void)
@@ -104,6 +110,7 @@ void ObservableSet::save_results(void)
   if (sc_corr_) sc_corr_.save_result();
   if (sr_matrix_) sr_matrix_.save_result();
   if (doublon_density_) doublon_density_.save_result();
+  if (momentum_dist_) momentum_dist_.save_result();
 }
 
 void ObservableSet::avg_grand_data(void)
@@ -115,6 +122,7 @@ void ObservableSet::avg_grand_data(void)
   if (sr_matrix_) sr_matrix_.avg_grand_data();
   if (particle_density_) particle_density_.avg_grand_data();
   if (doublon_density_) doublon_density_.avg_grand_data();
+  if (momentum_dist_) momentum_dist_.avg_grand_data();
 }
 
 
@@ -136,6 +144,7 @@ int ObservableSet::do_measurement(const lattice::Lattice& lattice,
   }
   if (particle_density_) particle_density_.measure(lattice, config);
   if (doublon_density_) doublon_density_.measure(lattice, config);
+  if (momentum_dist_) momentum_dist_.measure(lattice, config);
   return 0;
 }
 
@@ -166,6 +175,7 @@ void ObservableSet::switch_off(void) {
   sr_matrix_.switch_off();
   particle_density_.switch_off();
   doublon_density_.switch_off();
+  momentum_dist_.switch_off();
 }
 
 void ObservableSet::print_heading(void)
@@ -177,6 +187,7 @@ void ObservableSet::print_heading(void)
   sr_matrix_.print_heading(headstream_.rdbuf()->str(),xvars_);
   particle_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
   doublon_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
+  momentum_dist_.print_heading(headstream_.rdbuf()->str(),xvars_);
 }
 
 void ObservableSet::print_results(const std::vector<double>& xvals) 
@@ -206,6 +217,10 @@ void ObservableSet::print_results(const std::vector<double>& xvals)
   if (doublon_density_) {
     doublon_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
     doublon_density_.print_result(xvals);
+  }
+  if (momentum_dist_) {
+    momentum_dist_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    momentum_dist_.print_result(xvals);
   }
 }
 
@@ -238,6 +253,10 @@ void ObservableSet::print_results(const double& xval)
     doublon_density_.print_heading(headstream_.rdbuf()->str(),xvars_);
     doublon_density_.print_result(xvals);
   }
+  if (momentum_dist_) {
+    momentum_dist_.print_heading(headstream_.rdbuf()->str(),xvars_);
+    momentum_dist_.print_result(xvals);
+  }
 }
 
 void ObservableSet::MPI_send_results(const mpi::mpi_communicator& mpi_comm, 
@@ -250,6 +269,7 @@ void ObservableSet::MPI_send_results(const mpi::mpi_communicator& mpi_comm,
   if (sr_matrix_) sr_matrix_.MPI_send_data(mpi_comm, proc, msg_tag);
   if (particle_density_) particle_density_.MPI_send_data(mpi_comm, proc, msg_tag);
   if (doublon_density_) doublon_density_.MPI_send_data(mpi_comm, proc, msg_tag);
+  if (momentum_dist_) momentum_dist_.MPI_send_data(mpi_comm, proc, msg_tag);
 }
 
 void ObservableSet::MPI_recv_results(const mpi::mpi_communicator& mpi_comm, 
@@ -262,6 +282,7 @@ void ObservableSet::MPI_recv_results(const mpi::mpi_communicator& mpi_comm,
   if (sr_matrix_) sr_matrix_.MPI_add_data(mpi_comm, proc, msg_tag);
   if (particle_density_) particle_density_.MPI_add_data(mpi_comm, proc, msg_tag);
   if (doublon_density_) doublon_density_.MPI_add_data(mpi_comm, proc, msg_tag);
+  if (momentum_dist_) momentum_dist_.MPI_add_data(mpi_comm, proc, msg_tag);
 }
 
 } // end namespace vmc

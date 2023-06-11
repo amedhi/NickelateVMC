@@ -53,6 +53,7 @@ public:
   const SR_Matrix& sr_matrix(void) const { return sr_matrix_; }
   const ParticleDensity& particle_density(void) const { return particle_density_; }
   const DoublonDensity& doublon_density(void) const { return doublon_density_; }
+  const MomentumDist& momentum_dist(void) const { return momentum_dist_; }
 
   void finalize(void);
   void print_heading(void);
@@ -75,6 +76,7 @@ private:
   SR_Matrix sr_matrix_;
   ParticleDensity particle_density_;
   DoublonDensity doublon_density_;
+  MomentumDist momentum_dist_;
 };
 
 
