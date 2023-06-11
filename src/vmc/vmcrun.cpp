@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-03-01 17:30:23
+* @Last Modified time: 2023-06-11 23:17:39
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -134,7 +134,7 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
 
   // computed quantities
   en = observable().energy().mean(0);
-  std::cout << "energy = " << en <<"\n"; getchar();
+  //std::cout << "energy = " << en <<"\n"; getchar();
   en_err = observable().energy().stddev(0);
   grad = observable().energy_grad().mean_data();
   grad_err = observable().energy_grad().stddev_data();
