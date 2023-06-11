@@ -62,6 +62,7 @@ public:
   const int& num_upspins(void) const { return num_upspins_; }
   const int& num_dnspins(void) const { return num_dnspins_; }
   const double& hole_doping(void) const { return hole_doping_; }
+  const basis::BlochBasis blochbasis(void) const { return blochbasis_; }
 protected:
   std::string name_;
   int num_sites_{0};

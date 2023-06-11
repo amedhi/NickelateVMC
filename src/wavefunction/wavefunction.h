@@ -49,6 +49,7 @@ public:
   const int& num_upspins(void) const { return groundstate_->num_upspins(); }
   const int& num_dnspins(void) const { return groundstate_->num_dnspins(); }
   const double& hole_doping(void) const { return groundstate_->hole_doping(); }
+  const basis::BlochBasis blochbasis(void) const { return groundstate_->blochbasis(); }
   std::string signature_str(void) const; 
   void get_vparm_names(std::vector<std::string>& names, unsigned start_pos) const; 
   void get_vparm_values(var::parm_vector& values, unsigned start_pos);
