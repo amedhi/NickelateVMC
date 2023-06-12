@@ -20,6 +20,8 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order&
       bondsinglet_corr_ = false; break;
     case var::MF_Order::pairing_t::DWAVE: 
       bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::DXY: 
+      bondsinglet_corr_ = true; break;
     case var::MF_Order::pairing_t::EXTENDED_S: 
       bondsinglet_corr_ = true; break;
     case var::MF_Order::pairing_t::null: 

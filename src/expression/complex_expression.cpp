@@ -31,9 +31,19 @@ std::complex<double> ComplexExpr::evaluate(void)
   try {
     return ParserX::Eval().GetComplex();
   }
-  catch (std::exception& e) 
+  catch (const std::runtime_error& er) 
   { 
-    std::string msg = "ComplexExpr::evaluate:\n" + std::string(e.what());
+    std::string msg = "Exception! ComplexExpr::set_expr: "+std::string(er.what());
+    throw std::runtime_error(msg);
+  }
+  catch (const std::exception& ex) 
+  { 
+    std::string msg = "Exception! ComplexExpr::set_expr: "+std::string(ex.what());
+    throw std::runtime_error(msg);
+  }
+  catch (...) 
+  { 
+    std::string msg = "Exception! ComplexExpr::evaluate";
     throw std::runtime_error(msg);
   }
 }

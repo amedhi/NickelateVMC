@@ -34,6 +34,9 @@ Wavefunction::Wavefunction(const lattice::Lattice& lattice,
   else if (name_ == "SC_DWAVE") {
     groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DWAVE,inputs,lattice,model));
   }
+  else if (name_ == "SC_DXY") {
+    groundstate_.reset(new BCS_State(order_t::SC,pairing_t::DXY,inputs,lattice,model));
+  }
   else if (name_ == "SC_D+ID") {
     groundstate_.reset(new BCS_State(order_t::SC,pairing_t::D_PLUS_ID,inputs,lattice,model));
   }

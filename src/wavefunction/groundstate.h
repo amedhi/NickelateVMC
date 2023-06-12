@@ -20,7 +20,7 @@ class MF_Order
 {
 public:
   enum class order_t {SC, AF, AFSC, CDW, null};
-  enum class pairing_t {SWAVE, DWAVE, EXTENDED_S, D_PLUS_ID, CUSTOM, SC_CDW_SDW, null};
+  enum class pairing_t {SWAVE, DWAVE, EXTENDED_S, DXY, D_PLUS_ID, CUSTOM, SC_CDW_SDW, null};
   MF_Order() {}
   MF_Order(const MF_Order::order_t& order, const MF_Order::pairing_t& pairsymm) 
     : order_{order}, pairing_{pairsymm} {}

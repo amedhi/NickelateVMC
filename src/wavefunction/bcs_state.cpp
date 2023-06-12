@@ -99,19 +99,47 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   else if (lattice.id()==lattice::lattice_id::SQUARE_4SITE) {
     if (model.id()==model::model_id::HUBBARD_IONIC || 
         model.id()== model::model_id::TJ_IONIC) {
-      //bool mu_default = inputs.set_value("mu_default", false);
+      bool mu_default = inputs.set_value("mu_default", false);
       mf_model_.add_parameter(name="tv", defval=1.0, inputs);
       mf_model_.add_parameter(name="tpv", defval=1.0, inputs);
       mf_model_.add_parameter(name="dSC", defval=1.0, inputs);
       mf_model_.add_parameter(name="dAF", defval=0.0, inputs);
       //mf_model_.add_parameter(name="PA", defval=0.0, inputs);
       //mf_model_.add_parameter(name="PB", defval=0.0, inputs);
-      mf_model_.add_parameter(name="muA",defval=0.0,inputs);
-      mf_model_.add_parameter(name="muB", defval=0.0,inputs);
+      mf_model_.add_parameter(name="muA",defval=0.0,inputs,info);
+      if (mu_default && info==0) std::cout << " >> alert: conflicting option for `muA`\n";
+      mf_model_.add_parameter(name="muB", defval=0.0,inputs,info);
+      if (mu_default && info==0) std::cout << " >> alert: conflicting option for `muB`\n";
 
-      // bond operator terms
-      cc = CouplingConstant({0,"-tv"},{1,"-tv"},{2,"-tpv"});
-      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+      // A-B hopping term
+      cc.create(6);
+      cc.add_type(0,"-tv");
+      cc.add_type(1,"-tv");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      mf_model_.add_bondterm(name="hop-AB", cc, op::spin_hop());
+
+      // A-A hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"-tpv");
+      cc.add_type(3,"-tpv");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      mf_model_.add_bondterm(name="hop-AA", cc, op::spin_hop());
+
+      // B-B hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"-tpv");
+      cc.add_type(5,"-tpv");
+      mf_model_.add_bondterm(name="hop-BB", cc, op::spin_hop());
 
       // site term
       /*
@@ -124,6 +152,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.add_type(1, "(PB-dAF)");
       mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
       */
+      // Site terms: AF-order & chemical potential
       cc.create(2);
       cc.add_type(0, "-(muA+dAF)");
       cc.add_type(1, "-(muB-dAF)");
@@ -136,12 +165,35 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       // SC pairing term
       if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
         order_name_ = "SC-DWAVE";
-        cc = CouplingConstant({0, "dSC"}, {1, "-dSC"}, {2,"0"});
+        cc.create(6);
+        cc.add_type(0,"dSC");
+        cc.add_type(1,"-dSC");
+        cc.add_type(2,"0");
+        cc.add_type(3,"0");
+        cc.add_type(4,"0");
+        cc.add_type(5,"0");
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
-        order_name_ = "SC-Extended_S";
-        cc = CouplingConstant({0, "dSC"}, {1, "dSC"}, {2,"0"});
+        order_name_ = "SC-extS";
+        cc.create(6);
+        cc.add_type(0,"dSC");
+        cc.add_type(1,"dSC");
+        cc.add_type(2,"0");
+        cc.add_type(3,"0");
+        cc.add_type(4,"0");
+        cc.add_type(5,"0");
+        mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
+      }
+      else if (order()==order_t::SC && pair_symm()==pairing_t::DXY) {
+        order_name_ = "SC-DXY";
+        cc.create(6);
+        cc.add_type(0,"0");
+        cc.add_type(1,"0");
+        cc.add_type(2,"-dSC");
+        cc.add_type(3,"dSC");
+        cc.add_type(4,"-dSC");
+        cc.add_type(5,"dSC");
         mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
       }
       else {
@@ -149,26 +201,46 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       }
       correlation_pairs().push_back({0,0});
       correlation_pairs().push_back({0,1});
+      correlation_pairs().push_back({2,2});
+      correlation_pairs().push_back({2,3});
+      correlation_pairs().push_back({4,4});
+      correlation_pairs().push_back({4,5});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("dSC");
       varparms_.add("dSC",defval,lb=1.0E-3,ub=2.0,dh=0.01);
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
+      // chemical potential
+      noninteracting_mu_ = false;
+      if (mu_default) {
+        // starting with non-interacting mu
+        mf_model_.finalize(lattice);
+        mf_model_.update_site_parameter("muA", 0.0);
+        mf_model_.update_site_parameter("muB", 0.0);
+        double mu_0 = get_noninteracting_mu();
+        //std::cout << "mu = " << mu_0 << "\n"; getchar();
+        mf_model_.update_site_parameter("muA", mu_0);
+        mf_model_.update_site_parameter("muB", mu_0);
+        mf_model_finalized = true;
+      }
       defval = mf_model_.get_parameter_value("muA");
       varparms_.add("muA", defval,lb=-5.0,ub=+5.0,dh=0.1);
       defval = mf_model_.get_parameter_value("muB");
       varparms_.add("muB", defval,lb=-5.0,ub=+5.0,dh=0.1);
-      defval = mf_model_.get_parameter_value("tv");
-      varparms_.add("tv", defval,lb=0.1,ub=5.0,dh=0.02);
-      defval = mf_model_.get_parameter_value("tpv");
-      varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
-
       /*-----------------------------------------------------
        * NOT adding an extra ch_potential term as it 
        * is already included in the site terms above 
        *-----------------------------------------------------*/
       mu_term_finalized = true;
+
+      // hopping integrals as variational parameters
+      if (inputs.set_value("tv_variational", true)) {
+        defval = mf_model_.get_parameter_value("tv");
+        varparms_.add("tv", defval,lb=0.1,ub=5.0,dh=0.02);
+        defval = mf_model_.get_parameter_value("tpv");
+        varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
+      }
     }
 
     else if (model.id()==model::model_id::HUBBARD) {

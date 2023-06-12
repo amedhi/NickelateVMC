@@ -82,9 +82,37 @@ int Lattice::define_lattice(void)
     lid = lattice_id::SQUARE_4SITE;
     extent[dim3] = Extent{1, boundary_type::open, boundary_type::open, 0.0};
     // basis vectors
-    double a = 2.0;
-    double b = 1.0;
-    set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,0));
+    double a = 1.0;
+    double b = 2.0;
+    set_basis_vectors(a1=vec(b,0,0), a2=vec(0,b,0), a3=vec(0,0,0));
+    add_basis_site(type=0, coord=vec(0,0,0)); // A
+    add_basis_site(type=0, coord=vec(a,a,0)); // A
+    add_basis_site(type=1, coord=vec(a,0,0)); // B
+    add_basis_site(type=1, coord=vec(0,a,0)); // B
+
+    // A-B bonds
+    add_bond(type=0,src=0,tgt=2,offset=pos(0,0,0));
+    add_bond(type=0,src=1,tgt=3,offset=pos(1,0,0));
+    add_bond(type=0,src=2,tgt=0,offset=pos(1,0,0));
+    add_bond(type=0,src=3,tgt=1,offset=pos(0,0,0));
+
+    add_bond(type=1,src=0,tgt=3,offset=pos(0,0,0));
+    add_bond(type=1,src=1,tgt=2,offset=pos(0,1,0));
+    add_bond(type=1,src=2,tgt=1,offset=pos(0,0,0));
+    add_bond(type=1,src=3,tgt=0,offset=pos(0,1,0));
+
+    // A-A bonds
+    add_bond(type=2,src=0,tgt=1,offset=pos(0,0,0));
+    add_bond(type=2,src=1,tgt=0,offset=pos(1,1,0));
+    add_bond(type=3,src=0,tgt=1,offset=pos(-1,0,0));
+    add_bond(type=3,src=1,tgt=0,offset=pos(0,1,0));
+    // B-B bonds
+    add_bond(type=5,src=2,tgt=3,offset=pos(0,0,0));
+    add_bond(type=4,src=2,tgt=3,offset=pos(1,0,0));
+    add_bond(type=4,src=3,tgt=2,offset=pos(0,1,0));
+    add_bond(type=5,src=3,tgt=2,offset=pos(-1,1,0));
+
+    /*
     add_basis_site(type=0, coord=vec(0,0,0));
     add_basis_site(type=1, coord=vec(b,0,0));
     add_basis_site(type=1, coord=vec(0,b,0));
@@ -109,6 +137,8 @@ int Lattice::define_lattice(void)
     add_bond(type=2,src=2,tgt=1,offset=pos(-1,1,0));
     add_bond(type=2,src=3,tgt=0,offset=pos(1,1,0));
     add_bond(type=2,src=3,tgt=0,offset=pos(0,1,0));
+    */
+
   }
 
   else if (lname == "SQUARE_STRIPE") {

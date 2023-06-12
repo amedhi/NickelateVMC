@@ -414,27 +414,62 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
         set_projection_op(pjn);
       }
 
-      // hopping term
-      //cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"});
-      //add_bondterm(name="hopping", cc, op::spin_hop());
+      /*
       // hopping term - split into NN & NNN
       cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"0"});
       add_bondterm(name="hopping-1", cc, op::spin_hop());
       cc = CouplingConstant({0,"0"},{1,"0"},{2,"-tp"});
       add_bondterm(name="hopping-2", cc, op::spin_hop());
+      */
 
-      // exchange term
-      cc.create(3);
+      // A-B hopping term
+      cc.create(6);
+      cc.add_type(0,"-t");
+      cc.add_type(1,"-t");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      add_bondterm(name="hop-AB", cc, op::spin_hop());
+
+      // A-A hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"-tp");
+      cc.add_type(3,"-tp");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      add_bondterm(name="hop-AA", cc, op::spin_hop());
+
+      // B-B hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"-tp");
+      cc.add_type(5,"-tp");
+      add_bondterm(name="hop-BB", cc, op::spin_hop());
+
+      // Exchange term
+      cc.create(6);
       cc.add_type(0, "2.0*t*t/(U+W)");
       cc.add_type(1, "2.0*t*t/(U+W)");
       cc.add_type(2, "4.0*tp*tp/U");
+      cc.add_type(3, "4.0*tp*tp/U");
+      cc.add_type(4, "4.0*tp*tp/U");
+      cc.add_type(5, "4.0*tp*tp/U");
       add_bondterm(name="exchange", cc, op::sisj_plus());
 
       // NN density-density terms
-      cc.create(3);
+      cc.create(6);
       cc.add_type(0, "t*t/(U+W)-2.0*t*t/W");
       cc.add_type(1, "t*t/(U+W)-2.0*t*t/W");
       cc.add_type(2, "0");
+      cc.add_type(3, "0");
+      cc.add_type(4, "0");
+      cc.add_type(5, "0");
       add_bondterm(name="ni_nj", cc, op::ni_nj());
 
       // Hubbard interaction
