@@ -20,10 +20,10 @@ Wavefunction::Wavefunction(const lattice::Lattice& lattice,
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
   if (name_ == "FERMISEA") {
-    groundstate_.reset(new Fermisea(order_t::null,inputs,lattice));
+    groundstate_.reset(new Fermisea(order_t::null,inputs,lattice,model));
   }
   else if (name_ == "AF") {
-    groundstate_.reset(new Fermisea(order_t::AF,inputs,lattice));
+    groundstate_.reset(new Fermisea(order_t::AF,inputs,lattice,model));
   }
   else if (name_ == "SC_SWAVE") {
     groundstate_.reset(new BCS_State(order_t::SC,pairing_t::SWAVE,inputs,lattice,model));

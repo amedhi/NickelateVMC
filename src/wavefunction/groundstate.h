@@ -59,6 +59,8 @@ public:
   const VariationalParms& varparms(void) { return varparms_; }
   const int& num_varparms(void) const { return num_varparms_; }
   const bool& if_nonmagnetic(void) const { return nonmagnetic_; }
+  const int& num_sites(void) const { return num_sites_; }
+  const int& num_spins(void) const { return num_spins_; }
   const int& num_upspins(void) const { return num_upspins_; }
   const int& num_dnspins(void) const { return num_dnspins_; }
   const double& hole_doping(void) const { return hole_doping_; }

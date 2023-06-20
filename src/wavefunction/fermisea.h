@@ -19,9 +19,10 @@ class Fermisea : public GroundState
 public:
   Fermisea() : GroundState() {}
   Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
-    const lattice::Lattice& lattice); 
+    const lattice::Lattice& lattice, const model::Hamiltonian& model);
   ~Fermisea() {} 
-  int init(const input::Parameters& inputs, const lattice::Lattice& lattice);
+  int init(const input::Parameters& inputs, const lattice::Lattice& lattice,
+    const model::Hamiltonian& model);
   std::string info_str(void) const override; 
   void update(const input::Parameters& inputs) override;
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;
@@ -30,18 +31,21 @@ public:
   void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
 private:
   std::string order_name_{"NULL"};
-  bool noninteracting_mu_{true};
+  bool mu_variational_{false};
+  bool degeneracy_warning_{false};
+  lattice::lattice_id lattice_id_;
   // ground state
-  bool have_TP_symmetry_{true};
+  //bool have_TP_symmetry_{true};
   double fermi_energy_;
   double total_energy_;
-  bool degeneracy_warning_{false};
   struct kshell_t {int k; int nmin; int nmax;};
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;
 
   // matrices
   ComplexMatrix work_;
+  Matrix work2_;
+  std::vector<ComplexMatrix> work_k_;
   std::vector<ComplexMatrix> phi_k_;
 
   // SC correlaton function
@@ -53,10 +57,10 @@ private:
   Eigen::MatrixXcd corr_ab_;
   Eigen::MatrixXcd corr_fs_;
 
-  void add_chemical_potential(const input::Parameters& inputs);
   void construct_groundstate(void);
   void get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k);
   void get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, Matrix& psi);
+  void get_pair_amplitudes_sitebasis2(Matrix& psi);
   void get_sc_correlation(void);
   double get_mf_energy(void);
 };

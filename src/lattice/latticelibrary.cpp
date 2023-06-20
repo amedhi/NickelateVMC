@@ -651,7 +651,8 @@ int Lattice::finalize_lattice(void)
 
 
   // check
-  /*std::cout << "------Sites-------\n";
+  /*
+  std::cout << "------Sites-------\n";
   for (unsigned i=0; i<unitcell.num_site(); ++i) {
     std::cout << Unitcell::site(i) << std::endl;
   }
@@ -816,7 +817,11 @@ int Lattice::construct_graph(void)
     sites_.push_back(s);
     sites_.back().clear_bonds(); // to be added later
     sitetype_set_.insert(s.type());
+    //std::cout << "uc = " << s.bravindex().transpose() << "\n";
+    //std::cout << "id = " << s.id() << "\n";
+    //std::cout << "tp = " << s.type() << "\n\n";
   }
+  //getchar();
 
   // Save the bonds.
   bonds_.clear();

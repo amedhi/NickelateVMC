@@ -286,7 +286,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       varparms_.add("delta_af",defval,lb=0.0,ub=2.0,dh=0.02);
     }
     else {
-      throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
+      throw std::range_error("BCS_State::BCS_State: state undefined for the model");
     }
   }
 

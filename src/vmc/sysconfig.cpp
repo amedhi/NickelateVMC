@@ -228,6 +228,7 @@ int SysConfig::update_state(void)
 
   //auto psi = psi_mat.determinant();
   //std::cout<<psi.real()<<"   "<<psi.imag()<<"\n";
+  //std::cout << psi_inv << "\n";
 
   if (num_iterations_ == refresh_cycle_) {
     psi_inv = psi_mat.inverse();
@@ -248,7 +249,8 @@ int SysConfig::do_upspin_hop(void)
   // new row for this move
   wf.get_amplitudes(psi_row, to_site, dnspin_sites());
   amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
-  //std::cout << "det_ratio = " << det_ratio << "\n"; 
+  //std::cout << "psi_inv = " << psi_inv.col(upspin).transpose() << "\n"; 
+  //std::cout << "det_ratio = " << det_ratio << "\n"; //getchar();
   if (std::abs(det_ratio) < dratio_cutoff()) return 0; // for safety
   //double proj_ratio = pj.gw_ratio(dblocc_increament());
   double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site);
@@ -439,6 +441,14 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
     // det_ratio for the term
     wf.get_amplitudes(psi_row, to_site, dnspin_sites());
     amplitude_t det_ratio = psi_row.cwiseProduct(psi_inv.col(upspin)).sum();
+    if (std::isnan(det_ratio)) {
+      std::cout << site_i << "\n";
+      std::cout << site_j << "\n";
+      //std::cout << psi_row.transpose() << "\n";
+      std::cout << psi_inv.col(upspin).transpose() << "\n";
+      std::cout << det_ratio << "\n";
+      getchar();
+    }
     if (bc_state < 0) { // it's a boundary bond
       //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
       return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);

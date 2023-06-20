@@ -2,32 +2,43 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2022-09-21 13:28:06
+* @Last Modified time: 2023-06-20 17:51:17
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
 #include "./fermisea.h"
 #include <fstream>
 #include <iomanip>
+#include <cassert>
 
 namespace var {
 
 Fermisea::Fermisea(const MF_Order::order_t& order, const input::Parameters& inputs, 
-  const lattice::Lattice& lattice) 
+  const lattice::Lattice& lattice, const model::Hamiltonian& model) 
   : GroundState(order, MF_Order::pairing_t::null)
 {
-  init(inputs, lattice);
+  init(inputs, lattice, model);
 }
 
-int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& lattice)
+int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& lattice,
+  const model::Hamiltonian& model)
 {
   name_ = "Fermisea";
+  lattice_id_ = lattice.id();
   // sites & bonds
   num_sites_ = lattice.num_sites();
   num_bonds_ = lattice.num_bonds();
+
   // particle number
   set_nonmagnetic(true);
   set_particle_num(inputs);
+
+  // bloch basis
+  blochbasis_.construct(lattice);
+  num_kpoints_ = blochbasis_.num_kpoints();
+  kblock_dim_ = blochbasis_.subspace_dimension();
+  // FT matrix for transformation from 'site basis' to k-basis
+  set_ft_matrix(lattice);
 
   // build MF Hamiltonian
   varparms_.clear();
@@ -37,15 +48,34 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
   using namespace model;
   model::CouplingConstant cc;
 
-  // chemical potential
-  noninteracting_mu_ = true;
+  // SC form
+  correlation_pairs().clear();
+  const std::pair<int,int> anypair{-1,-1};
+  using order_t = MF_Order::order_t;
+  int info;
+
+  // Ground state degeneracy warning
+  degeneracy_warning_ = inputs.set_value("warn_degeneracy", true, info);
+
+  /*-------------------------------------------------
+  * Chemical Potential:
+  * Unless 'mu' is to be taken as variational parameter,
+  * it is taken to be '0', by default. 
+  *--------------------------------------------------*/
+  mu_variational_ = inputs.set_value("mu_variational", false, info);
+
 
   if (lattice.id()==lattice::lattice_id::SQUARE_NNN) {
     mf_model_.add_parameter(name="t", defval=1.0, inputs);
     mf_model_.add_parameter(name="tp", defval=1.0, inputs);
     cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"});
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-    add_chemical_potential(inputs);
+    if (mu_variational_) {
+      mf_model_.add_parameter(name="mu",defval=0.0,inputs);
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      defval = mf_model_.get_parameter_value("mu");
+      varparms_.add("mu",defval, lb=-5.0, ub=+5.0, dh=0.1);
+    }
   }
 
   else if (lattice.id()==lattice::lattice_id::SQUARE_2SITE) {
@@ -70,8 +100,95 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
     // variational parameters
     defval = mf_model_.get_parameter_value("delta_af");
     varparms_.add("delta_af",defval,lb=0,ub=2.0,dh=0.02);
+    if (mu_variational_) {
+      mf_model_.add_parameter(name="mu",defval=0.0,inputs);
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      defval = mf_model_.get_parameter_value("mu");
+      varparms_.add("mu", defval, lb=-5.0, ub=+5.0, dh=0.1);
+    }
+  }
 
-    add_chemical_potential(inputs);
+  else if (lattice.id()==lattice::lattice_id::SQUARE_4SITE) {
+    if (model.id()==model::model_id::HUBBARD_IONIC || 
+        model.id()== model::model_id::TJ_IONIC) {
+      bool mu_default = inputs.set_value("mu_default", false);
+      mf_model_.add_parameter(name="tv", defval=1.0, inputs);
+      mf_model_.add_parameter(name="tpv", defval=1.0, inputs);
+      mf_model_.add_parameter(name="dAF", defval=0.0, inputs);
+      mf_model_.add_parameter(name="muA", defval=0.0, inputs);
+      mf_model_.add_parameter(name="muB", defval=0.0, inputs);
+
+      // A-B hopping term
+      cc.create(6);
+      cc.add_type(0,"-tv");
+      cc.add_type(1,"-tv");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      mf_model_.add_bondterm(name="hop-AB", cc, op::spin_hop());
+
+      // A-A hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"-tpv");
+      cc.add_type(3,"-tpv");
+      cc.add_type(4,"0");
+      cc.add_type(5,"0");
+      mf_model_.add_bondterm(name="hop-AA", cc, op::spin_hop());
+
+      // B-B hopping term
+      cc.create(6);
+      cc.add_type(0,"0");
+      cc.add_type(1,"0");
+      cc.add_type(2,"0");
+      cc.add_type(3,"0");
+      cc.add_type(4,"-tpv");
+      cc.add_type(5,"-tpv");
+      mf_model_.add_bondterm(name="hop-BB", cc, op::spin_hop());
+
+      // Site terms: AF-order & chemical potential
+      cc.create(2);
+      cc.add_type(0, "-(muA+dAF)");
+      cc.add_type(1, "-(muB-dAF)");
+      mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
+      cc.create(2);
+      cc.add_type(0, "-(muA-dAF)");
+      cc.add_type(1, "-(muB+dAF)");
+      mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
+
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({0,1});
+      correlation_pairs().push_back({2,2});
+      correlation_pairs().push_back({2,3});
+      correlation_pairs().push_back({4,4});
+      correlation_pairs().push_back({4,5});
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("dAF");
+      varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
+
+      // chemical potential
+      mu_variational_ = mu_default; // for this model
+      if (mu_variational_) {
+        defval = mf_model_.get_parameter_value("muA");
+        varparms_.add("muA", defval,lb=-10.0,ub=+10.0,dh=0.1);
+        defval = mf_model_.get_parameter_value("muB");
+        varparms_.add("muB", defval,lb=-10.0,ub=+10.0,dh=0.1);
+      }
+
+      // hopping integrals as variational parameters
+      if (inputs.set_value("tv_variational", true)) {
+        defval = mf_model_.get_parameter_value("tv");
+        varparms_.add("tv", defval,lb=0.1,ub=5.0,dh=0.02);
+        defval = mf_model_.get_parameter_value("tpv");
+        varparms_.add("tpv", defval,lb=0.0,ub=2.0,dh=0.02);
+      }
+    }
+    else {
+      throw std::range_error("BCS_State::BCS_State: state undefined for the model");
+    }
   }
 
   else if (lattice.id()==lattice::lattice_id::CHAIN_2SITE) {
@@ -97,8 +214,13 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
       // variational parameters
       defval = mf_model_.get_parameter_value("delta_af");
       varparms_.add("delta_af",defval,lb=0,ub=2.0,dh=0.02);
+      if (mu_variational_) {
+        mf_model_.add_parameter(name="mu",defval=0.0,inputs);
+        mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+        defval = mf_model_.get_parameter_value("mu");
+        varparms_.add("mu", defval, lb=-5.0, ub=+5.0, dh=0.1);
+      }
     }
-    add_chemical_potential(inputs);
   }
 
   else if (lattice.id()==lattice::lattice_id::SQUARE_STRIPE) {
@@ -192,84 +314,6 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
     varparms_.add("dCDW", defval,lb=0,ub=2.0,dh=0.01);
     defval = mf_model_.get_parameter_value("dSDW");
     varparms_.add("dSDW", defval,lb=0,ub=2.0,dh=0.01);
-    add_chemical_potential(inputs);
-  }
-
-
-  else if (lattice.id()==lattice::lattice_id::SIMPLECUBIC) {
-    mf_model_.add_parameter(name="t", defval=1.0, inputs);
-    mf_model_.add_parameter(name="tp", defval=1.0, inputs);
-    mf_model_.add_parameter(name="th", defval=1.0, inputs);
-    cc = CouplingConstant({0,"-t"},{1,"-t"},{2,"-tp"},{3,"-tp"},{4,"-th"});
-    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-    add_chemical_potential(inputs);
-  }
-  else if (lattice.id()==lattice::lattice_id::NICKELATE) {
-    mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
-    mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_100", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_001", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_110", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_200", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_001", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_100", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_001", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_101", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_102", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_110", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_002", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_111", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RN_200", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RN_202", defval=0.0, inputs);
-
-    // bond operators
-    cc.create(15);
-    cc.add_type(0,  "t_NN_100");
-    cc.add_type(1,  "t_NN_100");
-    cc.add_type(2,  "t_NN_110");
-    cc.add_type(3,  "t_NN_200");
-    cc.add_type(4,  "t_NN_001");
-    cc.add_type(5,  "t_RR_100");
-    cc.add_type(6,  "t_RR_100");
-    cc.add_type(7,  "t_RR_001");
-    cc.add_type(8,  "t_RR_101");
-    cc.add_type(9,  "t_RR_102");
-    cc.add_type(10, "t_RR_110");
-    cc.add_type(11, "t_RR_002");
-    cc.add_type(12, "t_RR_111");
-    cc.add_type(13, "t_RN_200");
-    cc.add_type(14, "t_RN_202");
-    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-
-    // site operators
-    cc.create(2);
-    cc.add_type(0, "e_N");
-    cc.add_type(1, "e_R");
-    mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-  }
-  else if (lattice.id()==lattice::lattice_id::NICKELATE_2D) {
-    mf_model_.add_parameter(name="e_N", defval=0.0, inputs);
-    mf_model_.add_parameter(name="e_R", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_NN_100", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_NN_110", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RR_100", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_RR_110", defval=0.0, inputs);
-    mf_model_.add_parameter(name="t_RN_200", defval=0.0, inputs);
-    // bond operators
-    cc.create(7);
-    cc.add_type(0,  "t_NN_100");
-    cc.add_type(1,  "t_NN_100");
-    cc.add_type(2,  "t_NN_110");
-    cc.add_type(3,  "t_RR_100");
-    cc.add_type(4,  "t_RR_100");
-    cc.add_type(5,  "t_RR_110");
-    cc.add_type(6,  "t_RN_200");
-    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
-    // site operators
-    cc.create(2);
-    cc.add_type(0, "e_N");
-    cc.add_type(1, "e_R");
-    mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
   }
 
   else if (lattice.id()==lattice::lattice_id::NICKELATE_2L) {
@@ -293,40 +337,30 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
     cc.add_type(0, "0");
     cc.add_type(1, "e_R");
     mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
-  }
-
-  else if (lattice.id()==lattice::lattice_id::SW_GRAPHENE) {
-    mf_model_.add_parameter(name="t0", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t1", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t2", defval=1.0, inputs);
-    // bond operator terms
-    cc.create(3);
-    for (int i=0; i<3; ++i) {
-      cc.add_type(i, "-t"+std::to_string(i));
+    if (mu_variational_) {
+      mf_model_.add_parameter(name="mu",defval=0.0,inputs);
+      mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
+      defval = mf_model_.get_parameter_value("mu");
+      varparms_.add("mu", defval, lb=-5.0, ub=+5.0, dh=0.1);
     }
-    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
   }
 
   else {
-    mf_model_.add_parameter(name="t", defval=1.0, inputs);
-    mf_model_.add_bondterm(name="hopping", cc="-t", op::spin_hop());
+    throw std::range_error("Fermisea::Fermisea: state undefined for the lattice");
   }
 
   // finalize MF Hamiltonian
-  mf_model_.finalize(lattice);
   num_varparms_ = varparms_.size();
+  mf_model_.finalize(lattice);
 
-  // bloch basis
-  blochbasis_.construct(lattice);
-  num_kpoints_ = blochbasis_.num_kpoints();
-  kblock_dim_ = blochbasis_.subspace_dimension();
-  // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(lattice);
   // work arrays
   work_.resize(kblock_dim_,kblock_dim_);
+  work2_.resize(num_sites_,num_sites_);
   phi_k_.resize(num_kpoints_);
+  work_k_.resize(num_kpoints_);
   for (int k=0; k<num_kpoints_; ++k) {
     phi_k_[k].resize(kblock_dim_,kblock_dim_);
+    work_k_[k].resize(kblock_dim_,kblock_dim_);
   } 
 
   // for calculating SC correlations 
@@ -346,22 +380,6 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
   return 0;
 }
 
-void Fermisea::add_chemical_potential(const input::Parameters& inputs)
-{
-  // default handling
-  int info;
-  double defval, lb, ub, dh;
-  std::string name;
-  model::CouplingConstant cc;
-  using namespace model;
-  mf_model_.add_parameter(name="mu", defval=0.0, inputs, info);
-  mf_model_.add_siteterm(name="mu_term", cc="-mu", op::ni_sigma());
-  if (info == 0) noninteracting_mu_ = false;
-  else noninteracting_mu_ = true;
-  if (inputs.set_value("mu_variational", false, info)) {
-    varparms_.add("mu",defval=0.0,lb=-5.0,ub=+5.0,dh=0.1);
-  }
-}
 
 void Fermisea::update(const lattice::Lattice& lattice)
 {
@@ -391,6 +409,9 @@ void Fermisea::update(const input::Parameters& inputs)
   set_particle_num(inputs);
   // update MF model
   mf_model_.update(inputs);
+  // update variational parameters
+  for (auto& p : varparms_) 
+    p.change_value(mf_model_.get_parameter_value(p.name()));
 }
 
 void Fermisea::update(const var::parm_vector& pvector, const unsigned& start_pos)
@@ -400,8 +421,9 @@ void Fermisea::update(const var::parm_vector& pvector, const unsigned& start_pos
 void Fermisea::get_wf_amplitudes(Matrix& psi) 
 {
   construct_groundstate();
-  get_pair_amplitudes(phi_k_);
-  get_pair_amplitudes_sitebasis(phi_k_, psi);
+  get_pair_amplitudes_sitebasis2(psi);
+  //get_pair_amplitudes(phi_k_);
+  //get_pair_amplitudes_sitebasis(phi_k_, psi);
   /*std::cout << "Fermisea::update: SC correlations\n";
   get_sc_correlation();
   getchar();
@@ -410,10 +432,74 @@ void Fermisea::get_wf_amplitudes(Matrix& psi)
 
 void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
 {
-  for (auto& mat : psi_gradient) mat.setZero();
+  // numerical gradient
+  int i=0; 
+  for (const auto& p : varparms_) {
+    double h = p.diff_h();
+    double x = p.value();
+    double x_fwd = x+h; 
+    if (x_fwd > p.ubound()) x_fwd = p.ubound();
+    mf_model_.update_parameter(p.name(), x_fwd);
+    mf_model_.update_terms();
+    construct_groundstate();
+    get_pair_amplitudes_sitebasis2(psi_gradient[i]);
+    double x_bwd = x-h; 
+    if (x_bwd < p.lbound()) x_bwd = p.lbound();
+    mf_model_.update_parameter(p.name(), x_bwd);
+    mf_model_.update_terms();
+    construct_groundstate();
+    get_pair_amplitudes_sitebasis2(work2_);
+    // restore model to original state
+    mf_model_.update_parameter(p.name(), x);
+    mf_model_.update_terms();
+    construct_groundstate();
+    // finite difference gradients
+    double inv_2h = 1.0/(x_fwd-x_bwd);
+    psi_gradient[i] -= work2_;
+    psi_gradient[i] *= inv_2h;
+    ++i;
+  }
 }
 
-void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k)
+/*
+void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
+{
+  // numerical gradient
+  int i=0; 
+  for (const auto& p : varparms_) {
+    double h = p.diff_h();
+    double x = p.value();
+    double x_fwd = x+h; 
+    if (x_fwd > p.ubound()) x_fwd = p.ubound();
+    mf_model_.update_parameter(p.name(), x_fwd);
+    mf_model_.update_terms();
+    get_pair_amplitudes(phi_k_);
+    double x_bwd = x-h; 
+    if (x_bwd < p.lbound()) x_bwd = p.lbound();
+    mf_model_.update_parameter(p.name(), x_bwd);
+    mf_model_.update_terms();
+    get_pair_amplitudes(phi_k_);
+    // model to original state
+    mf_model_.update_parameter(p.name(), x);
+    mf_model_.update_terms();
+    //double inv_2h = 0.5/h;
+    double inv_2h = 1.0/(x_fwd-x_bwd);
+    for (int k=0; k<num_kpoints_; ++k) {
+      phi_k_[k] -= work_k_[k];
+      phi_k_[k] *= inv_2h;
+    }
+    //std::cout << phi_k_[0] << "\n"; getchar();
+    // phi_k_ is now the derivative wrt i-th parameter
+    // wave function gradients
+    get_pair_amplitudes_sitebasis(phi_k_, psi_gradient[i]);
+    //get_pair_amplitudes_sitebasis(psi_gradient[i]);
+    //std::cout << psi_gradient[i] << "\n"; getchar();
+    ++i;
+  }
+}
+*/
+
+void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k) 
 {
   for (int i=0; i<kshells_up_.size(); ++i) {
     int k = kshells_up_[i].k;
@@ -422,16 +508,12 @@ void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k)
     mf_model_.construct_kspace_block(kvec);
     es_k_up.compute(mf_model_.quadratic_spinup_block());
     mf_model_.construct_kspace_block(-kvec);
-
-    //es_minusk_dn.compute(mf_model_.quadratic_spinup_block());
     es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
     phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
       		 * es_minusk_dn.eigenvectors().transpose().block(0,0,m,kblock_dim_);
-    /*
-    std::cout << "kvec = "<< kvec.transpose() << "\n"; 
-    std::cout << mf_model_.quadratic_spinup_block() << "\n"; 
-    std::cout << phi_k[k] << "\n"; getchar();
-    */
+    //std::cout << "kvec = "<< kvec.transpose() << "\n"; 
+    //std::cout << mf_model_.quadratic_spinup_block() << "\n"; 
+    //std::cout << phi_k[k] << "\n"; getchar();
   }
 }
 
@@ -446,7 +528,7 @@ void Fermisea::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& p
     for (int j=0; j<num_kpoints_; ++j) {
       work_.setZero();
       for (int ks=0; ks<kshells_up_.size(); ++ks) {
-    	  int k = kshells_up_[ks].k;
+        int k = kshells_up_[ks].k;
         work_ += FTU_(i,k) * phi_k[k] * std::conj(FTU_(j,k));
       }
       // std::cout << work_ << "\n"; getchar();
@@ -455,7 +537,7 @@ void Fermisea::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& p
       for (int m=0; m<kblock_dim_; ++m) {
         for (int n=0; n<kblock_dim_; ++n) {
           psi(p+m,q+n) = ampl_part(work_(m,n));
-      	}
+        }
       }
       q += kblock_dim_;
     }
@@ -463,6 +545,79 @@ void Fermisea::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& p
   }
   //std::cout << psi << "\n";
   //getchar();
+  /*
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
+      getchar();
+    }
+  }*/
+
+}
+
+void Fermisea::get_pair_amplitudes_sitebasis2(Matrix& psi)
+{
+  ComplexMatrix psi_up(num_sites(),num_upspins());
+  int n = 0;
+  for (int p=0; p<kshells_up_.size(); ++p) {
+    int k = kshells_up_[p].k;
+    int nband = kshells_up_[p].nmax+1;
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+    es_k_up.compute(mf_model_.quadratic_spinup_block());
+
+    int m = 0;
+    for (int I=0; I<num_kpoints_; ++I) {
+      psi_up.block(m,n,kblock_dim_,nband) 
+        = es_k_up.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
+      m += kblock_dim_;
+    }
+    n += nband;
+  }
+
+  ComplexMatrix psi_dn(num_sites(), num_dnspins());
+  n = 0;
+  for (int p=0; p<kshells_dn_.size(); ++p) {
+    int k = kshells_dn_[p].k;
+    int nband = kshells_dn_[p].nmax+1;
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
+    int m = 0;
+    for (int I=0; I<num_kpoints_; ++I) {
+      psi_dn.block(m,n,kblock_dim_,nband) 
+        = es_minusk_dn.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
+      m += kblock_dim_;
+    }
+    n += nband;
+  }
+
+  // final matrix
+#ifdef REAL_WAVEFUNCTION
+  ComplexMatrix psi_cmplx = psi_up * psi_dn.transpose();
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      psi(i,j) = ampl_part(psi_cmplx(i,j));
+      //std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
+      //getchar();
+    }
+  }
+#else
+  psi = psi_up * psi_dn.transpose();
+#endif
+
+  //exit(0);
+
+  //std::cout << psi << "\n";
+  //getchar();
+  /*
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
+      getchar();
+    }
+  }*/
+
 }
 
 double Fermisea::get_mf_energy(void)
@@ -471,119 +626,247 @@ double Fermisea::get_mf_energy(void)
   return mf_energy/num_sites_;
 }
 
-
 void Fermisea::construct_groundstate(void)
 {
-  int num_upspins_ = num_upspins();
-  int num_dnspins_ = num_dnspins();
-  if (have_TP_symmetry_ || num_upspins_!=num_dnspins_) {
-    /* Has T.P (Time Reversal * Inversion) symmetry. 
-       So we have e_k(up) = e_k(dn).
-    */
-    std::vector<std::pair<int,int>> qn_list; // list of (k,n)
-    std::vector<double> ek;
-    for (int k=0; k<num_kpoints_; ++k) {
-      Vector3d kvec = blochbasis_.kvector(k);
-      mf_model_.construct_kspace_block(kvec);
-      es_k_up.compute(mf_model_.quadratic_spinup_block(), Eigen::EigenvaluesOnly);
-      ek.insert(ek.end(),es_k_up.eigenvalues().data(),
-        es_k_up.eigenvalues().data()+kblock_dim_);
-      //std::cout << kvec.transpose() << " " << es_k_up.eigenvalues() << "\n"; getchar();
-      for (int n=0; n<kblock_dim_; ++n) {
-        qn_list.push_back({k, n});
+  const int UP = 1;
+  const int DN = -1;
+  int num_upspin = num_upspins();
+  int num_dnspin = num_dnspins();
+  int num_particle = num_spins();
+  assert(num_particle == (num_upspin+num_dnspin));
+
+  // for checking
+  std::ios state(NULL);
+  state.copyfmt(std::cout);
+  std::cout<<std::fixed<<std::setprecision(6)<<std::right;
+
+  std::vector<std::tuple<int,int,int>> qn_list; // list of (k,n,sigma)
+  std::vector<double> ek;
+  for (int k=0; k<num_kpoints_; ++k) {
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+
+    // spin-UP block
+    es_k_up.compute(mf_model_.quadratic_spinup_block(), Eigen::EigenvaluesOnly);
+    ek.insert(ek.end(),es_k_up.eigenvalues().data(),
+      es_k_up.eigenvalues().data()+kblock_dim_);
+    //std::cout << kvec.transpose() << " " << es_k_up.eigenvalues() << "\n"; getchar();
+    for (int n=0; n<kblock_dim_; ++n) {
+      qn_list.push_back({k, n, UP});
+    }
+
+    // spin-DN block
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block(), Eigen::EigenvaluesOnly);
+    ek.insert(ek.end(),es_minusk_dn.eigenvalues().data(),
+      es_minusk_dn.eigenvalues().data()+kblock_dim_);
+    //std::cout << kvec.transpose() << " " << es_k_up.eigenvalues() << "\n"; getchar();
+    for (int n=0; n<kblock_dim_; ++n) {
+      qn_list.push_back({k, n, DN});
+    }
+  }
+
+  // Indices in the original ek-array is sorted according to increasing ek
+  std::vector<int> idx(ek.size());
+  std::iota(idx.begin(),idx.end(),0);
+  std::sort(idx.begin(),idx.end(),[&ek](const int& i1, const int& i2) 
+    {return ek[i1] < ek[i2];});
+  /* 
+  for (int i=0; i<ek.size(); ++i) {
+    int k, n, s;
+    std::tie(k,n,s) = qn_list[idx[i]];
+    std::cout<<"ek[idx["<<std::setw(4)<<i<<"]], k  n  s = "<<std::setw(10)<<ek[idx[i]];
+    std::cout<<std::setw(4)<<k<<std::setw(4)<<n<<std::setw(4)<<s<<"\n";
+  }
+  getchar();
+  */
+    
+  // mean energy
+  /*double e0 = 0.0;
+  for (int i=0; i<num_particles; ++i) {
+    e0 += ek[idx[i]];
+  }
+  e0 = e0 / num_sites_;
+  std::cout << "e0 = " << e0 << "\n"; getchar();
+  */
+
+  // check for degeneracy 
+  double degeneracy_tol = 1.0E-12;
+  int top_filled_level = num_particle-1;
+  int num_degen_state = 0;
+  int num_valence_particle = 0;
+  fermi_energy_ = ek[idx[top_filled_level]];
+  total_energy_ = 0.0;
+  for (int i=0; i<=top_filled_level; ++i) {
+    total_energy_ += ek[idx[i]];
+  }
+  total_energy_ = total_energy_/num_sites_;
+  //std::cout << "Total KE = " << total_energy_ << "\n";
+  //std::cout << "fermi energy = " << fermi_energy_ << "\n";
+
+  /*
+  std::cout << "filled states\n";
+  for (int i=0; i<num_particle; ++i) {
+    int state = idx[i]; 
+    std::tie(k,n,s) = qn_list[state];
+    std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
+  }
+  std::cout << "Empty states\n";
+  for (int i=num_particle; i<ek.size(); ++i) {
+    int state = idx[i]; 
+    std::tie(k,n,s) = qn_list[state];
+    std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
+  }
+  getchar();
+  */
+
+
+  // look upward in energy
+  for (int i=top_filled_level+1; i<ek.size(); ++i) {
+    if (std::abs(fermi_energy_-ek[idx[i]])>degeneracy_tol) break;
+    num_degen_state++;
+  }
+  // look downward in energy (correct to count from 'top_filled_level')
+  if (num_degen_state>0) {
+    for (int i=top_filled_level; i>=0; --i) {
+      if (std::abs(fermi_energy_ - ek[idx[i]])>degeneracy_tol) break;
+      num_degen_state++;
+      num_valence_particle++;
+    }
+    // warn
+    if (degeneracy_warning_) {
+      std::cout << " >> warning! Groundstate degeneracy: " << num_valence_particle <<
+        " particles in " << num_degen_state << " states" << "\n";
+    }
+  }
+
+  /* 
+    Filled k-shells. A k-shell is a group of energy levels having same 
+    value of quantum number k.
+  */
+
+  // core particles
+  int num_core_particle = num_particle - num_valence_particle;
+  /*
+  std::cout << "total_particles = " << num_particle << "\n";
+  std::cout << "core_particles = " << num_core_particle << "\n";
+  std::cout << "valence_particles = " << num_valence_particle << "\n";
+  getchar();
+  */
+
+  // find 'nmax' values of filled k-shells
+  std::vector<int> upshell_nmax(num_kpoints_);
+  std::vector<int> dnshell_nmax(num_kpoints_);
+
+  for (auto& elem : upshell_nmax) elem = -1; // invalid default value
+  for (auto& elem : dnshell_nmax) elem = -1; // invalid default value
+  int upspin_count = 0; 
+  int dnspin_count = 0; 
+  int k, n, s;
+  for (int i=0; i<num_core_particle; ++i) {
+    int state = idx[i]; 
+    std::tie(k,n,s) = qn_list[state];
+    if (s == UP) {
+      upspin_count++;
+      if (upshell_nmax[k] < n) upshell_nmax[k] = n;
+    }
+    if (s == DN) {
+      dnspin_count++;
+      if (dnshell_nmax[k] < n) dnshell_nmax[k] = n;
+    }
+  }
+
+  if (upspin_count != dnspin_count) {
+    std::cout << "upspin_count = " << upspin_count << "\n";
+    std::cout << "dnspin_count = " << dnspin_count << "\n";
+    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-1 failed!");
+  }
+
+  // order the degen states in order of increasing 'band' index, then 'k' index
+  int s1 = num_core_particle;
+  int s2 = num_core_particle+num_degen_state;
+  for (int i=s1; i<s2; ++i) {
+    int n1 = std::get<1>(qn_list[idx[i]]);
+    int k1 = std::get<0>(qn_list[idx[i]]);
+    double p1 = blochbasis_.kvector(k1).norm();
+    for (int j=i+1; j<s2; ++j) {
+      int n2 = std::get<1>(qn_list[idx[j]]);
+      int k2 = std::get<0>(qn_list[idx[j]]);
+      double p2 = blochbasis_.kvector(k2).norm();
+      if ((n1>n2) || ((n1==n2) && (p1>p2))) {
+        // swap
+        int jdx = idx[j];
+        idx[j] = idx[i];
+        idx[i] = jdx;
       }
     }
-    //std::sort(ek.begin(),ek.end());
-    //for (const auto& e : ek) std::cout << e << "\n";
-
-    // Indices in the original ek-array is sorted according to increasing ek
-    std::vector<int> idx(ek.size());
-    std::iota(idx.begin(),idx.end(),0);
-    std::sort(idx.begin(),idx.end(),[&ek](const int& i1, const int& i2) 
-      {return ek[i1]<ek[i2];});
-    /*for (int i=0; i<ek.size(); ++i) {
-      //std::cout << i << "  " << idx[i] << "  " << ek[idx[i]] << "\n";
-      std::cout << i+1 << " " << blochbasis_.kvector(idx[i]).transpose()  << "\n";
-    }
-    getchar();
-    */
-    
-    // mean energy
-    /*double e0 = 0.0;
-    for (int i=0; i<num_upspins_; ++i) {
-      e0 += ek[idx[i]];
-    }
-    e0 = 2 * e0 / num_sites_;
-    std::cout << "e0 = " << e0 << "\n"; getchar();
-    */
-
-    // check for degeneracy 
-    double degeneracy_tol = 1.0E-12;
-    int top_filled_level = num_upspins()-1;
-    int num_degen_states = 1;
-    int num_valence_particle = 1;
-    fermi_energy_ = ek[idx[top_filled_level]];
-    total_energy_ = 0.0;
-    for (int i=0; i<=top_filled_level; ++i) {
-      total_energy_ += ek[idx[i]];
-    }
-    total_energy_ = 2.0*total_energy_/num_sites_;
-    std::cout << "Total KE = " << total_energy_ << "\n";
-
-    // look upward in energy
-    for (int i=top_filled_level+1; i<ek.size(); ++i) {
-      if (std::abs(fermi_energy_-ek[idx[i]])>degeneracy_tol) break;
-      num_degen_states++;
-    }
-    // look downward in energy
-    if (num_degen_states>1) {
-      for (int i=top_filled_level-1; i>=0; --i) {
-        if (std::abs(fermi_energy_ - ek[idx[i]])>degeneracy_tol) break;
-        num_degen_states++;
-        num_valence_particle++;
-      }
-      // warn
-      //if (degeneracy_warning_) {
-        std::cout << ">> warning: groundstate degeneracy: " << 2*num_valence_particle <<
-          " particles in " << 2*num_degen_states << " states." << "\n";
-      //}
-    }
-    /* 
-      Filled k-shells. A k-shell is a group of energy levels having same 
-      value of quantum number k.
-    */
-    // find 'nmax' values of filled k-shells
-    std::vector<int> shell_nmax(num_kpoints_);
-    for (auto& elem : shell_nmax) elem = -1; // invalid default value
-    int k, n;
-    for (int i=0; i<num_upspins_; ++i) {
-      int state = idx[i]; 
-      std::tie(k,n) = qn_list[state];
-      if (shell_nmax[k] < n) shell_nmax[k] = n;
-    }
-    // store the filled k-shells
-    kshells_up_.clear();
-    for (int k=0; k<num_kpoints_; ++k) {
-      int nmax = shell_nmax[k];
-      if (nmax != -1) kshells_up_.push_back({k,0,nmax});
-    }
-    
-    /*
-    for (unsigned k=0; k<kshells_up_.size(); ++k) {
-      std::cout << kshells_up_[k].k << " " << kshells_up_[k].nmin << "  "
-          << kshells_up_[k].nmax << "\n";
-    }
-    getchar();
-    */
-    
   }
-  else {
-    /* 
-      No T.P (Time Reversal * Inversion) symmetry. 
-      Need to consider both UP and DN states.
-    */
-    throw std::range_error("Fermisea::construct_groundstate: case not implemented\n");
+  /*
+  std::cout << "Degenerate states\n";
+  for (int i=s1; i<s2; ++i) {
+    int k, n, s;
+    std::tie(k,n,s) = qn_list[idx[i]];
+    std::cout<<"ek[idx["<<i<<"]], k  n  s = "<<std::setw(10)<<ek[idx[i]];
+    std::cout<<std::setw(4)<<k<<std::setw(4)<<n<<std::setw(4)<<s<<"\n";
   }
+  getchar();
+  */
+
+  // fill up the valence particles
+  for (int i=num_core_particle; i<num_particle; ++i) {
+    int k, n, s; 
+    std::tie(k,n,s) = qn_list[idx[i]];
+    if (s==UP) {
+      upspin_count++;
+      if (upshell_nmax[k] < n) upshell_nmax[k] = n;
+    }
+    if (s==DN) {
+      dnspin_count++;
+      if (dnshell_nmax[k] < n) dnshell_nmax[k] = n;
+    }
+  }
+  if ((upspin_count+dnspin_count) != num_particle) {
+    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-2 failed!");
+  }
+
+  // currently, 'Sz /= 0' case is not implemented
+  if (upspin_count != dnspin_count) {
+    throw std::logic_error("* Fermisea::construct_groundstate:: Found Sz /= 0 state!");
+  }
+
+  // store the filled k-shells
+  upspin_count = 0;
+  kshells_up_.clear();
+  for (int k=0; k<num_kpoints_; ++k) {
+    int nmax = upshell_nmax[k];
+    upspin_count += (nmax+1);
+    if (nmax != -1) kshells_up_.push_back({k,0,nmax});
+  }
+  dnspin_count = 0;
+  kshells_dn_.clear();
+  for (int k=0; k<num_kpoints_; ++k) {
+    int nmax = dnshell_nmax[k];
+    dnspin_count += (nmax+1);
+    if (nmax != -1) kshells_dn_.push_back({k,0,nmax});
+  }
+  if ((upspin_count+dnspin_count) != num_particle) {
+    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-3 failed!");
+  }
+
+  // check
+  /*
+  for (int i=0; i<kshells_up_.size(); ++i) {
+    std::cout<<std::setw(4)<<kshells_up_[i].k<<std::setw(4)<<kshells_up_[i].nmin
+      <<std::setw(4)<<kshells_up_[i].nmax<<"\n";
+  }
+  getchar();
+  for (int i=0; i<kshells_dn_.size(); ++i) {
+    std::cout<<std::setw(4)<<kshells_dn_[i].k<<std::setw(4)<<kshells_dn_[i].nmin
+      <<std::setw(4)<<kshells_dn_[i].nmax<<"\n";
+  }
+  getchar();
+  */
+
+  std::cout.copyfmt(state);
 }
 
 void Fermisea::get_sc_correlation(void)

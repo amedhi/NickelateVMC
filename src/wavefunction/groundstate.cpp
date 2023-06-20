@@ -103,21 +103,22 @@ double GroundState::get_noninteracting_mu(void)
   for (int k=0; k<num_kpoints_; ++k) {
     Vector3d kvec = blochbasis_.kvector(k);
     mf_model_.construct_kspace_block(kvec);
+    // spin-up states
     es_k_up.compute(mf_model_.quadratic_spinup_block(), Eigen::EigenvaluesOnly);
     ek.insert(ek.end(),es_k_up.eigenvalues().data(),
       es_k_up.eigenvalues().data()+kblock_dim_);
+    // spin-dn states
+    es_k_up.compute(mf_model_.quadratic_spindn_block(), Eigen::EigenvaluesOnly);
+    ek.insert(ek.end(),es_k_up.eigenvalues().data(),
+      es_k_up.eigenvalues().data()+kblock_dim_);
   }
+  // sort energy levels
   std::sort(ek.begin(),ek.end());
-  //for (const auto& e : ek) std::cout << e << "\n";
-  //double e = 0.0;
-  //for (int i=0; i<num_upspins_; ++i) e += ek[i];
-  //std::cout << "energy = " << 2*e/num_sites_ << "\n";
-  //std::cout << "upspins = " << num_upspins_ << "\n";
   double mu;
-  if (num_upspins_ < num_sites_) {
-    mu = 0.5*(ek[num_upspins_-1]+ek[num_upspins_]);
+  if (num_spins_ < ek.size()) {
+    mu = 0.5*(ek[num_spins_-1]+ek[num_spins_]);
   }
-  else mu = ek[num_upspins_-1];
+  else mu = ek[num_spins_-1];
   //std::cout << "mu_0 = " << mu << "\n";
   return mu;
 }
