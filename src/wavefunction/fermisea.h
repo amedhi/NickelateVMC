@@ -28,7 +28,9 @@ public:
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0) override;
   void update(const lattice::Lattice& lattice) override;
   void get_wf_amplitudes(Matrix& psi) override;
-  void get_wf_gradient(std::vector<Matrix>& psi_gradient) override; 
+  void get_wf_amplitudes(Matrix& psiup, Matrix& psidn) override;
+  void get_wf_gradient(std::vector<Matrix>& psi_grad) override; 
+  void get_wf_gradient(std::vector<Matrix>& psiup_grad, std::vector<Matrix>& psidn_grad) override; 
 private:
   std::string order_name_{"NULL"};
   bool mu_variational_{false};
@@ -42,12 +44,6 @@ private:
   std::vector<kshell_t> kshells_up_;
   std::vector<kshell_t> kshells_dn_;
 
-  // matrices
-  ComplexMatrix work_;
-  Matrix work2_;
-  std::vector<ComplexMatrix> work_k_;
-  std::vector<ComplexMatrix> phi_k_;
-
   // SC correlaton function
   int rmax_;
   Vector3d alpha_;
@@ -58,9 +54,8 @@ private:
   Eigen::MatrixXcd corr_fs_;
 
   void construct_groundstate(void);
+  void get_amplitudes_sitebasis(ComplexMatrix& psiup, ComplexMatrix& psidn);
   void get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k);
-  void get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, Matrix& psi);
-  void get_pair_amplitudes_sitebasis2(Matrix& psi);
   void get_sc_correlation(void);
   double get_mf_energy(void);
 };

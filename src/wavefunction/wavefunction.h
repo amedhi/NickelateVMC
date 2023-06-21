@@ -74,10 +74,27 @@ private:
   unsigned num_sites_;
   // BCS_state bcs_state_;
   // FS_state fermisea_;
-  Matrix psi_up_;
-  Matrix psi_dn_;
-  std::vector<Matrix> psi_gradient_;
+  Matrix psiup_;
+  Matrix psidn_;
+
+  std::vector<Matrix> psiup_grad_;
+  std::vector<Matrix> psidn_grad_;
+  bool single_determinant_{true};
+  bool pairwf_{true};
   bool have_gradient_{false};
+
+  // The great trick of accessing the wf matrix using pointers
+#ifdef REAL_WAVEFUNCTION
+  double* p_psiup_;
+  double* p_psidn_;
+  std::vector<double *> p_psiup_grad_;
+  std::vector<double *> p_psidn_grad_;
+#else
+  std::complex<double>* p_psiup_;
+  std::complex<double>* p_psidn_;
+  std::vector<std::complex<double>*> p_psiup_grad_;
+  std::vector<std::complex<double>*> p_psidn_grad_;
+#endif
   // matrices & solvers
 };
 

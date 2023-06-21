@@ -146,7 +146,7 @@ int SysConfig::init_config(void)
   }*/
 
   BasisState::init_spins(num_upspins_, num_dnspins_);
-  psi_mat.resize(num_upspins_, num_dnspins_);
+  psiup_mat_.resize(num_upspins_, num_dnspins_);
   psi_inv.resize(num_dnspins_, num_upspins_);
   // try for a well condictioned amplitude matrix
   double rcond = 0.0;
@@ -155,11 +155,11 @@ int SysConfig::init_config(void)
   //while (rcond<1.0E-12) {
     BasisState::set_random();
     //BasisState::set_custom();
-    wf.get_amplitudes(psi_mat,upspin_sites(),dnspin_sites());
-    //std::cout << "psi_mat = \n";
-    //std::cout << psi_mat << "\n"; getchar();
+    wf.get_amplitudes(psiup_mat_,upspin_sites(),dnspin_sites());
+    //std::cout << "psiup_mat_ = \n";
+    //std::cout << psiup_mat_ << "\n"; getchar();
     // reciprocal conditioning number
-    Eigen::JacobiSVD<Matrix> svd(psi_mat);
+    Eigen::JacobiSVD<Matrix> svd(psiup_mat_);
     // reciprocal cond. num = smallest eigenval/largest eigen val
     rcond = svd.singularValues()(svd.singularValues().size()-1)/svd.singularValues()(0);
     if (std::isnan(rcond)) rcond = 0.0; 
@@ -171,9 +171,9 @@ int SysConfig::init_config(void)
   //if (tmp_restriction) allow_double_occupancy(original_state);
 
   // amplitude matrix invers
-  psi_inv = psi_mat.inverse();
+  psi_inv = psiup_mat_.inverse();
   // check
-  //std::cout << psi_mat << "\n"; getchar();
+  //std::cout << psiup_mat_ << "\n"; getchar();
   //std::cout << psi_inv << "\n"; getchar();
 
   // run parameters
@@ -226,12 +226,12 @@ int SysConfig::update_state(void)
   num_updates_++;
   num_iterations_++;
 
-  //auto psi = psi_mat.determinant();
+  //auto psi = psiup_mat_.determinant();
   //std::cout<<psi.real()<<"   "<<psi.imag()<<"\n";
   //std::cout << psi_inv << "\n";
 
   if (num_iterations_ == refresh_cycle_) {
-    psi_inv = psi_mat.inverse();
+    psi_inv = psiup_mat_.inverse();
     num_iterations_ = 0;
   }
   return 0;
@@ -350,7 +350,7 @@ int SysConfig::do_spin_exchange(void)
 int SysConfig::inv_update_upspin(const int& upspin, const ColVector& psi_row, 
   const amplitude_t& det_ratio)
 {
-  psi_mat.row(upspin) = psi_row;
+  psiup_mat_.row(upspin) = psi_row;
   amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio;
   for (int i=0; i<upspin; ++i) {
     amplitude_t beta = ratio_inv*psi_row.cwiseProduct(psi_inv.col(i)).sum();
@@ -367,7 +367,7 @@ int SysConfig::inv_update_upspin(const int& upspin, const ColVector& psi_row,
 int SysConfig::inv_update_dnspin(const int& dnspin, const RowVector& psi_col, 
   const amplitude_t& det_ratio)
 {
-  psi_mat.col(dnspin) = psi_col;
+  psiup_mat_.col(dnspin) = psi_col;
   amplitude_t ratio_inv = amplitude_t(1.0)/det_ratio;
   for (int i=0; i<dnspin; ++i) {
     amplitude_t beta = ratio_inv*psi_col.cwiseProduct(psi_inv.row(i)).sum();

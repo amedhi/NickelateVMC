@@ -29,6 +29,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   num_sites_ = lattice.num_sites();
   num_bonds_ = lattice.num_bonds();
   // particle number
+  set_nonmagnetic(true);
   set_particle_num(inputs);
 
   // infinity limit

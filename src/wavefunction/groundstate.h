@@ -54,11 +54,13 @@ public:
   virtual void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   virtual void update(const lattice::Lattice& lattice);
   virtual void get_wf_amplitudes(Matrix& psi);
-  virtual void get_wf_gradient(std::vector<Matrix>& psi_gradient); 
+  virtual void get_wf_amplitudes(Matrix& psiup, Matrix& psidn);
+  virtual void get_wf_gradient(std::vector<Matrix>& psi_grad); 
+  virtual void get_wf_gradient(std::vector<Matrix>& psiup_grad, std::vector<Matrix>& psidn_grad); 
   virtual std::string info_str(void) const; 
   const VariationalParms& varparms(void) { return varparms_; }
   const int& num_varparms(void) const { return num_varparms_; }
-  const bool& if_nonmagnetic(void) const { return nonmagnetic_; }
+  const bool& is_nonmagnetic(void) const { return nonmagnetic_; }
   const int& num_sites(void) const { return num_sites_; }
   const int& num_spins(void) const { return num_spins_; }
   const int& num_upspins(void) const { return num_upspins_; }
@@ -83,6 +85,7 @@ protected:
   mutable Eigen::SelfAdjointEigenSolver<ComplexMatrix> es_minusk_dn;
   void set_nonmagnetic(const bool& yesno) { nonmagnetic_=yesno; }
   void set_particle_num(const input::Parameters& inputs);
+  void reset_spin_num(const int& num_upspin, const int& num_dnspin);
   void set_ft_matrix(const lattice::Lattice& lattice);
   double get_noninteracting_mu(void);
 private:

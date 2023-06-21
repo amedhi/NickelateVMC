@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-20 17:51:17
+* @Last Modified time: 2023-06-20 23:59:17
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -353,16 +353,6 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
   num_varparms_ = varparms_.size();
   mf_model_.finalize(lattice);
 
-  // work arrays
-  work_.resize(kblock_dim_,kblock_dim_);
-  work2_.resize(num_sites_,num_sites_);
-  phi_k_.resize(num_kpoints_);
-  work_k_.resize(num_kpoints_);
-  for (int k=0; k<num_kpoints_; ++k) {
-    phi_k_[k].resize(kblock_dim_,kblock_dim_);
-    work_k_[k].resize(kblock_dim_,kblock_dim_);
-  } 
-
   // for calculating SC correlations 
   rmax_ =  lattice.size1()/2+1;
   alpha_ = lattice.basis_vector_a1();
@@ -412,6 +402,8 @@ void Fermisea::update(const input::Parameters& inputs)
   // update variational parameters
   for (auto& p : varparms_) 
     p.change_value(mf_model_.get_parameter_value(p.name()));
+  // construct new groundstate
+  construct_groundstate();
 }
 
 void Fermisea::update(const var::parm_vector& pvector, const unsigned& start_pos)
@@ -420,46 +412,188 @@ void Fermisea::update(const var::parm_vector& pvector, const unsigned& start_pos
 
 void Fermisea::get_wf_amplitudes(Matrix& psi) 
 {
-  construct_groundstate();
-  get_pair_amplitudes_sitebasis2(psi);
-  //get_pair_amplitudes(phi_k_);
-  //get_pair_amplitudes_sitebasis(phi_k_, psi);
-  /*std::cout << "Fermisea::update: SC correlations\n";
-  get_sc_correlation();
+  assert(is_nonmagnetic());
+  assert(psi.rows() == num_sites());
+  assert(psi.cols() == num_sites());
+
+  //get pair amplitudes wrt 'sitebasis'
+  ComplexMatrix psiup_sitebasis(num_sites(),num_upspins());
+  ComplexMatrix psidn_sitebasis(num_sites(),num_dnspins());
+  get_amplitudes_sitebasis(psiup_sitebasis, psidn_sitebasis);
+
+  // final matrix
+#ifdef REAL_WAVEFUNCTION
+  ComplexMatrix psi_cmpl = psiup_sitebasis * psidn_sitebasis.transpose();
+  psi = psi_cmpl.real();
+#else
+  psi = psiup_sitebasis * psidn_sitebasis.transpose();
+#endif
+
+  // check
+  /*
+  for (int i=0; i<num_sites(); ++i) {
+    for (int j=0; j<num_upspins(); ++j) {
+      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
+    }
+  }
   getchar();
   */
 }
 
-void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
+void Fermisea::get_wf_amplitudes(Matrix& psiup, Matrix& psidn) 
 {
-  // numerical gradient
-  int i=0; 
+  assert(!is_nonmagnetic());
+  assert(psiup.rows() == num_sites());
+  assert(psiup.cols() == num_upspins());
+  assert(psidn.rows() == num_dnspins());
+  assert(psidn.cols() == num_sites());
+
+  //get pair amplitudes wrt 'sitebasis'
+  ComplexMatrix psiup_sitebasis(num_sites(),num_upspins());
+  ComplexMatrix psidn_sitebasis(num_sites(),num_dnspins());
+  get_amplitudes_sitebasis(psiup_sitebasis, psidn_sitebasis);
+
+  // final matrix
+#ifdef REAL_WAVEFUNCTION
+  psiup = psiup_sitebasis.real();
+  psidn = psidn_sitebasis.real().transpose();
+#else
+  psiup = psiup_sitebasis;
+  psidn = psidn_sitebasis.transpose();
+#endif
+
+  // check
+  /*
+  std::cout << "\n";
+  for (int i=0; i<num_sites(); ++i) {
+    for (int j=0; j<num_upspins(); ++j) {
+      std::cout << "psiup["<<i<<","<<j<<"] = "<<psiup(i,j)<<"\n";
+    }
+  }
+  std::cout << "\n";
+  getchar();
+  for (int i=0; i<num_dnspins(); ++i) {
+    for (int j=0; j<num_sites(); ++j) {
+      std::cout << "psidn["<<i<<","<<j<<"] = "<<psidn(i,j)<<"\n";
+    }
+  }
+  getchar();
+  */
+}
+
+void Fermisea::get_amplitudes_sitebasis(ComplexMatrix& psiup, ComplexMatrix& psidn)
+{
+  // UPSPIN part
+  int n = 0;
+  for (int p=0; p<kshells_up_.size(); ++p) {
+    int k = kshells_up_[p].k;
+    int nband = kshells_up_[p].nmax+1;
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+    es_k_up.compute(mf_model_.quadratic_spinup_block());
+
+    int m = 0;
+    for (int I=0; I<num_kpoints_; ++I) {
+      psiup.block(m,n,kblock_dim_,nband) 
+        = es_k_up.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
+      m += kblock_dim_;
+    }
+    n += nband;
+  }
+
+  // DNSPIN part
+  n = 0;
+  for (int p=0; p<kshells_dn_.size(); ++p) {
+    int k = kshells_dn_[p].k;
+    int nband = kshells_dn_[p].nmax+1;
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
+    int m = 0;
+    for (int I=0; I<num_kpoints_; ++I) {
+      psidn.block(m,n,kblock_dim_,nband) 
+        = es_minusk_dn.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
+      m += kblock_dim_;
+    }
+    n += nband;
+  }
+}
+
+void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_grad) 
+{
+  assert(is_nonmagnetic());
+  assert(psi_grad.size() == varparms_.size());
+  Matrix psi_work(num_sites(),num_sites());
+  int n=0; 
   for (const auto& p : varparms_) {
-    double h = p.diff_h();
+    assert(psi_grad[n].rows() == num_sites());
+    assert(psi_grad[n].cols() == num_sites());
     double x = p.value();
+    double h = p.diff_h();
     double x_fwd = x+h; 
     if (x_fwd > p.ubound()) x_fwd = p.ubound();
     mf_model_.update_parameter(p.name(), x_fwd);
     mf_model_.update_terms();
-    construct_groundstate();
-    get_pair_amplitudes_sitebasis2(psi_gradient[i]);
+    // amplitudes must-be computed for the same 'groundstate'
+    get_wf_amplitudes(psi_grad[n]);
     double x_bwd = x-h; 
     if (x_bwd < p.lbound()) x_bwd = p.lbound();
     mf_model_.update_parameter(p.name(), x_bwd);
     mf_model_.update_terms();
-    construct_groundstate();
-    get_pair_amplitudes_sitebasis2(work2_);
+    // again, amplitudes must-be computed for the same 'groundstate'
+    get_wf_amplitudes(psi_work);
     // restore model to original state
     mf_model_.update_parameter(p.name(), x);
     mf_model_.update_terms();
-    construct_groundstate();
     // finite difference gradients
     double inv_2h = 1.0/(x_fwd-x_bwd);
-    psi_gradient[i] -= work2_;
-    psi_gradient[i] *= inv_2h;
-    ++i;
+    psi_grad[n] -= psi_work;
+    psi_grad[n] *= inv_2h;
+    ++n;
   }
 }
+
+void Fermisea::get_wf_gradient(std::vector<Matrix>& psiup_grad, std::vector<Matrix>& psidn_grad) 
+{
+  assert(!is_nonmagnetic());
+  assert(psiup_grad.size()==varparms_.size());
+  assert(psidn_grad.size()==varparms_.size());
+  Matrix psiup_work(num_sites(),num_upspins());
+  Matrix psidn_work(num_dnspins(),num_sites());
+
+  int n=0; 
+  for (const auto& p : varparms_) {
+    assert(psiup_grad[n].rows() == num_sites());
+    assert(psiup_grad[n].cols() == num_upspins());
+    assert(psidn_grad[n].rows() == num_dnspins());
+    assert(psidn_grad[n].cols() == num_sites());
+    double x = p.value();
+    double h = p.diff_h();
+    double x_fwd = x+h; 
+    if (x_fwd > p.ubound()) x_fwd = p.ubound();
+    mf_model_.update_parameter(p.name(), x_fwd);
+    mf_model_.update_terms();
+    // amplitudes must-be computed for the same 'groundstate'
+    get_wf_amplitudes(psiup_grad[n], psidn_grad[n]);
+    double x_bwd = x-h; 
+    if (x_bwd < p.lbound()) x_bwd = p.lbound();
+    mf_model_.update_parameter(p.name(), x_bwd);
+    mf_model_.update_terms();
+    // again, amplitudes must-be computed for the same 'groundstate'
+    get_wf_amplitudes(psiup_work, psidn_work);
+    // restore model to original state
+    mf_model_.update_parameter(p.name(), x);
+    mf_model_.update_terms();
+    // finite difference gradients
+    double inv_2h = 1.0/(x_fwd-x_bwd);
+    psiup_grad[n] -= psiup_work;
+    psiup_grad[n] *= inv_2h;
+    psidn_grad[n] -= psidn_work;
+    psidn_grad[n] *= inv_2h;
+    ++n;
+  }
+}
+
 
 /*
 void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_gradient) 
@@ -499,126 +633,6 @@ void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_gradient)
 }
 */
 
-void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k) 
-{
-  for (int i=0; i<kshells_up_.size(); ++i) {
-    int k = kshells_up_[i].k;
-    int m = kshells_up_[i].nmax+1;
-    Vector3d kvec = blochbasis_.kvector(k);
-    mf_model_.construct_kspace_block(kvec);
-    es_k_up.compute(mf_model_.quadratic_spinup_block());
-    mf_model_.construct_kspace_block(-kvec);
-    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
-    phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
-      		 * es_minusk_dn.eigenvectors().transpose().block(0,0,m,kblock_dim_);
-    //std::cout << "kvec = "<< kvec.transpose() << "\n"; 
-    //std::cout << mf_model_.quadratic_spinup_block() << "\n"; 
-    //std::cout << phi_k[k] << "\n"; getchar();
-  }
-}
-
-void Fermisea::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, 
-  Matrix& psi)
-{
-  // psi = FTU_ * PHI_K * conjugate(transpose(FTU_))
-  // PHI_K is block diagonal (k-th block is phi_k) 
-  int p = 0;
-  for (int i=0; i<num_kpoints_; ++i) {
-    int q = 0;
-    for (int j=0; j<num_kpoints_; ++j) {
-      work_.setZero();
-      for (int ks=0; ks<kshells_up_.size(); ++ks) {
-        int k = kshells_up_[ks].k;
-        work_ += FTU_(i,k) * phi_k[k] * std::conj(FTU_(j,k));
-      }
-      // std::cout << work_ << "\n"; getchar();
-      // copy transformed block
-      //psi.block(p,q,kblock_dim_,kblock_dim_) = 
-      for (int m=0; m<kblock_dim_; ++m) {
-        for (int n=0; n<kblock_dim_; ++n) {
-          psi(p+m,q+n) = ampl_part(work_(m,n));
-        }
-      }
-      q += kblock_dim_;
-    }
-    p += kblock_dim_;
-  }
-  //std::cout << psi << "\n";
-  //getchar();
-  /*
-  for (int i=0; i<num_sites_; ++i) {
-    for (int j=0; j<num_sites_; ++j) {
-      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
-      getchar();
-    }
-  }*/
-
-}
-
-void Fermisea::get_pair_amplitudes_sitebasis2(Matrix& psi)
-{
-  ComplexMatrix psi_up(num_sites(),num_upspins());
-  int n = 0;
-  for (int p=0; p<kshells_up_.size(); ++p) {
-    int k = kshells_up_[p].k;
-    int nband = kshells_up_[p].nmax+1;
-    Vector3d kvec = blochbasis_.kvector(k);
-    mf_model_.construct_kspace_block(kvec);
-    es_k_up.compute(mf_model_.quadratic_spinup_block());
-
-    int m = 0;
-    for (int I=0; I<num_kpoints_; ++I) {
-      psi_up.block(m,n,kblock_dim_,nband) 
-        = es_k_up.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
-      m += kblock_dim_;
-    }
-    n += nband;
-  }
-
-  ComplexMatrix psi_dn(num_sites(), num_dnspins());
-  n = 0;
-  for (int p=0; p<kshells_dn_.size(); ++p) {
-    int k = kshells_dn_[p].k;
-    int nband = kshells_dn_[p].nmax+1;
-    Vector3d kvec = blochbasis_.kvector(k);
-    mf_model_.construct_kspace_block(kvec);
-    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
-    int m = 0;
-    for (int I=0; I<num_kpoints_; ++I) {
-      psi_dn.block(m,n,kblock_dim_,nband) 
-        = es_minusk_dn.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
-      m += kblock_dim_;
-    }
-    n += nband;
-  }
-
-  // final matrix
-#ifdef REAL_WAVEFUNCTION
-  ComplexMatrix psi_cmplx = psi_up * psi_dn.transpose();
-  for (int i=0; i<num_sites_; ++i) {
-    for (int j=0; j<num_sites_; ++j) {
-      psi(i,j) = ampl_part(psi_cmplx(i,j));
-      //std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
-      //getchar();
-    }
-  }
-#else
-  psi = psi_up * psi_dn.transpose();
-#endif
-
-  //exit(0);
-
-  //std::cout << psi << "\n";
-  //getchar();
-  /*
-  for (int i=0; i<num_sites_; ++i) {
-    for (int j=0; j<num_sites_; ++j) {
-      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
-      getchar();
-    }
-  }*/
-
-}
 
 double Fermisea::get_mf_energy(void)
 {
@@ -828,6 +842,8 @@ void Fermisea::construct_groundstate(void)
     throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-2 failed!");
   }
 
+  // Update the number of 'upspin' & 'dnspin'
+  reset_spin_num(upspin_count, dnspin_count);
   // currently, 'Sz /= 0' case is not implemented
   if (upspin_count != dnspin_count) {
     throw std::logic_error("* Fermisea::construct_groundstate:: Found Sz /= 0 state!");
@@ -928,6 +944,63 @@ void Fermisea::get_sc_correlation(void)
   std::cout << "sc_correlation done\n";
   //getchar();
 }
+
+#ifdef OLD_STUFF
+void Fermisea::get_pair_amplitudes(std::vector<ComplexMatrix>& phi_k) 
+{
+  for (int i=0; i<kshells_up_.size(); ++i) {
+    int k = kshells_up_[i].k;
+    int m = kshells_up_[i].nmax+1;
+    Vector3d kvec = blochbasis_.kvector(k);
+    mf_model_.construct_kspace_block(kvec);
+    es_k_up.compute(mf_model_.quadratic_spinup_block());
+    mf_model_.construct_kspace_block(-kvec);
+    es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
+    phi_k[k] = es_k_up.eigenvectors().block(0,0,kblock_dim_,m)
+           * es_minusk_dn.eigenvectors().transpose().block(0,0,m,kblock_dim_);
+    //std::cout << "kvec = "<< kvec.transpose() << "\n"; 
+    //std::cout << mf_model_.quadratic_spinup_block() << "\n"; 
+    //std::cout << phi_k[k] << "\n"; getchar();
+  }
+}
+void Fermisea::get_pair_amplitudes_sitebasis(const std::vector<ComplexMatrix>& phi_k, 
+  Matrix& psi)
+{
+  // psi = FTU_ * PHI_K * conjugate(transpose(FTU_))
+  // PHI_K is block diagonal (k-th block is phi_k) 
+  int p = 0;
+  for (int i=0; i<num_kpoints_; ++i) {
+    int q = 0;
+    for (int j=0; j<num_kpoints_; ++j) {
+      work_.setZero();
+      for (int ks=0; ks<kshells_up_.size(); ++ks) {
+        int k = kshells_up_[ks].k;
+        work_ += FTU_(i,k) * phi_k[k] * std::conj(FTU_(j,k));
+      }
+      // std::cout << work_ << "\n"; getchar();
+      // copy transformed block
+      //psi.block(p,q,kblock_dim_,kblock_dim_) = 
+      for (int m=0; m<kblock_dim_; ++m) {
+        for (int n=0; n<kblock_dim_; ++n) {
+          psi(p+m,q+n) = ampl_part(work_(m,n));
+        }
+      }
+      q += kblock_dim_;
+    }
+    p += kblock_dim_;
+  }
+  //std::cout << psi << "\n";
+  //getchar();
+  /*
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      std::cout << "psi["<<i<<","<<j<<"] = "<<psi(i,j)<<"\n";
+      getchar();
+    }
+  }*/
+}
+#endif
+
 
 
 } // end namespace var

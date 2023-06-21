@@ -71,7 +71,7 @@ public:
 private:
   var::Wavefunction wf;
   var::WavefunProjector pj;
-  Matrix psi_mat;
+  Matrix psiup_mat_;
   Matrix psi_inv;
   mutable ColVector psi_row;
   mutable RowVector psi_col;
