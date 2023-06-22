@@ -29,6 +29,7 @@ using ComplexMatrix = Eigen::MatrixXcd;
   using Vector = Eigen::VectorXd;
   using ColVector = Eigen::VectorXd;
   using RowVector = Eigen::RowVectorXd;
+  using MatrixPtr = double*;
 #else
   using amplitude_t = std::complex<double>;
   #define ampl_part(psi) psi 
@@ -36,6 +37,7 @@ using ComplexMatrix = Eigen::MatrixXcd;
   using Vector = Eigen::VectorXcd;
   using ColVector = Eigen::VectorXcd;
   using RowVector = Eigen::RowVectorXcd;
+  using MatrixPtr = std::complex<double>*;
 #endif
 
 #endif

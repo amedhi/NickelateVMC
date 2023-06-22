@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-20 23:59:17
+* @Last Modified time: 2023-06-21 22:41:44
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -115,6 +115,7 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
       mf_model_.add_parameter(name="tv", defval=1.0, inputs);
       mf_model_.add_parameter(name="tpv", defval=1.0, inputs);
       mf_model_.add_parameter(name="dAF", defval=0.0, inputs);
+      mf_model_.add_parameter(name="dFM", defval=0.0, inputs);
       mf_model_.add_parameter(name="muA", defval=0.0, inputs);
       mf_model_.add_parameter(name="muB", defval=0.0, inputs);
 
@@ -150,12 +151,12 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
 
       // Site terms: AF-order & chemical potential
       cc.create(2);
-      cc.add_type(0, "-(muA+dAF)");
-      cc.add_type(1, "-(muB-dAF)");
+      cc.add_type(0, "-(muA+dAF+dFM)");
+      cc.add_type(1, "-(muB-dAF+dFM)");
       mf_model_.add_siteterm(name="ni_up", cc, op::ni_up());
       cc.create(2);
-      cc.add_type(0, "-(muA-dAF)");
-      cc.add_type(1, "-(muB+dAF)");
+      cc.add_type(0, "-(muA-dAF-dFM)");
+      cc.add_type(1, "-(muB+dAF-dFM)");
       mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
 
       correlation_pairs().push_back({0,0});
@@ -168,6 +169,8 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
       // variational parameters
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("dFM");
+      varparms_.add("dFM", defval,lb=0.0,ub=+5.0,dh=0.1);
 
       // chemical potential
       mu_variational_ = mu_default; // for this model
@@ -720,14 +723,14 @@ void Fermisea::construct_groundstate(void)
   /*
   std::cout << "filled states\n";
   for (int i=0; i<num_particle; ++i) {
-    int state = idx[i]; 
-    std::tie(k,n,s) = qn_list[state];
+    int k, n, s;
+    std::tie(k,n,s) = qn_list[idx[i]];
     std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
   }
   std::cout << "Empty states\n";
   for (int i=num_particle; i<ek.size(); ++i) {
-    int state = idx[i]; 
-    std::tie(k,n,s) = qn_list[state];
+    int k, n, s;
+    std::tie(k,n,s) = qn_list[idx[i]];
     std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
   }
   getchar();
@@ -789,11 +792,12 @@ void Fermisea::construct_groundstate(void)
     }
   }
 
+  /*
   if (upspin_count != dnspin_count) {
     std::cout << "upspin_count = " << upspin_count << "\n";
     std::cout << "dnspin_count = " << dnspin_count << "\n";
     throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-1 failed!");
-  }
+  }*/
 
   // order the degen states in order of increasing 'band' index, then 'k' index
   int s1 = num_core_particle;
@@ -839,15 +843,16 @@ void Fermisea::construct_groundstate(void)
     }
   }
   if ((upspin_count+dnspin_count) != num_particle) {
-    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-2 failed!");
+    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-1 failed!");
   }
 
   // Update the number of 'upspin' & 'dnspin'
   reset_spin_num(upspin_count, dnspin_count);
   // currently, 'Sz /= 0' case is not implemented
+  /*
   if (upspin_count != dnspin_count) {
     throw std::logic_error("* Fermisea::construct_groundstate:: Found Sz /= 0 state!");
-  }
+  }*/
 
   // store the filled k-shells
   upspin_count = 0;
@@ -865,7 +870,7 @@ void Fermisea::construct_groundstate(void)
     if (nmax != -1) kshells_dn_.push_back({k,0,nmax});
   }
   if ((upspin_count+dnspin_count) != num_particle) {
-    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-3 failed!");
+    throw std::logic_error("* Fermisea::construct_groundstate:: consistency check-2 failed!");
   }
 
   // check

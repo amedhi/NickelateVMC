@@ -69,14 +69,19 @@ public:
   void print_stats(std::ostream& os=std::cout) const;
   //var::VariationalParms& var_parms(void) { return wf.var_parms(); }
 private:
+  bool single_determinant_{true};
   var::Wavefunction wf;
   var::WavefunProjector pj;
   Matrix psiup_mat_;
-  Matrix psi_inv;
+  Matrix psidn_mat_;
+  Matrix psiup_inv_;
+  Matrix psidn_inv_;
+  mutable Matrix psiup_grad_;
+  mutable Matrix psidn_grad_;
+
   mutable ColVector psi_row;
   mutable RowVector psi_col;
   mutable RowVector inv_row;
-  mutable Matrix psi_grad;
   int num_sites_;
   int num_upspins_;
   int num_dnspins_;

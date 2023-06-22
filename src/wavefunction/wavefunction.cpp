@@ -55,24 +55,6 @@ Wavefunction::Wavefunction(const lattice::Lattice& lattice,
   else {
     throw std::range_error("Wavefunction::Wavefunction: unidefined wavefunction");
   }
-  // resize
-  psiup_.resize(num_sites_,num_sites_);
-  psiup_grad_.resize(varparms().size());
-  psidn_grad_.resize(varparms().size());
-  for (int i=0; i<varparms().size(); ++i) {
-    psiup_grad_[i].resize(num_sites_,num_sites_);
-    psidn_grad_[i].resize(num_sites_,num_sites_);
-  }
-
-  // Initiate pointers (initially all pointing to UP matrices)
-  p_psiup_ = psiup_.data();
-  p_psidn_ = psiup_.data();
-  p_psiup_grad_.resize(varparms().size());
-  p_psidn_grad_.resize(varparms().size());
-  for (int i=0; i<varparms().size(); ++i) {
-    p_psiup_grad_[i] = psiup_grad_[i].data();
-    p_psidn_grad_[i] = psiup_grad_[i].data();
-  }
 }
 
 std::string Wavefunction::signature_str(void) const
@@ -84,115 +66,6 @@ std::string Wavefunction::signature_str(void) const
   signature << std::setw(3) << groundstate_->num_upspins(); 
   signature << std::setw(3) << groundstate_->num_dnspins(); 
   return signature.str();
-}
-
-int Wavefunction::compute(const lattice::Lattice& lattice, 
-  const input::Parameters& inputs, const bool& psi_gradient)
-{
-  groundstate_->update(inputs);
-  // single determinant
-  if (groundstate_->is_nonmagnetic()) {
-    groundstate_->get_wf_amplitudes(psiup_);
-    if (psi_gradient) {
-      groundstate_->get_wf_gradient(psiup_grad_);
-      have_gradient_ = true;
-    }
-    else {
-      have_gradient_ = false;
-    }
-  }
-  else {
-    //groundstate_->get_wf_amplitudes(psiup_, psidn_);
-  }
-
-  /*
-  std::cout << "Wavefunction::compute\n";
-  for (int i=0; i<num_sites_; ++i) {
-    for (int j=0; j<num_sites_; ++j) {
-      if (std::abs(psiup_(i,j).imag())>1.0E-6) {
-        std::cout << "psi["<<i<<","<<j<<"] = "<<std::imag(psiup_(i,j))<<"\n";
-      }
-    }
-  }
-  */
-
-  return 0;
-}
-
-int Wavefunction::compute(const lattice::Lattice& lattice, const var::parm_vector& pvector,
-  const unsigned& start_pos, const bool& psi_gradient)
-{
-  groundstate_->update(pvector,start_pos);
-  groundstate_->get_wf_amplitudes(psiup_);
-  if (psi_gradient) {
-    groundstate_->get_wf_gradient(psiup_grad_);
-    have_gradient_ = true;
-  }
-  else have_gradient_ = false;
-  return 0;
-}
-
-// recompute for change in lattice BC 
-int Wavefunction::recompute(const lattice::Lattice& lattice)
-{
-  //std::cout << "recomputing\n"; 
-  groundstate_->update(lattice);
-  groundstate_->get_wf_amplitudes(psiup_);
-  if (have_gradient_) {
-    groundstate_->get_wf_gradient(psiup_grad_);
-    //std::cout << "get_wf_gradient\n"; getchar();
-  }
-  /*
-  std::cout << "Wavefunction::recompute\n";
-  for (int i=0; i<num_sites_; ++i) {
-    for (int j=0; j<num_sites_; ++j) {
-      if (std::abs(psiup_(i,j).imag())>1.0E-6) {
-        std::cout << "wf["<<i<<","<<j<<"] = "<<std::imag(psiup_(i,j))<<"\n";
-      }
-    }
-  }
-  */
-  return 0;
-}
-
-void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& row, 
-  const std::vector<int>& col) const
-{
-  for (unsigned i=0; i<row.size(); ++i)
-    for (unsigned j=0; j<col.size(); ++j)
-      psi(i,j) = psiup_(row[i],col[j]);
-}
-
-void Wavefunction::get_amplitudes(ColVector& psi_vec, const int& irow,  
-    const std::vector<int>& col) const
-{
-  for (unsigned j=0; j<col.size(); ++j) {
-    psi_vec[j] = psiup_(irow,col[j]);
-  }
-}
-
-void Wavefunction::get_amplitudes(RowVector& psi_vec, const std::vector<int>& row,
-    const int& icol) const
-{
-  for (unsigned j=0; j<row.size(); ++j) {
-    psi_vec[j] = psiup_(row[j],icol);
-  }
-}
-
-void Wavefunction::get_amplitudes(amplitude_t& elem, const int& irow, 
-  const int& jcol) const
-{
-  elem = psiup_(irow,jcol);
-}
-
-void Wavefunction::get_gradients(Matrix& psi_grad, const int& n, 
-  const std::vector<int>& row, const std::vector<int>& col) const
-{
-  if (!have_gradient_) 
-    throw std::logic_error("Wavefunction::get_gradients: gradients were not computed");
-  for (unsigned i=0; i<row.size(); ++i)
-    for (unsigned j=0; j<col.size(); ++j)
-      psi_grad(i,j) = psiup_grad_[n](row[i],col[j]);
 }
 
 void Wavefunction::get_vparm_names(std::vector<std::string>& vparm_names, 
@@ -240,82 +113,193 @@ void Wavefunction::get_vparm_ubound(var::parm_vector& vparm_ub,
   }
 }
 
-/*
-int Wavefunction::compute_gradients(const lattice::Lattice& lattice, 
-  const var::parm_vector& pvector, const unsigned& start_pos)
+
+/*---------------------------------------------------------------------
+*  Computation of waefunction amplitudes 
+*----------------------------------------------------------------------*/
+int Wavefunction::compute(const lattice::Lattice& lattice, 
+  const input::Parameters& inputs, const bool& psi_gradient)
 {
-  // Gradient of amplitudes wrt the variational parameters 
-  // by numerical differentiation (central defference formula)
-  unsigned num_parm = mf_model_.varparms().size();
-  psiup_grad_.resize(num_parm);
-  work_mat.resize(num_sites_,num_sites_);
-  //double scale = 0.005;
-  unsigned i = 0;
-  for (const auto& p : mf_model_.varparms()) {
-    psiup_grad_[i].resize(num_sites_,num_sites_);
-    //double h = scale * (p.ubound()-p.lbound());
-    double h = p.diff_h();
-    double inv_2h = 0.5/h;
-    double x = pvector[start_pos+i];
-    mf_model_.update_parameter(p.name(), x+h);
-    compute_amplitudes(psiup_grad_[i], lattice);
-    mf_model_.update_parameter(p.name(), x-h);
-    compute_amplitudes(work_mat, lattice);
-    // model to original state
-    mf_model_.update_parameter(p.name(), x);
-    // derivative
-    psiup_grad_[i] -= work_mat;
-    psiup_grad_[i] *= inv_2h;
-    ++i;
-  }
+  groundstate_->update(inputs);
+  compute_amplitudes(psi_gradient);
   return 0;
 }
-int Wavefunction::compute_amplitudes(Matrix& psi_mat, const lattice::Lattice& lattice)
+
+int Wavefunction::compute(const lattice::Lattice& lattice, const var::parm_vector& pvector,
+  const unsigned& start_pos, const bool& psi_gradient)
 {
-  switch (type_) {
-    case wf_type::bcs_oneband: 
-      bcs_oneband(); 
-      pair_amplitudes(lattice, psi_mat);
-      break;
-    case wf_type::bcs_multiband: 
-      bcs_multiband(); 
-      pair_amplitudes(lattice, psi_mat);
-      break;
-    case wf_type::bcs_disordered: 
-      bcs_disordered(lattice); 
-      pair_amplitudes(lattice, psi_mat);
-      break;
-    case wf_type::normal: 
-      fermisea(); 
-      fermisea_amplitudes(lattice); 
-      break;
-  }
+  groundstate_->update(pvector,start_pos);
+  compute_amplitudes(psi_gradient);
   return 0;
 }
-void Wavefunction::pair_amplitudes(const lattice::Lattice& lattice, Matrix& psi_mat)
+
+// recompute for change in lattice BC 
+int Wavefunction::recompute(const lattice::Lattice& lattice)
 {
-  double one_by_nk = 1.0/static_cast<double>(num_kpoints_);
-  for (unsigned i=0; i<num_sites_; ++i) {
-    //unsigned m = lattice.site_uid(i);
-    unsigned m = blochbasis_.representative_state_idx(i);
-    auto Ri = lattice.site_cellcord(i);
-    for (unsigned j=0; j<num_sites_; ++j) {
-      //unsigned n = lattice.site_uid(j);
-      unsigned n = blochbasis_.representative_state_idx(j);
-      auto Rj = lattice.site_cellcord(j);
-      std::complex<double> ksum(0.0);
-      for (unsigned k=0; k<num_kpoints_; ++k) {
-        Vector3d kvec = blochbasis_.kvector(k);
-        ksum += cphi_k[k](m,n) * std::exp(ii()*kvec.dot(Ri-Rj));
+  //std::cout << "recomputing\n"; 
+  groundstate_->update(lattice);
+  compute_amplitudes();
+  /*
+  std::cout << "Wavefunction::recompute\n";
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      if (std::abs(psiup_(i,j).imag())>1.0E-6) {
+        std::cout << "wf["<<i<<","<<j<<"] = "<<std::imag(psiup_(i,j))<<"\n";
       }
-      psi_mat(i,j) = ampl_part(ksum) * one_by_nk;
-      //std::cout << psiup_(i,j) << "\n"; 
-      //getchar();
+    }
+  }
+  */
+  return 0;
+}
+
+int Wavefunction::compute_amplitudes(const bool& psi_gradient)
+{
+  int num_upspins = groundstate_->num_upspins();
+  int num_dnspins = groundstate_->num_dnspins();
+  single_determinant_ = (num_upspins==num_dnspins);
+
+  if (single_determinant_) {
+    psiup_.resize(num_sites_,num_sites_);
+    groundstate_->get_wf_amplitudes(psiup_);
+    if (psi_gradient) {
+      psiup_grad_.resize(varparms().size());
+      for (int i=0; i<varparms().size(); ++i) {
+        psiup_grad_[i].resize(num_sites_,num_sites_);
+      }
+      groundstate_->get_wf_gradient(psiup_grad_);
+      have_gradient_ = true;
+    }
+    else {
+      have_gradient_ = false;
+    }
+  }
+  // product of UP and DN determinants
+  else {
+    psiup_.resize(num_sites_,num_upspins);
+    psidn_.resize(num_dnspins,num_sites_);
+    groundstate_->get_wf_amplitudes(psiup_, psidn_);
+    if (psi_gradient) {
+      psiup_grad_.resize(varparms().size());
+      psidn_grad_.resize(varparms().size());
+      for (int i=0; i<varparms().size(); ++i) {
+        psiup_grad_[i].resize(num_sites_,num_upspins);
+        psidn_grad_[i].resize(num_dnspins,num_sites_);
+      }
+      groundstate_->get_wf_gradient(psiup_grad_,psidn_grad_);
+      have_gradient_ = true;
+    }
+    else {
+      have_gradient_ = false;
+    }
+  }
+  /*
+  std::cout << "Wavefunction::compute\n";
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      if (std::abs(psiup_(i,j).imag())>1.0E-6) {
+        std::cout << "psi["<<i<<","<<j<<"] = "<<std::imag(psiup_(i,j))<<"\n";
+      }
+    }
+  }
+  */
+  return 0;
+}
+
+/*---------------------------------------------------------------------
+*  Provides amplitude in SINGLE DETERMINANT case
+*----------------------------------------------------------------------*/
+void Wavefunction::get_amplitudes(Matrix& psi, const std::vector<int>& row, 
+  const std::vector<int>& col) const
+{
+  // full matrix
+  for (int i=0; i<row.size(); ++i) {
+    for (int j=0; j<col.size(); ++j) {
+      psi(i,j) = psiup_(row[i],col[j]);
     }
   }
 }
-*/
 
+void Wavefunction::get_amplitudes(ColVector& psi_vec, const int& irow,  
+    const std::vector<int>& col) const
+{
+  // ampl vector corresponding to a fixed 'upspin' position
+  for (int j=0; j<col.size(); ++j) {
+    psi_vec[j] = psiup_(irow,col[j]);
+  }
+}
+
+void Wavefunction::get_amplitudes(RowVector& psi_vec, const std::vector<int>& row,
+    const int& icol) const
+{
+  // ampl vector corresponding to a fixed 'dnspin' position
+  for (int j=0; j<row.size(); ++j) {
+    psi_vec[j] = psiup_(row[j],icol);
+  }
+}
+
+void Wavefunction::get_amplitudes(amplitude_t& elem, const int& irow, 
+  const int& jcol) const
+{
+  // single element corresponding to a fixed 'dnspin' & 'dnspin' position
+  elem = psiup_(irow,jcol);
+}
+
+void Wavefunction::get_gradients(Matrix& psi_grad, const int& n, 
+  const std::vector<int>& row, const std::vector<int>& col) const
+{
+  // derivative matrix
+  if (!have_gradient_) {
+    throw std::logic_error("Wavefunction::get_gradients: gradients were not computed");
+  }
+  for (int i=0; i<row.size(); ++i) {
+    for (int j=0; j<col.size(); ++j) {
+      psi_grad(i,j) = psiup_grad_[n](row[i],col[j]);
+    }
+  }
+}
+
+/*---------------------------------------------------------------------
+*  Provides amplitude in PRODUCT DETERMINANT case
+*----------------------------------------------------------------------*/
+void Wavefunction::get_amplitudes(Matrix& psiup, Matrix& psidn, const std::vector<int>& row,  
+    const std::vector<int>& col) const
+{
+  // full matrix corresponding all 'upspin' positions
+  for (int i=0; i<row.size(); ++i) {
+    psiup.row(i) = psiup_.row(row[i]);
+  }
+  // full matrix corresponding all 'dnspin' positions
+  for (int j=0; j<col.size(); ++j) {
+    psidn.col(j) = psidn_.col(col[j]);
+  }
+}
+
+void Wavefunction::get_amplitudes(ColVector& psiup_vec, const int& irow) const
+{
+  // amplitude vector corresponding to the given 'upspin' position
+  psiup_vec = psiup_.row(irow);
+}
+
+void Wavefunction::get_amplitudes(RowVector& psidn_vec, const int& icol) const
+{
+  // amplitude vector corresponding to the given 'dnspin' position
+  psidn_vec = psidn_.col(icol);
+}
+
+void Wavefunction::get_gradients(Matrix& psiup_grad, Matrix& psidn_grad, 
+  const int& n, const std::vector<int>& row, const std::vector<int>& col) const
+{
+  // derivative matrix
+  if (!have_gradient_) {
+    throw std::logic_error("Wavefunction::get_gradients: gradients were not computed");
+  }
+  for (int i=0; i<row.size(); ++i) {
+    psiup_grad.row(i) = psiup_grad_[n].row(row[i]);
+  }
+  for (int j=0; j<col.size(); ++j) {
+    psidn_grad.col(j) = psidn_grad_[n].col(col[j]);
+  }
+}
 
 
 } // end namespace var

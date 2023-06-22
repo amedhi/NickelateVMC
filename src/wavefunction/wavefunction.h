@@ -65,37 +65,25 @@ public:
   void get_amplitudes(amplitude_t& elem, const int& irow, const int& jcol) const;
   void get_gradients(Matrix& psi_grad, const int& n, 
     const std::vector<int>& row, const std::vector<int>& col) const;
+  void get_amplitudes(Matrix& psiup, Matrix& psidn, const std::vector<int>& row,  
+    const std::vector<int>& col) const;
+  void get_amplitudes(ColVector& psiup_vec, const int& irow) const;
+  void get_amplitudes(RowVector& psi_vec, const int& icol) const;
+  void get_gradients(Matrix& psiup_grad, Matrix& psidn_grad, 
+    const int& n, const std::vector<int>& row, const std::vector<int>& col) const;
 private:
+  bool pairwf_{true};
+  bool single_determinant_{true};
+  bool have_gradient_{false};
   std::unique_ptr<GroundState> groundstate_;
-  //wf_descriptor wf_;
   std::string name_;
-  //bool pairing_type_{false};
-  //wf_type type_;
-  unsigned num_sites_;
-  // BCS_state bcs_state_;
-  // FS_state fermisea_;
+  int num_sites_;
   Matrix psiup_;
   Matrix psidn_;
-
   std::vector<Matrix> psiup_grad_;
   std::vector<Matrix> psidn_grad_;
-  bool single_determinant_{true};
-  bool pairwf_{true};
-  bool have_gradient_{false};
 
-  // The great trick of accessing the wf matrix using pointers
-#ifdef REAL_WAVEFUNCTION
-  double* p_psiup_;
-  double* p_psidn_;
-  std::vector<double *> p_psiup_grad_;
-  std::vector<double *> p_psidn_grad_;
-#else
-  std::complex<double>* p_psiup_;
-  std::complex<double>* p_psidn_;
-  std::vector<std::complex<double>*> p_psiup_grad_;
-  std::vector<std::complex<double>*> p_psidn_grad_;
-#endif
-  // matrices & solvers
+  int compute_amplitudes(const bool& psi_gradient=false);
 };
 
 
