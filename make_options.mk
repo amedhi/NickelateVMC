@@ -18,7 +18,7 @@ else
 endif
 
 #-------------------------------------------------------------
-#WAVEFUNC=REAL
+WAVEFUNC=REAL
 ifeq ($(WAVEFUNC), REAL)
   CPPFLAGS += -DREAL_WAVEFUNCTION #-DEIGEN_NO_DEBUG 
 else

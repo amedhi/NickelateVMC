@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-22 17:17:31
+* @Last Modified time: 2023-06-22 22:55:20
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -169,8 +169,9 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
       // variational parameters
       defval = mf_model_.get_parameter_value("dAF");
       varparms_.add("dAF", defval,lb=0.0,ub=+5.0,dh=0.1);
-      defval = mf_model_.get_parameter_value("dFM");
-      varparms_.add("dFM", defval,lb=0.0,ub=+5.0,dh=0.1);
+      // making 'dFM' not possible in this scheme
+      //defval = mf_model_.get_parameter_value("dFM");
+      //varparms_.add("dFM", defval,lb=0.0,ub=+5.0,dh=0.1);
 
       // chemical potential
       mu_variational_ = mu_default; // for this model
