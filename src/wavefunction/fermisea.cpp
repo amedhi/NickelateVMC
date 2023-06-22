@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-21 22:41:44
+* @Last Modified time: 2023-06-22 17:17:31
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -373,16 +373,6 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
   return 0;
 }
 
-
-void Fermisea::update(const lattice::Lattice& lattice)
-{
-  // update for change in lattice BC (same structure & size)
-  // bloch basis
-  blochbasis_.construct(lattice);
-  // FT matrix for transformation from 'site basis' to k-basis
-  set_ft_matrix(lattice);
-}
-
 std::string Fermisea::info_str(void) const
 {
   std::ostringstream info;
@@ -393,6 +383,16 @@ std::string Fermisea::info_str(void) const
   info << " (Nup = "<<num_upspins()<<", Ndn="<<num_dnspins()<<")\n";
   info.precision(6);
   return info.str();
+}
+
+void Fermisea::update(const lattice::Lattice& lattice)
+{
+  // update for change in lattice BC (same structure & size)
+  // bloch basis
+  blochbasis_.construct(lattice);
+  // FT matrix for transformation from 'site basis' to k-basis
+  set_ft_matrix(lattice);
+  construct_groundstate();
 }
 
 void Fermisea::update(const input::Parameters& inputs)
@@ -411,6 +411,17 @@ void Fermisea::update(const input::Parameters& inputs)
 
 void Fermisea::update(const var::parm_vector& pvector, const unsigned& start_pos)
 {
+  // update from variational parameters
+  int i = 0;
+  for (auto& p : varparms_) {
+    auto x = pvector[start_pos+i];
+    p.change_value(x);
+    mf_model_.update_parameter(p.name(), x);
+    //std::cout << p.name() << " = " << x << "\n";
+    ++i;
+  }
+  mf_model_.update_terms();
+  construct_groundstate();
 }
 
 void Fermisea::get_wf_amplitudes(Matrix& psi) 
