@@ -16,7 +16,41 @@
 
 namespace var {
 
-class MF_Order 
+// Descriptor for measurement of SC correlation 
+class CorrelationPairs
+{
+public:
+  enum class corr_t {bond_singlet, site_singlet, null};
+  CorrelationPairs() {}
+ ~CorrelationPairs() {}
+  void set_correlation_type(const corr_t& ctype) 
+  { 
+    clear_correlation_pairs();
+    corr_type_ = ctype; 
+  }
+  void clear_correlation_pairs(void) { direction_bond_.clear(); corr_pairs_.clear(); }
+  void add_correlation_sites(const int& direction_bond)
+  {
+    direction_bond_.push_back(direction_bond);
+    corr_pairs_.push_back({-1,-1});
+  }
+  void add_correlation_bonds(const int& direction_bond, const std::pair<int,int>& bond_types)
+  {
+    direction_bond_.push_back(direction_bond);
+    corr_pairs_.push_back(bond_types);
+  }
+  const corr_t& correlation_type(void) const { return corr_type_; }
+  int num_correlation_pairs(void) const { return direction_bond_.size(); }
+  const int& direction_bond(const int& i) const { return direction_bond_[i]; }
+  const std::pair<int,int>& correlation_pair(const int& i) const { return corr_pairs_[i]; }
+  const std::vector<std::pair<int,int>>& correlation_pairs(void) const { return corr_pairs_; }
+private:
+  corr_t corr_type_{corr_t::bond_singlet};
+  std::vector<int> direction_bond_;
+  std::vector<std::pair<int,int>> corr_pairs_;
+};
+
+class MF_Order : public CorrelationPairs 
 {
 public:
   enum class order_t {SC, AF, AFSC, CDW, null};

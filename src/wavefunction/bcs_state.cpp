@@ -51,7 +51,8 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   using namespace model;
   model::CouplingConstant cc;
 
-  // SC form
+  // SC pair correlation specs
+  CorrelationPairs correlation_pairs_;
   correlation_pairs().clear();
   const std::pair<int,int> anypair{-1,-1};
   using order_t = MF_Order::order_t;
@@ -71,21 +72,25 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     if (order()==order_t::SC && pair_symm()==pairing_t::SWAVE) {
       order_name_ = "SC-SWAVE";
       mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
-      correlation_pairs().push_back(anypair);
+
+      set_correlation_type(CorrelationPairs::corr_t::site_singlet);
+      add_correlation_bonds(0, {0,0});
     }
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
       order_name_ = "SC-DWAVE";
       cc = CouplingConstant({0, "delta_sc"}, {1, "-delta_sc"});
       mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({0,1});
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {0,1});
     }
     else if (order()==order_t::SC && pair_symm()==pairing_t::EXTENDED_S) {
       order_name_ = "SC-Extended_S";
       cc = CouplingConstant({0, "delta_sc"}, {1, "delta_sc"});
       mf_model_.add_bondterm(name="pairing", cc, op::pair_create());
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({0,1});
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {0,1});
     }
     else {
       throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
@@ -200,12 +205,15 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       else {
         throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
       }
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({0,1});
-      correlation_pairs().push_back({2,2});
-      correlation_pairs().push_back({2,3});
-      correlation_pairs().push_back({4,4});
-      correlation_pairs().push_back({4,5});
+
+      // correlation function specs 
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {0,1});
+      add_correlation_bonds(8, {2,2});
+      add_correlation_bonds(8, {2,3});
+      add_correlation_bonds(13, {4,4});
+      add_correlation_bonds(13, {4,5});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("dSC");
@@ -277,8 +285,15 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       else {
         throw std::range_error("BCS_State::BCS_State: state undefined for the lattice");
       }
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({0,1});
+
+      // correlation function specs 
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {0,1});
+      add_correlation_bonds(8, {2,2});
+      add_correlation_bonds(8, {2,3});
+      add_correlation_bonds(13, {4,4});
+      add_correlation_bonds(13, {4,5});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("delta_sc");
@@ -418,8 +433,10 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       // pairing term
       mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
 
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({1,1});
+      // correlation function specs 
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {1,1});
 
       // variational parameters
       defval = mf_model_.get_parameter_value("dSC_x");
@@ -461,9 +478,10 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     defval = mf_model_.get_parameter_value("theta2");
     varparms_.add("theta2", defval, lb=0.0, ub=two_pi(), dh=0.2);
 
-    correlation_pairs().push_back({0,0});
-    correlation_pairs().push_back({1,1});
-    correlation_pairs().push_back({2,2});
+    // correlation function specs 
+    set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+    add_correlation_bonds(0, {0,0});
+    add_correlation_bonds(0, {1,1});
   }
 
 //---------------------------------------------------------------------------
@@ -506,9 +524,15 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.add_type(1, "delta_R");
       //cc.add_type(1, "0");
       mf_model_.add_siteterm(name="singlet", cc, op::pair_create());
+      /*
       correlation_pairs().push_back({0,0});
       correlation_pairs().push_back({1,1});
       correlation_pairs().push_back({0,1});
+      */
+      set_correlation_type(CorrelationPairs::corr_t::site_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {1,1});
+      add_correlation_bonds(0, {0,1});
     }
 
     else if (order()==order_t::SC && pair_symm()==pairing_t::DWAVE) {
@@ -522,10 +546,13 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.add_type(5, "0");
       cc.add_type(6, "0");
       mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
-      correlation_pairs().push_back({0,0});
-      correlation_pairs().push_back({0,1});
-      correlation_pairs().push_back({3,3});
-      correlation_pairs().push_back({3,4});
+
+      // correlation function specs 
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(0, {0,1});
+      add_correlation_bonds(0, {3,3});
+      add_correlation_bonds(0, {3,4});
     }
 
     else {

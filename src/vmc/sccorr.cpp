@@ -14,65 +14,141 @@ namespace vmc {
 void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order& mf_order,
   const int& sample_size)
 {
-  // SC pairing symmetry
-  switch (mf_order.pair_symm()) {
-    case var::MF_Order::pairing_t::SWAVE: 
+  /*---------------------------------------------------------------------
+  * Set up details of correlation function to be computed
+  *----------------------------------------------------------------------*/
+  switch (mf_order.correlation_type()) {
+    case var::CorrelationPairs::corr_t::bond_singlet: 
+      bondsinglet_corr_ = true; break;
+    case var::CorrelationPairs::corr_t::site_singlet: 
       bondsinglet_corr_ = false; break;
-    case var::MF_Order::pairing_t::DWAVE: 
-      bondsinglet_corr_ = true; break;
-    case var::MF_Order::pairing_t::DXY: 
-      bondsinglet_corr_ = true; break;
-    case var::MF_Order::pairing_t::EXTENDED_S: 
-      bondsinglet_corr_ = true; break;
-    case var::MF_Order::pairing_t::null: 
-      bondsinglet_corr_ = true; break;
     default:
-      throw std::range_error("SC_Correlation::setup: not defined for the pairing symmetry");
+      throw std::range_error("SC_Correlation::setup: unknown correlation type");
   }
 
-  // pairs of 'site/bond type' values, for which correlations are computed
+  /*---------------------------------------------------------------------
+  * Store 'direction' along which correlations are to be computed.
+  *----------------------------------------------------------------------*/
+  num_sites_ = lattice.num_sites();
   corr_pairs_ = mf_order.correlation_pairs();
-  assert(corr_pairs_.size()>0);
-  anypair_corr_ = false;
-  if (corr_pairs_.size()==1) {
-    if (corr_pairs_[0].first==-1 || corr_pairs_[0].second==-1) {
-      anypair_corr_ = true;
+  num_correlation_pairs_ = corr_pairs_.size();
+  // pick up the unique 'directions'
+  direction_bonds_.clear();
+  direction_id_.clear();
+  if (num_correlation_pairs_>0) {
+    direction_bonds_.push_back(mf_order.direction_bond(0));
+    direction_id_.push_back(0);
+    for (int i=1; i<num_correlation_pairs_; ++i) {
+      int id = mf_order.direction_bond(i);
+      if (id != direction_bonds_.back()) {
+        direction_bonds_.push_back(id);
+      }
+      direction_id_.push_back(direction_bonds_.size()-1);
     }
   }
+  /*---------------------------------------------------------------------
+  * For each 'direction bond', find all 'pairs of sites' & the 
+  * 'distance' between them, so that the lines joing the sites are parallel 
+  * to the 'direction bond'. Site pairs connected by 'boundary crossing' 
+  * bonds are excluded.
+  *----------------------------------------------------------------------*/
+  int num_dirs = direction_bonds_.size();
+  direction_mat_.resize(num_dirs);
+  for (int n=0; n<num_dirs; ++n) {
+    //std::cout<<"direction - "<<n<<":\n";
+    int id = direction_bonds_[n];
+    int btype = lattice.bond(id).type();
+    int s = lattice.bond(id).src_id();
+    int t = lattice.bond(id).tgt_id();
+    Vector3d dirvec = lattice.site(t).coord()-lattice.site(s).coord();
+    double norm = dirvec.norm();
 
-  // min distance 
+    // First mark 'site pairs' connected by all symmtric bonds (d=1). 
+    direction_mat_[n].resize(num_sites_, num_sites_);
+    direction_mat_[n].setZero();
+    for (const auto& b : lattice.bonds()) {
+      int s = b.src_id();
+      int t = b.tgt_id();
+      Vector3d vec = lattice.site(t).coord()-lattice.site(s).coord();
+      // 'x' should be close to 0 for parallel vectors
+      double x = std::abs(dirvec.dot(vec)/(norm*vec.norm())-1.0);
+      if (b.type()==btype && x<1.0E-6) {
+        // exclud boundary crossing bonds
+        if (b.sign()>0) { 
+          direction_mat_[n](s,t) = 1;
+        }
+      }
+    }
+    /*---------------------------------------------------------------------
+    * Next, for each site, mark all far neighbour sites conected by
+    * intermedite sites. Also store the distances.
+    *---------------------------------------------------------------------*/
+    for (int i=0; i<num_sites_; ++i) {
+      int d = 0;
+      int s = i;
+      for (int j=0; j<num_sites_; ++j) {
+        if (direction_mat_[n](s,j)>0) {
+          d += 1;
+          direction_mat_[n](i,j) = d; 
+          s = j;
+        }
+      }
+    }
+    /*---------------------------------------------------------------------
+    * Some connections may get left out, because of indexing pattern of
+    * sites in case of multi-site unitcells. Complete those connections.
+    *---------------------------------------------------------------------*/
+    for (int i=0; i<num_sites_; ++i) {
+      for (int j=0; j<num_sites_; ++j) {
+        if (direction_mat_[n](i,j)>0) {
+          for (int k=0; k<num_sites_; ++k) {
+            if (direction_mat_[n](j,k)>0 && direction_mat_[n](i,k)==0) {
+              direction_mat_[n](i,k) = direction_mat_[n](i,j)+direction_mat_[n](j,k);
+            }
+          }
+        }
+      }
+    }
+  } // all dirs
+
+  // set maximum & minimim distance
   min_dist_ = bondsinglet_corr_? 2 : 1;
-
-  // max distance (catch sites along a1)
-  Vector3d R = lattice.size1() * lattice.vector_a1();
-  max_dist_ = std::nearbyint(R.norm());
-  max_dist_ = max_dist_/2;
-  //std::cout << "max_dist = "<<max_dist_<<"\n";
-  sitepair_list_.resize(max_dist_+1);
-
-  for (int i=0; i<lattice.num_sites(); ++i) {
-    Vector3i n1 = lattice.site(i).bravindex();
-    Vector3d r1 = lattice.site(i).coord();
-    for (int j=i; j<lattice.num_sites(); ++j) {
-      Vector3i n2 = lattice.site(j).bravindex();
-      // pick-up pairs of sites in unit cells along '+x'
-      if (n1(1)!=n2(1) || n1(2)!=n2(2)) break;
-
-      //  pairs of sites should lie in straight line along '+x'
-      Vector3d R = r1-lattice.site(j).coord();
-      if (std::abs(R(1))>1.0E-6 or std::abs(R(2))>1.0E-6) continue;
-
-      // select pairs at ditance <= max_dist_
-      int d = std::nearbyint(std::abs(R(0)));
-      if (d > max_dist_) continue;
-      sitepair_list_.pairs_at_dist(d).push_back({i,j});
-      //std::cout<<i<<" -- "<<j<<" = "<<d<<"\n"; //getchar();
+  max_dist_ = min_dist_;
+  if (num_correlation_pairs_>0) {
+    max_dist_ = direction_mat_[0].maxCoeff();
+    if (max_dist_%2 == 0) max_dist_ /= 2;
+    else max_dist_ = max_dist_/2+1;
+    for (auto& mat : direction_mat_) {
+      for (int i=0; i<num_sites_; ++i) {
+        for (int j=0; j<num_sites_; ++j) {
+          if (mat(i,j)<min_dist_) mat(i,j) = 0;
+          if (mat(i,j)>max_dist_) mat(i,j) = 0;
+        }
+      }
     }
   }
+
+  // check
+  /*
+  int n = 0;
+  for (int i=0; i<num_sites_; ++i) {
+    for (int j=0; j<num_sites_; ++j) {
+      if (direction_mat_[n](i,j)>0) {
+        std::cout<<i<<"-"<<j<<"  : "<<direction_mat_[n](i,j)<<"\n";
+      }
+    }
+    getchar();
+  }
+  std::cout << "\n\n";
+  */
+  /*-----------------------main setup done-------------------------*/
+
+  //std::cout << connections << "\n";
+  std::cout << "Exiting at SC_Correlation::setup\n"; exit(0);
 
   // allocate storages
-  corr_data_.resize(max_dist_+1, corr_pairs_.size());
-  count_.resize(max_dist_+1, corr_pairs_.size());
+  corr_data_.resize(max_dist_+1, num_correlation_pairs_);
+  count_.resize(max_dist_+1, num_correlation_pairs_);
 
   std::vector<std::string> elem_names;
   for (const auto& p : corr_pairs_)
@@ -135,53 +211,40 @@ void SC_Correlation::measure_bondsinglet_corr(const lattice::Lattice& lattice,
   count_.setZero();
   double ampl;
   int fr_site_i, fr_site_ia, to_site_j, to_site_jb;
-  for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
-      // pairs of two sites
-      fr_site_i  = p.first;
-      to_site_j = p.second;
 
-      for (const auto& id1 : lattice.site(p.first).outbond_ids()) {
-        // skip boundary crossing bonds
-        if (lattice.bond(id1).sign()<0) continue;
-
-        int t1 = lattice.bond(id1).type();
-        // check if SC pair defined for this bond 
-        bool sc_pair = false;
-        for (int m=0;  m<corr_pairs_.size(); ++m) {
-          if (t1==corr_pairs_[m].first || anypair_corr_) {
-            sc_pair = true; break;
-          }
-        }
-        if (!sc_pair) continue;
-        // bond-partner of first site
-        fr_site_ia = lattice.bond(id1).tgt_id();
-
-        // second bond
-        for (const auto& id2 : lattice.site(p.second).outbond_ids()) {
+  for (int n=0; n<num_correlation_pairs_; ++n) {
+    int dir = direction_id_[n];
+    for (int i=0; i<num_sites_; ++i) {
+      for (int j=0; j<num_sites_; ++j) {
+        int d = direction_mat_[dir](i,j);
+        if (d==0) continue;
+        fr_site_i  = i;
+        to_site_j = j;
+        // first bond
+        for (const auto& id1 : lattice.site(i).outbond_ids()) {
+          // check SC correlation not defined for this bond type
+          if (lattice.bond(id1).type() != corr_pairs_[n].first) continue;
           // skip boundary crossing bonds
-          if (lattice.bond(id2).sign()<0) continue;
+          if (lattice.bond(id1).sign()<0) continue;
+          // bond-partner of first site
+          fr_site_ia = lattice.bond(id1).tgt_id();
+          // second bond
+          for (const auto& id2 : lattice.site(j).outbond_ids()) {
+            // check SC correlation not defined for this bond type
+            if (lattice.bond(id2).type() != corr_pairs_[n].second) continue;
+            // skip boundary crossing bonds
+            if (lattice.bond(id2).sign()<0) continue;
+            // bond-partner of second site
+            to_site_jb = lattice.bond(id2).tgt_id();
 
-          int t2 = lattice.bond(id2).type();
-          // bond-partner of second site
-          to_site_jb = lattice.bond(id2).tgt_id();
-
-          // calculate bond-singlet hopping amplitude
-          for (int m=0;  m<corr_pairs_.size(); ++m) {
-            if ((t1==corr_pairs_[m].first && t2==corr_pairs_[m].second) || anypair_corr_) {
-              ampl = std::real(config.apply_bondsinglet_hop(fr_site_i,
+            // calculate bond-singlet hopping amplitude
+            ampl = std::real(config.apply_bondsinglet_hop(fr_site_i,
                   fr_site_ia, to_site_j, to_site_jb));
-              // Hermitian conjugate term
-              ampl += std::real(config.apply_bondsinglet_hop(to_site_j,
+            // Hermitian conjugate term
+            ampl += std::real(config.apply_bondsinglet_hop(to_site_j,
                   to_site_jb, fr_site_i, fr_site_ia));
-              corr_data_(d,m) += 0.5*ampl; // average of HC terms
-              count_(d,m) += 1;
-              //double term = std::real(config.apply_cdagc_up(i_cdag,j_c,1));
-              //corr_data_(d,m) += term;
-              //std::cout<<i_cdag<<"-"<<ia_cdag<<" x "<<j_c<<"-"<<ja_c<<"\n";
-              //std::cout << "d = "<<d << " term = "<<term << "\n";
-              //getchar();
-            }
+            corr_data_(d,n) += 0.5*ampl; // average of HC terms
+            count_(d,n) += 1;
           }
         }
       }
@@ -190,9 +253,9 @@ void SC_Correlation::measure_bondsinglet_corr(const lattice::Lattice& lattice,
 
   // average over different pairs
   for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (int m=0;  m<corr_pairs_.size(); ++m) {
-      if (count_(d,m) != 0) {
-        corr_data_(d,m) /= count_(d,m);
+    for (int n=0;  n<num_correlation_pairs_; ++n) {
+      if (count_(d,n) != 0) {
+        corr_data_(d,n) /= count_(d,n);
       }
     }
   }
@@ -208,19 +271,22 @@ void SC_Correlation::measure_sitesinglet_corr(const lattice::Lattice& lattice,
   count_.setZero();
   double ampl;
   int fr_site, to_site;
-  for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
-      fr_site  = p.first;
-      to_site  = p.second;
-      int t1 = lattice.site(fr_site).type();
-      int t2 = lattice.site(to_site).type();
-      for (int m=0;  m<corr_pairs_.size(); ++m) {
-        if (anypair_corr_ || (t1==corr_pairs_[m].first && t2==corr_pairs_[m].second)) {
+  for (int n=0; n<num_correlation_pairs_; ++n) {
+    int dir = direction_id_[n];
+    for (int i=0; i<num_sites_; ++i) {
+      for (int j=0; j<num_sites_; ++j) {
+        int d = direction_mat_[dir](i,j);
+        if (d==0) continue;
+        fr_site  = i;
+        to_site  = j;
+        int t1 = lattice.site(fr_site).type();
+        int t2 = lattice.site(to_site).type();
+        if (t1==corr_pairs_[n].first && t2==corr_pairs_[n].second) {
           ampl = std::real(config.apply_sitepair_hop(fr_site, to_site));
           // Hermitian conjugate term
           ampl += std::real(config.apply_sitepair_hop(to_site, fr_site));
-          corr_data_(d,m) += 0.5*ampl; // average of HC terms
-          count_(d,m) += 1;
+          corr_data_(d,n) += 0.5*ampl; // average of HC terms
+          count_(d,n) += 1;
         }
       }
     }
@@ -228,33 +294,12 @@ void SC_Correlation::measure_sitesinglet_corr(const lattice::Lattice& lattice,
 
   // average over different pairs
   for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (int m=0;  m<corr_pairs_.size(); ++m) {
-      if (count_(d,m) != 0) {
-        corr_data_(d,m) /= count_(d,m);
+    for (int n=0;  n<num_correlation_pairs_; ++n) {
+      if (count_(d,n) != 0) {
+        corr_data_(d,n) /= count_(d,n);
       }
     }
   }
-
-  /*
-  for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (int n=0; n<num_basis_sites_; ++n) {
-      for (const auto& p : symm_list_[n].pairs_at_dist(d)) {
-        i_cdag = p.first;
-        i_c = p.second;
-        //std::cout << "swave corr ["<<n<<"] : "<<i_cdag<<"--"<<i_c<<"\n"; getchar();
-        double term = std::real(config.apply_sitepair_hop(i_cdag,i_c));
-        //corr_data_(d,n) += term;
-        term += std::real(config.apply_sitepair_hop(i_c,i_cdag));
-        corr_data_(d,n) += 0.5 * term;
-      }
-    }
-  }
-  for (int d=min_dist_; d<=max_dist_; ++d) {
-    for (int n=0; n<num_basis_sites_; ++n) {
-      corr_data_(d,n) /= symm_list_[n].pairs_at_dist(d).size();
-    }
-  }
-  */
 
   // reshape add to databin
   *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
@@ -408,6 +453,199 @@ void SC_Correlation::print_result(const std::vector<double>& xvals)
   fs_ << std::flush;
   close_file();
 }
+
+
+//----------------------------------------------------------------------------------
+#ifdef OLD_VERSION
+void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order& mf_order,
+  const int& sample_size)
+{
+  // SC pairing symmetry
+  switch (mf_order.pair_symm()) {
+    case var::MF_Order::pairing_t::SWAVE: 
+      bondsinglet_corr_ = false; break;
+    case var::MF_Order::pairing_t::DWAVE: 
+      bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::DXY: 
+      bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::EXTENDED_S: 
+      bondsinglet_corr_ = true; break;
+    case var::MF_Order::pairing_t::null: 
+      bondsinglet_corr_ = true; break;
+    default:
+      throw std::range_error("SC_Correlation::setup: not defined for the pairing symmetry");
+  }
+
+  // pairs of 'site/bond type' values, for which correlations are computed
+  corr_pairs_ = mf_order.correlation_pairs();
+  assert(corr_pairs_.size()>0);
+  anypair_corr_ = false;
+  if (corr_pairs_.size()==1) {
+    if (corr_pairs_[0].first==-1 || corr_pairs_[0].second==-1) {
+      anypair_corr_ = true;
+    }
+  }
+
+  // min distance 
+  min_dist_ = bondsinglet_corr_? 2 : 1;
+
+  // max distance (catch sites along a1)
+  Vector3d R = lattice.size1() * lattice.vector_a1();
+  max_dist_ = std::nearbyint(R.norm());
+  max_dist_ = max_dist_/2;
+  //std::cout << "max_dist = "<<max_dist_<<"\n";
+  sitepair_list_.resize(max_dist_+1);
+
+  for (int i=0; i<lattice.num_sites(); ++i) {
+    Vector3i n1 = lattice.site(i).bravindex();
+    Vector3d r1 = lattice.site(i).coord();
+    for (int j=i; j<lattice.num_sites(); ++j) {
+      Vector3i n2 = lattice.site(j).bravindex();
+      // pick-up pairs of sites in unit cells along '+x'
+      if (n1(1)!=n2(1) || n1(2)!=n2(2)) break;
+
+      //  pairs of sites should lie in straight line along '+x'
+      Vector3d R = r1-lattice.site(j).coord();
+      if (std::abs(R(1))>1.0E-6 or std::abs(R(2))>1.0E-6) continue;
+
+      // select pairs at ditance <= max_dist_
+      int d = std::nearbyint(std::abs(R(0)));
+      if (d > max_dist_) continue;
+      sitepair_list_.pairs_at_dist(d).push_back({i,j});
+      //std::cout<<i<<" -- "<<j<<" = "<<d<<"\n"; //getchar();
+    }
+  }
+
+  // allocate storages
+  corr_data_.resize(max_dist_+1, corr_pairs_.size());
+  count_.resize(max_dist_+1, corr_pairs_.size());
+
+  std::vector<std::string> elem_names;
+  for (const auto& p : corr_pairs_)
+    elem_names.push_back(std::to_string(p.first)+"-"+std::to_string(p.second));
+  this->resize(corr_data_.size(), elem_names);
+
+  // for measuring 'ODLRO' from batch avg
+  assert(sample_size>=0);
+  batch_size_ = std::min(sample_size,5000);
+  bool no_error_bar = true;
+  infd_corr_.init("infd_corr",corr_pairs_.size(),no_error_bar);
+  odlro_.init("odlro",corr_pairs_.size());
+  config_value_.resize(corr_pairs_.size());
+}
+
+void SC_Correlation::measure_bondsinglet_corr(const lattice::Lattice& lattice, 
+  const model::Hamiltonian& model, const SysConfig& config)
+{
+  corr_data_.setZero();
+  count_.setZero();
+  double ampl;
+  int fr_site_i, fr_site_ia, to_site_j, to_site_jb;
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
+      // pairs of two sites
+      fr_site_i  = p.first;
+      to_site_j = p.second;
+
+      for (const auto& id1 : lattice.site(p.first).outbond_ids()) {
+        // skip boundary crossing bonds
+        if (lattice.bond(id1).sign()<0) continue;
+
+        int t1 = lattice.bond(id1).type();
+        // check if SC pair defined for this bond 
+        bool sc_pair = false;
+        for (int m=0;  m<corr_pairs_.size(); ++m) {
+          if (t1==corr_pairs_[m].first || anypair_corr_) {
+            sc_pair = true; break;
+          }
+        }
+        if (!sc_pair) continue;
+        // bond-partner of first site
+        fr_site_ia = lattice.bond(id1).tgt_id();
+
+        // second bond
+        for (const auto& id2 : lattice.site(p.second).outbond_ids()) {
+          // skip boundary crossing bonds
+          if (lattice.bond(id2).sign()<0) continue;
+
+          int t2 = lattice.bond(id2).type();
+          // bond-partner of second site
+          to_site_jb = lattice.bond(id2).tgt_id();
+
+          // calculate bond-singlet hopping amplitude
+          for (int m=0;  m<corr_pairs_.size(); ++m) {
+            if ((t1==corr_pairs_[m].first && t2==corr_pairs_[m].second) || anypair_corr_) {
+              ampl = std::real(config.apply_bondsinglet_hop(fr_site_i,
+                  fr_site_ia, to_site_j, to_site_jb));
+              // Hermitian conjugate term
+              ampl += std::real(config.apply_bondsinglet_hop(to_site_j,
+                  to_site_jb, fr_site_i, fr_site_ia));
+              corr_data_(d,m) += 0.5*ampl; // average of HC terms
+              count_(d,m) += 1;
+              //double term = std::real(config.apply_cdagc_up(i_cdag,j_c,1));
+              //corr_data_(d,m) += term;
+              //std::cout<<i_cdag<<"-"<<ia_cdag<<" x "<<j_c<<"-"<<ja_c<<"\n";
+              //std::cout << "d = "<<d << " term = "<<term << "\n";
+              //getchar();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // average over different pairs
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (int m=0;  m<corr_pairs_.size(); ++m) {
+      if (count_(d,m) != 0) {
+        corr_data_(d,m) /= count_(d,m);
+      }
+    }
+  }
+
+  // reshape add to databin
+  *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
+}
+
+void SC_Correlation::measure_sitesinglet_corr(const lattice::Lattice& lattice, 
+  const model::Hamiltonian& model, const SysConfig& config)
+{
+  corr_data_.setZero();
+  count_.setZero();
+  double ampl;
+  int fr_site, to_site;
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (const auto& p : sitepair_list_.pairs_at_dist(d)) {
+      fr_site  = p.first;
+      to_site  = p.second;
+      int t1 = lattice.site(fr_site).type();
+      int t2 = lattice.site(to_site).type();
+      for (int m=0;  m<corr_pairs_.size(); ++m) {
+        if (anypair_corr_ || (t1==corr_pairs_[m].first && t2==corr_pairs_[m].second)) {
+          ampl = std::real(config.apply_sitepair_hop(fr_site, to_site));
+          // Hermitian conjugate term
+          ampl += std::real(config.apply_sitepair_hop(to_site, fr_site));
+          corr_data_(d,m) += 0.5*ampl; // average of HC terms
+          count_(d,m) += 1;
+        }
+      }
+    }
+  }
+
+  // average over different pairs
+  for (int d=min_dist_; d<=max_dist_; ++d) {
+    for (int m=0;  m<corr_pairs_.size(); ++m) {
+      if (count_(d,m) != 0) {
+        corr_data_(d,m) /= count_(d,m);
+      }
+    }
+  }
+
+  // reshape add to databin
+  *this << Eigen::Map<mcdata::data_t>(corr_data_.data(), corr_data_.size());
+}
+#endif
+//----------------------------------------------------------------------------------
 
 } // end namespace vmc
 

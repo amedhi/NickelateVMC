@@ -55,19 +55,25 @@ public:
   void print_result(const std::vector<double>& xvals) override; 
 private:
   bool bondsinglet_corr_{true};
-  bool anypair_corr_{false};
-  //int num_basis_sites_{1};
-  //int num_site_types_{1};
+  int num_sites_{0};
   int min_dist_{0};
   int max_dist_{0};
+  int num_correlation_pairs_{0};
+  std::vector<std::pair<int,int>> corr_pairs_;
+  std::vector<int> direction_bonds_;
+  std::vector<int> direction_id_;
+  std::vector<IntMatrix> direction_mat_;
+  Eigen::MatrixXd corr_data_;
+  Eigen::MatrixXi count_;
+
+  /*
+  bool anypair_corr_{false};
   symmetry_site_pairs sitepair_list_;
   symmetry_site_pairs symm1_pairs_;
   symmetry_site_pairs symm2_pairs_;
   std::vector<symmetry_site_pairs> symm_list_;
+  */
 
-  std::vector<std::pair<int,int>> corr_pairs_;
-  Eigen::MatrixXd corr_data_;
-  Eigen::MatrixXi count_;
   // for ODLRO
   int batch_size_{5000};
   mcdata::MC_Observable infd_corr_{"infd_corr"};
