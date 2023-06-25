@@ -142,10 +142,6 @@ void SC_Correlation::setup(const lattice::Lattice& lattice, const var::MF_Order&
   std::cout << "\n\n";
   */
   /*-----------------------main setup done-------------------------*/
-
-  //std::cout << connections << "\n";
-  std::cout << "Exiting at SC_Correlation::setup\n"; exit(0);
-
   // allocate storages
   corr_data_.resize(max_dist_+1, num_correlation_pairs_);
   count_.resize(max_dist_+1, num_correlation_pairs_);

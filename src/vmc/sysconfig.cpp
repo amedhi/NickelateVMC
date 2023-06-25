@@ -131,8 +131,8 @@ int SysConfig::init_config(void)
 {
   num_upspins_ = wf.num_upspins();
   num_dnspins_ = wf.num_dnspins();
-  std::cout << "num_upspins = " << num_upspins_ << "\n";
-  std::cout << "num_dnspins = " << num_dnspins_ << "\n";
+  //std::cout << "num_upspins = " << num_upspins_ << "\n";
+  //std::cout << "num_dnspins = " << num_dnspins_ << "\n";
   if (num_upspins_==0 && num_dnspins_==0) return -1;
 
   /*

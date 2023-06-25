@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-23 21:54:20
+* @Last Modified time: 2023-06-25 23:10:01
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -49,8 +49,8 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
   model::CouplingConstant cc;
 
   // SC form
-  correlation_pairs().clear();
-  const std::pair<int,int> anypair{-1,-1};
+  //correlation_pairs().clear();
+  //const std::pair<int,int> anypair{-1,-1};
   using order_t = MF_Order::order_t;
   int info;
 
@@ -159,12 +159,14 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
       cc.add_type(1, "-(muB+dAF-dFM)");
       mf_model_.add_siteterm(name="ni_dn", cc, op::ni_dn());
 
+      /*
       correlation_pairs().push_back({0,0});
       correlation_pairs().push_back({0,1});
       correlation_pairs().push_back({2,2});
       correlation_pairs().push_back({2,3});
       correlation_pairs().push_back({4,4});
       correlation_pairs().push_back({4,5});
+      */
 
       // variational parameters
       defval = mf_model_.get_parameter_value("dAF");

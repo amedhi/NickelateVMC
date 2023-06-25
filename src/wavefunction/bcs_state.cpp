@@ -52,9 +52,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   model::CouplingConstant cc;
 
   // SC pair correlation specs
-  CorrelationPairs correlation_pairs_;
-  correlation_pairs().clear();
-  const std::pair<int,int> anypair{-1,-1};
   using order_t = MF_Order::order_t;
   using pairing_t = MF_Order::pairing_t;
   bool mu_term_finalized = false;
@@ -645,7 +642,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
     // pairing
     mf_model_.add_bondterm(name="pairing", cc="delta_sc", op::pair_create());
-    correlation_pairs().push_back({0,0});
+    //correlation_pairs().push_back({0,0});
 
     // variational parameters
     defval = mf_model_.get_parameter_value("delta_sc");

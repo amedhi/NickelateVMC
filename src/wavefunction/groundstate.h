@@ -69,8 +69,8 @@ public:
     if (pairing_==MF_Order::pairing_t::null) return false;
     else return true;
   }
-  std::vector<std::pair<int,int>>& correlation_pairs(void) { return correlation_pairs_; }
-  const std::vector<std::pair<int,int>>& correlation_pairs(void) const { return correlation_pairs_; }
+  //std::vector<std::pair<int,int>>& correlation_pairs(void) { return correlation_pairs_; }
+  //const std::vector<std::pair<int,int>>& correlation_pairs(void) const { return correlation_pairs_; }
 private:
   order_t order_{order_t::null};
   pairing_t pairing_{pairing_t::null};
