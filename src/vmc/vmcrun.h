@@ -10,6 +10,7 @@
 #define VMCRUN_H
 
 #include <iostream>
+#include <set>
 #include "./vmc.h"
 
 namespace vmc {

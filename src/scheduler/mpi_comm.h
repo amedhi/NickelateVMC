@@ -30,6 +30,7 @@ using proc = int;
 using plist = std::list<int>;
 
 #ifdef HAVE_BOOST_MPI
+const int any_source = boost::mpi::any_source;
 using mpi_status = boost::mpi::status;
 //  using mpi_environment = boost::mpi::environment;
 //  using mpi_communicator = boost::mpi::communicator;
@@ -56,6 +57,7 @@ private:
 #else
 
 
+const int any_source = 0;
 class mpi_status
 {
 public:
