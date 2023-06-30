@@ -69,7 +69,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
     if (order()==order_t::SC && pair_symm()==pairing_t::SWAVE) {
       order_name_ = "SC-SWAVE";
       mf_model_.add_siteterm(name="pairing", cc="delta_sc", op::pair_create());
-
       set_correlation_type(CorrelationPairs::corr_t::site_singlet);
       add_correlation_bonds(0, {0,0});
     }
@@ -584,47 +583,148 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
   }
 
 //---------------------------------------------------------------------------
-  else if (lattice.id()==lattice::lattice_id::NICKELATE) {
-    std::string tname;
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2B) {
     // model parameters
-    mf_model_.add_parameter(name="U", defval=0.0, inputs);
     mf_model_.add_parameter(name="es", defval=0.0, inputs);
     mf_model_.add_parameter(name="ed", defval=0.0, inputs);
-    for (int m=0; m<=1; ++m) {
-      tname = "t_001_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_100_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_101_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_110_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_111_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_002_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_102_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-      tname = "t_200_"+std::to_string(m)+std::to_string(m);
-      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
-    }
-    mf_model_.add_parameter(name="t_001_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_100_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_101_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_110_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_111_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_002_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_102_01", defval=1.0, inputs);
-    mf_model_.add_parameter(name="t_200_01", defval=1.0, inputs);
-
     // sc gap
-    mf_model_.add_parameter(name="delta_sc", defval=1.0, inputs);
+    mf_model_.add_parameter(name="Delta_d", defval=0.0, inputs);
+    mf_model_.add_parameter(name="Delta_s", defval=0.0, inputs);
+    mf_model_.add_parameter(name="Delta_z", defval=1.0, inputs);
     // chemical potential
     bool mu_default = inputs.set_value("mu_default", false);
     mf_model_.add_parameter(name="mu_s", defval=0.0, inputs, info);
     if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu_s`\n";
     mf_model_.add_parameter(name="mu_d", defval=0.0, inputs, info);
     if (mu_default && info==0) std::cout << " >> alert: conflicting option for `mu_d`\n";
+
+    std::vector<std::string> ts{"tss_", "tdd_", "tsd_"};
+    std::string tname;
+    for (int m=0; m<3; ++m) {
+      tname = ts[m] + "001";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "100";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "101";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "110";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "111";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "002";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "102";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      tname = ts[m] + "200";
+      mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+    }
+
+    //-------------------------------------------------
+    // Bond operators
+    cc.create(27);
+    int p = 0;
+    for (int m=0; m<3; ++m) {
+      // 1-NN 
+      cc.add_type(p, ts[m]+"001"); p++;
+      // 2-NN (100)
+      cc.add_type(p, ts[m]+"100"); p++;
+      // 2-NN (010)
+      cc.add_type(p, ts[m]+"100"); p++;
+      // 3-NN
+      cc.add_type(p, ts[m]+"101"); p++;
+      // 4-NN
+      cc.add_type(p, ts[m]+"110"); p++;
+      // 5-NN
+      cc.add_type(p, ts[m]+"111"); p++;
+      // 6-NN
+      cc.add_type(p, ts[m]+"002"); p++;
+      // 7-NN
+      cc.add_type(p, ts[m]+"102"); p++;
+      // 8-NN
+      cc.add_type(p, ts[m]+"200"); p++;
+    }
+    mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+    //-------------------------------------------------
+
+    //-------------------------------------------------
+    // Site operators
+    cc.create(2);
+    cc.add_type(0, "es-mu_s");
+    cc.add_type(1, "ed-mu_d");
+    mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+    //-------------------------------------------------
+
+    // pairing term
+    if (order()==order_t::SC && pair_symm()==pairing_t::CUSTOM) {
+      order_name_ = "SC-CUSTOM";
+      cc.create(27);
+      std::vector<int> pairing_bonds(27,0);
+
+
+      // s-s pairing
+      cc.add_type(0, "Delta_z");
+      cc.add_type(1, "Delta_s");
+      cc.add_type(2, "Delta_s");
+      pairing_bonds[0] = 1;
+      pairing_bonds[1] = 1;
+      pairing_bonds[2] = 1;
+      // d-d pairing
+      cc.add_type(10, "Delta_d");
+      cc.add_type(11, "-Delta_d");
+      pairing_bonds[10] = 1;
+      pairing_bonds[11] = 1;
+      for (int n=0; n<27; ++n) {
+        if (!pairing_bonds[n]) {
+          cc.add_type(n, "0");
+        }
+      }
+      mf_model_.add_bondterm(name="bond_singlet", cc, op::pair_create());
+      /*
+      correlation_pairs().push_back({0,0});
+      correlation_pairs().push_back({1,1});
+      correlation_pairs().push_back({0,1});
+      */
+      set_correlation_type(CorrelationPairs::corr_t::site_singlet);
+      add_correlation_bonds(0, {0,0});
+      add_correlation_bonds(1, {1,1});
+      add_correlation_bonds(2, {2,2});
+      add_correlation_bonds(1, {10,10});
+      add_correlation_bonds(1, {10,11});
+
+      // variational parameters
+      defval = mf_model_.get_parameter_value("Delta_d");
+      varparms_.add("Delta_d",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("Delta_s");
+      varparms_.add("Delta_s",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      defval = mf_model_.get_parameter_value("Delta_z");
+      varparms_.add("Delta_z",defval,lb=1.0E-3,ub=2.0,dh=0.01);
+      // chemical potential
+      noninteracting_mu_ = false;
+      if (mu_default) {
+        // starting with non-interacting mu
+        mf_model_.finalize(lattice);
+        mf_model_.update_site_parameter("mu_s", 0.0);
+        mf_model_.update_site_parameter("mu_d", 0.0);
+        double mu_0 = get_noninteracting_mu();
+        //std::cout << "mu = " << mu_0 << "\n"; getchar();
+        mf_model_.update_site_parameter("mu_s", mu_0);
+        mf_model_.update_site_parameter("mu_d", mu_0);
+        mf_model_finalized = true;
+      }
+      defval = mf_model_.get_parameter_value("mu_s");
+      varparms_.add("mu_s", defval,lb=-5.0,ub=+5.0,dh=0.1);
+      defval = mf_model_.get_parameter_value("mu_d");
+      varparms_.add("mu_d", defval,lb=-5.0,ub=+5.0,dh=0.1);
+      /*-----------------------------------------------------
+       * NOT adding an extra ch_potential term as it 
+       * is already included in the site terms above 
+       *-----------------------------------------------------*/
+      mu_term_finalized = true;
+    }
+    //---------------------------------------------------------------------------
+    else {
+      throw std::range_error("BCS_State::BCS_State: undefined for the lattice");
+    }
   }
 
 
@@ -670,12 +770,12 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       mf_model_.update_site_parameter("mu", 0.0);
       mu0 = get_noninteracting_mu();
       mf_model_.update_site_parameter("mu", mu0);
+      mf_model_finalized = true;
     }
     if (inputs.set_value("mu_variational", false, info)) {
       varparms_.add("mu",defval=mu0,lb=-5.0,ub=+5.0,dh=0.1);
     }
     mu_term_finalized = true;
-    mf_model_finalized = true;
   }
 
   // finalize MF Hamiltonian

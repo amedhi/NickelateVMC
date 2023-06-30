@@ -14,8 +14,8 @@ prefix="hub"
 # Lattice:
 #---------------------------------------------
 lattice = "SQUARE" 
-lsize1 = 10
-lsize2 = 10
+lsize1 = 12
+lsize2 = 12
 bc1 = "periodic"
 bc2 = "antiperiodic"
 bc1_twists = 1
@@ -36,7 +36,7 @@ gw_projector = "YES"
 #dh_projector = "NO"
 #dhfactor1 = 0.5
 gw_factor = 0.3037
-hole_doping = 0.16;
+hole_doping = 0.16
 delta_sc = 0.08
 mu = -0.4263000
 mu_default = "NO"
@@ -48,17 +48,19 @@ as_func_of = "hole_doping"
 # List of observable to calculate:
 #---------------------------------------------
 Energy = "YES"
-EnergyGradient = "YES"
+EnergyGradient = "NO"
 Magnetization = "NO"
 SC_Correlation = "NO"
-SiteOccupancy = "NO"
+ParticleDensity = "NO"
+DoublonDensity = "NO"
+MomentumDist = "YES"
 
 
 #---------------------------------------------
 # Monte Carlo parameters
 #---------------------------------------------
 rng_seed = 0
-measure_steps = 5000
+measure_steps = 10000
 warmup_steps = 5000
 min_interval = 3
 max_interval = 10

@@ -245,7 +245,7 @@ int Lattice::define_lattice(void)
   }
 
   else if (lname == "NICKELATE_2BAND") {
-    lid = lattice_id::NICKELATE;
+    lid = lattice_id::NICKELATE_2B;
 
     // basis vectors
     double a = 3.9207999706;
@@ -253,19 +253,24 @@ int Lattice::define_lattice(void)
     set_basis_vectors(a1=vec(a,0,0), a2=vec(0,a,0), a3=vec(0,0,c));
 
     // sites
-    add_basis_site(type=0, coord=vec(0,0,0)); // d-orbital
-    add_basis_site(type=1, coord=vec(0,0,0)); // s-orbital
+    int atomid;
+    add_basis_site(type=0, atomid=0, coord=vec(0,0,0)); // d-orbital
+    add_basis_site(type=1, atomid=0, coord=vec(0,0,0)); // s-orbital
 
     // INTRA-ORBITAL bonds
     int p = 0;
     for (int m=0; m<=1; ++m) {
       // 1-NN 
       add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,0,1));
+      //std::cout<<"m = "<<m<<" 001: p = "<<p<<"\n";
       p++;
 
-      // 2-NN
+      // 2-NN (GIVEN different type values for SC pairing amplitude)
       add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(1,0,0));
+      //std::cout<<"m = "<<m<<" 100: p = "<<p<<"\n";
+      p++;
       add_bond(type=p, src=m, src_offset=pos(0,0,0), tgt=m, tgt_offset=pos(0,1,0)); 
+      //std::cout<<"m = "<<m<<" 010: p = "<<p<<"\n";
       p++;
 
       // 3-NN
@@ -313,8 +318,9 @@ int Lattice::define_lattice(void)
       add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,0,1));
       q++;
 
-      // 2-NN
+      // 2-NN (GIVEN different type values for SC pairing amplitude)
       add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(1,0,0));
+      q++;
       add_bond(type=q, src=m, src_offset=pos(0,0,0), tgt=n, tgt_offset=pos(0,1,0)); 
       q++;
 
@@ -398,64 +404,6 @@ int Lattice::define_lattice(void)
     // Ni-R bonds
     add_bond(type=6,ngb=1,src=0,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,0));
   }
-
-  else if (lname == "NICKELATE_v2021") {
-    lid = lattice_id::NICKELATE;
-    // basis vectors
-    set_basis_vectors(a1=vec(1,0,0), a2=vec(0,1,0), a3=vec(0,0,1));
-    // sites
-    add_basis_site(type=0, coord=vec(0,0,0));
-    add_basis_site(type=1, coord=0.5*(basis_vector_a1()+
-      basis_vector_a2()+basis_vector_a3()));
-
-    // inter-cell Ni-Ni bonds
-    add_bond(type=0,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,0,0));
-    add_bond(type=1,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,1,0));
-
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,1,0));
-    add_bond(type=2,ngb=2,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(1,-1,0));
-
-    add_bond(type=3,ngb=3,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(2,0,0));
-    add_bond(type=3,ngb=3,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,2,0));
-
-    add_bond(type=4,ngb=1,src=0,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,0,1));
-
-    // inter-cell R-R bonds
-    add_bond(type=5,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,0));
-    add_bond(type=6,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,0));
-
-    add_bond(type=7,ngb=1,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,1));
-
-    add_bond(type=8,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,1));
-    add_bond(type=8,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,1));
-    add_bond(type=8,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,1));
-    add_bond(type=8,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,1));
-
-    add_bond(type=9,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,0,2));
-    add_bond(type=9,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,0,2));
-    add_bond(type=9,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,1,2));
-    add_bond(type=9,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,-1,2));
-
-    add_bond(type=10,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,0));
-    add_bond(type=10,ngb=2,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,0));
-
-    add_bond(type=11,ngb=3,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(0,0,2));
-
-    add_bond(type=12,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,1,1));
-    add_bond(type=12,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(1,-1,1));
-    add_bond(type=12,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,1,1));
-    add_bond(type=12,ngb=4,src=1,src_offset=pos(0,0,0),tgt=1,tgt_offset=pos(-1,-1,1));
-
-    // inter-cell Ni-R bonds
-    add_bond(type=13,ngb=3,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(2,0,0));
-    add_bond(type=13,ngb=3,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,2,0));
-
-    add_bond(type=14,ngb=5,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(2,0,2));
-    add_bond(type=14,ngb=5,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(-2,0,2));
-    add_bond(type=14,ngb=5,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,2,2));
-    add_bond(type=14,ngb=5,src=1,src_offset=pos(0,0,0),tgt=0,tgt_offset=pos(0,-2,2));
-  }
-
 
   else if (lname == "SW_GRAPHENE") {
     // type
@@ -819,9 +767,32 @@ int Lattice::construct_graph(void)
     sitetype_set_.insert(s.type());
     //std::cout << "uc = " << s.bravindex().transpose() << "\n";
     //std::cout << "id = " << s.id() << "\n";
+    //std::cout << "uid = " << s.uid() << "\n";
+    //std::cout << "aid = " << s.atomid() << "\n";
     //std::cout << "tp = " << s.type() << "\n\n";
+    //getchar();
   }
   //getchar();
+
+  // Set the 'atoms': store id-s of all sites (orbitals) that belong to an 'atom'.
+  num_atoms_ = sites_.back().atomid()+1;
+  atoms_.resize(num_atoms_);
+  for (const auto& s : sites_) {
+    atoms_[s.atomid()].push_back(s.id());
+  }
+  /*
+  int i=0;
+  for (const auto& a : atoms_) {
+    std::cout << "atom = "<<i<<": ";
+    for (const auto& id: a) {
+      std::cout << "  "<<id;
+    }
+    std::cout << "\n";
+    i++;
+    getchar();
+  }
+  */
+
 
   // Save the bonds.
   bonds_.clear();

@@ -2,7 +2,7 @@
 * @Author: Amal Medhi
 * @Date:   2022-10-15 14:57:27
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-26 13:16:49
+* @Last Modified time: 2023-06-26 13:19:30
 * Copyright (C) 2015-2022 by Amal Medhi <amedhi@iisertvm.ac.in>.
 * All rights reserved.
 *----------------------------------------------------------------------------*/
@@ -151,10 +151,8 @@ int VMCRun::master_run(const var::parm_vector& vparms, double& en, double& en_er
   // Collect results: First-come-first-serve basis
   std::set<mpi::proc> working_procs; 
   for (const mpi::proc& p : worker_procs_) working_procs.insert(p);
-  //std::cout << "\n";
   while (working_procs.size() > 0) {
     mpi::mpi_status msg = mpi_comm_.probe(mpi::any_source, mpi::MP_data_samples);
-    //std::cout << "reciving results from p = " << msg.source() << "\n";
     MPI_recv_results(mpi_comm_, msg.source(), mpi::MP_data_samples);
     working_procs.erase(msg.source());
   }

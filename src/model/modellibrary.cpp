@@ -102,38 +102,60 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       add_siteterm(name="hubbard", cc="U", op::hubbard_int());
     }
 
-    else if (lattice.id() == lattice::lattice_id::NICKELATE) {
-      std::string tname;
+    else if (lattice.id() == lattice::lattice_id::NICKELATE_2B) {
       // model parameters
-      add_parameter(name="U", defval=0.0, inputs);
       add_parameter(name="es", defval=0.0, inputs);
       add_parameter(name="ed", defval=0.0, inputs);
-      for (int m=0; m<=1; ++m) {
-        tname = "t_001_"+std::to_string(m)+std::to_string(m);
+      add_parameter(name="Us", defval=0.0, inputs);
+      add_parameter(name="Ud", defval=0.0, inputs);
+
+      std::vector<std::string> ts{"tss_", "tdd_", "tsd_"};
+      std::string tname;
+      for (int m=0; m<3; ++m) {
+        tname = ts[m] + "001";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_100_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "100";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_101_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "101";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_110_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "110";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_111_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "111";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_002_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "002";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_102_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "102";
         add_parameter(name=tname, defval=1.0, inputs);
-        tname = "t_200_"+std::to_string(m)+std::to_string(m);
+        tname = ts[m] + "200";
         add_parameter(name=tname, defval=1.0, inputs);
       }
-      add_parameter(name="t_001_01", defval=1.0, inputs);
-      add_parameter(name="t_100_01", defval=1.0, inputs);
-      add_parameter(name="t_101_01", defval=1.0, inputs);
-      add_parameter(name="t_110_01", defval=1.0, inputs);
-      add_parameter(name="t_111_01", defval=1.0, inputs);
-      add_parameter(name="t_002_01", defval=1.0, inputs);
-      add_parameter(name="t_102_01", defval=1.0, inputs);
-      add_parameter(name="t_200_01", defval=1.0, inputs);
+
+      //-------------------------------------------------
+      // Bond operators
+      cc.create(27);
+      int p = 0;
+      for (int m=0; m<3; ++m) {
+        // 1-NN 
+        cc.add_type(p, ts[m]+"001"); p++;
+        // 2-NN (100)
+        cc.add_type(p, ts[m]+"100"); p++;
+        // 2-NN (010)
+        cc.add_type(p, ts[m]+"100"); p++;
+        // 3-NN
+        cc.add_type(p, ts[m]+"101"); p++;
+        // 4-NN
+        cc.add_type(p, ts[m]+"110"); p++;
+        // 5-NN
+        cc.add_type(p, ts[m]+"111"); p++;
+        // 6-NN
+        cc.add_type(p, ts[m]+"002"); p++;
+        // 7-NN
+        cc.add_type(p, ts[m]+"102"); p++;
+        // 8-NN
+        cc.add_type(p, ts[m]+"200"); p++;
+      }
+      add_bondterm(name="hopping", cc, op::spin_hop());
+      //-------------------------------------------------
 
       //-------------------------------------------------
       // Site operators
@@ -144,98 +166,9 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
       // interaction
       cc.create(2);
-      cc.add_type(0, "U");
-      cc.add_type(1, "U");
+      cc.add_type(0, "Us");
+      cc.add_type(1, "Ud");
       add_siteterm(name="hubbard", cc, op::hubbard_int());
-
-      //-------------------------------------------------
-      // Bond operators
-      cc.create(24);
-
-      // INTRA-ORBITAL bonds
-      int p = 0;
-      for (int m=0; m<=1; ++m) {
-        // 1-NN 
-        tname = "t_001_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 2-NN
-        tname = "t_100_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 3-NN
-        tname = "t_101_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 4-NN
-        tname = "t_110_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 5-NN
-        tname = "t_111_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-
-        // 6-NN
-        tname = "t_002_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 7-NN
-        tname = "t_102_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-
-        // 8-NN
-        tname = "t_200_"+std::to_string(m)+std::to_string(m);
-        cc.add_type(p, tname);
-        p++;
-      }
-
-      // INTER-ORBITAL bonds
-      // 1-NN 
-      tname = "t_001_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 2-NN
-      tname = "t_100_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 3-NN
-      tname = "t_101_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 4-NN
-      tname = "t_110_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 5-NN
-      tname = "t_111_01";
-      cc.add_type(p, tname);
-
-      // 6-NN
-      tname = "t_002_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 7-NN
-      tname = "t_102_01";
-      cc.add_type(p, tname);
-      p++;
-
-      // 8-NN
-      tname = "t_200_01";
-      cc.add_type(p, tname);
-
-      add_bondterm(name="hopping", cc, op::spin_hop());
-      //-------------------------------------------------
     }
 
     /*

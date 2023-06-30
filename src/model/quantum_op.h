@@ -181,7 +181,7 @@ public:
     const value_type& type2={0,pjn::NONE}, const value_type& type3={0,pjn::NONE}, 
     const value_type& type4={0,pjn::NONE}, const value_type& type5={0,pjn::NONE});
   void finalize(const unsigned& num_site_types);
-  const bool is_present(void) const { return is_present_; }
+  bool is_present(void) const { return is_present_; }
   operator int(void) const { return is_present_; }
   const projection_t& get(const unsigned& i) const;
 private:
