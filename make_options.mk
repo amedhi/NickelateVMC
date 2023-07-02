@@ -1,5 +1,5 @@
 # User Configurable Options
-PROJECT_ROOT=/Users/amedhi/Projects/Codes/VMC/MainVMC
+PROJECT_ROOT=/Users/amedhi/Projects/ArunMaurya/NickelateVMC
 
 #-------------------------------------------------------------
 # need mpi version
