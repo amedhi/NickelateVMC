@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-06-26 11:31:24
+* @Last Modified time: 2023-07-08 15:07:49
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -683,7 +683,7 @@ void Fermisea::construct_groundstate(void)
       es_k_up.eigenvalues().data()+kblock_dim_);
     //std::cout << kvec.transpose() << " " << es_k_up.eigenvalues() << "\n"; getchar();
     for (int n=0; n<kblock_dim_; ++n) {
-      qn_list.push_back({k, n, UP});
+      qn_list.push_back(std::make_tuple(k, n, UP));
     }
 
     // spin-DN block
@@ -692,7 +692,7 @@ void Fermisea::construct_groundstate(void)
       es_minusk_dn.eigenvalues().data()+kblock_dim_);
     //std::cout << kvec.transpose() << " " << es_k_up.eigenvalues() << "\n"; getchar();
     for (int n=0; n<kblock_dim_; ++n) {
-      qn_list.push_back({k, n, DN});
+      qn_list.push_back(std::make_tuple(k, n, DN));
     }
   }
 

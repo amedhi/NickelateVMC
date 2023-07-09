@@ -106,8 +106,10 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
       // model parameters
       add_parameter(name="es", defval=0.0, inputs);
       add_parameter(name="ed", defval=0.0, inputs);
-      add_parameter(name="Us", defval=0.0, inputs);
-      add_parameter(name="Ud", defval=0.0, inputs);
+      add_parameter(name="U_ss", defval=0.0, inputs);
+      add_parameter(name="U_dd", defval=0.0, inputs);
+      add_parameter(name="U_sd", defval=0.0, inputs);
+      //add_parameter(name="U_uu", defval=0.0, inputs);
 
       std::vector<std::string> ts{"tss_", "tdd_", "tsd_"};
       std::string tname;
@@ -166,9 +168,21 @@ int Hamiltonian::define_model(const input::Parameters& inputs,
 
       // interaction
       cc.create(2);
-      cc.add_type(0, "Us");
-      cc.add_type(1, "Ud");
-      add_siteterm(name="hubbard", cc, op::hubbard_int());
+      cc.add_type(0, "U_ss");
+      cc.add_type(1, "0");
+      add_siteterm(name="U_ss", cc, op::hubbard_int());
+      cc.create(2);
+      cc.add_type(0, "0");
+      cc.add_type(1, "U_dd");
+      add_siteterm(name="U_dd", cc, op::hubbard_int());
+      cc.create(2);
+      cc.add_type(0, "U_sd");
+      cc.add_type(1, "U_sd");
+      add_siteterm(name="U_sd", cc, op::hubbard_interorb_ud());
+      cc.create(2);
+      cc.add_type(0, "U_sd"); // same interaction for ud & uu
+      cc.add_type(1, "U_sd");
+      add_siteterm(name="U_uu", cc, op::hubbard_interorb_uu());
     }
 
     /*

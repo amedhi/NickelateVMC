@@ -1174,7 +1174,7 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
     // pairing part 
     delta_k_ = mf_model_.pairing_part();
     //std::cout << "kvec = " << kvec.transpose() << "\n";
-    //std::cout << "delta_k =\n" << delta_k_ << "\n\n";
+    //std::cout << "delta_k =\n" << delta_k_ << "\n\n"; getchar();
 
     //-------------'-k block'-------------
     mf_model_.construct_kspace_block(-kvec);
@@ -1182,13 +1182,13 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
 
     // assuming 'singlet pairing', see notes
     work_ = 0.5*(delta_k_ + mf_model_.pairing_part().transpose());
-    //std::cout << "delta_ck =\n" << work_ << "\n\n";
+    //std::cout << "delta_ck =\n" << work_ << "\n\n"; getchar();
 
     // transform pairing part
     delta_k_ = es_k_up.eigenvectors().adjoint() * work_ * 
       es_minusk_dn.eigenvectors().conjugate();
     //std::cout << "Uk_up =\n" << es_k_up.eigenvectors() << "\n\n";
-    //std::cout << "delta_k_ =\n" << delta_k_.real() << "\n"; getchar();
+    //std::cout << "delta_dk =\n" << delta_k_ << "\n"; getchar();
 
     // BCS ampitudes in rotated basis 
     int dim = kblock_dim_;
@@ -1223,10 +1223,10 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         //std::cout << vk_.row(i).real() << "\n";
         //std::cout << "s["<<i<<"] = " << dval << "\n";
 
-        /*
+        //*
         std::cout << ">> alert! BCS_State: uk matrix singular for k = (";
         std::cout << kvec[0]<<", "<<kvec[1]<<", "<<kvec[2]<<")\n";
-        */
+        //*/
 
         //getchar();
         singular = true;
@@ -1262,6 +1262,7 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
     }
     // phi_k for 'ck'-operator
     phi_k[k] = es_k_up.eigenvectors()*dphi_k_*es_minusk_dn.eigenvectors().transpose();
+    //std::cout << "phi_ck =\n" << phi_k[k] << "\n"; getchar();
   } 
 }
 

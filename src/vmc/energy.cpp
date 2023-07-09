@@ -88,6 +88,8 @@ void Energy::measure(const lattice::Lattice& lattice,
     matrix_elem.setZero();
     Eigen::VectorXi hubbard_nd(lattice.num_site_types());
     hubbard_nd.setZero();
+    int interorb_ud = 0;
+    int interorb_uu = 0;
     // do it little differently
     int sterm = 0;
     for (auto it=model.siteterms_begin(); it!=model.siteterms_end(); ++it) {
@@ -95,6 +97,22 @@ void Energy::measure(const lattice::Lattice& lattice,
       if (it->qn_operator().id()==op_id::niup_nidn) {
         for (const auto& s : lattice.sites()) {
           hubbard_nd(s.type()) += config.apply_ni_dblon(s.id());
+        }
+      }
+      else if (it->qn_operator().id()==op_id::interorb_ud || 
+               it->qn_operator().id()==op_id::interorb_uu) {
+        for (const auto& atom : lattice.atoms()) {
+          for (const auto& orb1 : atom) {
+            for (const auto& orb2 : atom) {
+              if (orb1 == orb2) continue;
+              int n1_up = config.apply(model::op::ni_up(), orb1);
+              int n1_dn = config.apply(model::op::ni_dn(), orb1);
+              int n2_up = config.apply(model::op::ni_up(), orb2);
+              int n2_dn = config.apply(model::op::ni_dn(), orb2);
+              interorb_ud += n1_up*n2_dn + n1_dn*n2_up;
+              interorb_uu += n1_up*n2_up + n1_dn*n2_dn;
+            }
+          }
         }
       }
       else {
@@ -112,6 +130,12 @@ void Energy::measure(const lattice::Lattice& lattice,
         for (int stype=0; stype<lattice.num_site_types(); ++stype) {
           config_value_(component) += std::real(it->coupling(stype))*hubbard_nd(stype);
         }
+      }
+      else if (it->qn_operator().id()==op_id::interorb_ud) {
+        config_value_(component) += std::real(it->coupling(0))*interorb_ud;
+      }
+      else if (it->qn_operator().id()==op_id::interorb_uu) {
+        config_value_(component) += std::real(it->coupling(0))*interorb_uu;
       }
       else {
         for (unsigned stype=0; stype<lattice.num_site_types(); ++stype) {

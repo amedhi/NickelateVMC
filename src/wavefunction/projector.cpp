@@ -39,6 +39,48 @@ int GW_Projector::init(const lattice::Lattice& lattice, const input::Parameters&
   gw_ratio_.resize(num_sites_,5);
   gw_ratio_.setConstant(1.0);
 
+
+  // special case for 'NICKELATE_2B'
+  if (lattice.id()==lattice::lattice_id::NICKELATE_2B) {
+    // CAUTION: Assumption is that all the 'atom's are of the same type.
+    nickelate_2B_ = true;
+    default_case_ = false;
+    uniform_projection_ = false;
+    assert(num_site_types_==2);
+    for (auto& p : basis_projection_) p = pjn_t::DOUBLON;
+    for (auto& p : site_projection_) p = pjn_t::DOUBLON;
+
+    // read gw factors
+    gw_factor_.resize(3);
+    gfactor_names_.resize(3);
+    gfactor_names_[0] = "gfactor_ss";
+    gfactor_names_[1] = "gfactor_dd";
+    gfactor_names_[2] = "gfactor_sd";
+    //gfactor_names_[3] = "gfactor_uu";
+    for (int n=0; n<3; ++n) {
+      gw_factor_[n] = inputs.set_value(gfactor_names_[n], 1.0);
+      if (gw_factor_[n] < gw_cutoff()) {
+        throw std::range_error("GW_Projector::init: 'gw_factor' value out of range");
+      }
+      // add to variational parameter list
+      vparms.add(gfactor_names_[n], gw_factor_[n], gw_cutoff(), 10.0);
+    }
+    // store the 'factors' in matrix form
+    num_orbitals_ = 2;
+    gfactor_ud_.resize(2,2); 
+    gfactor_uu_.resize(2,2); 
+    gfactor_ud_(0,0) = gw_factor_[0];
+    gfactor_ud_(1,1) = gw_factor_[1];
+    gfactor_ud_(0,1) = gw_factor_[2];
+    gfactor_ud_(1,0) = gw_factor_[2];
+    //gfactor_uu_.setConstant(1.0);
+    //gfactor_uu_(0,1) = gw_factor_[3];
+    //gfactor_uu_(1,0) = gw_factor_[3];
+
+    return gw_factor_.size();
+  }
+
+
   // check if uniform or not
   if (num_site_types_ == 1) {
     uniform_projection_ = true;
@@ -157,6 +199,9 @@ void GW_Projector::switch_off(void)
 
 void GW_Projector::set_ratio_table(void)
 {
+  if (nickelate_2B_) {
+    throw std::range_error("GW_Projector::set_ratio_table: case not implemented");
+  }
   if (default_case_) {
     double g = gw_factor_[0];
     if ( g<0.0 ) {
@@ -218,6 +263,20 @@ bool GW_Projector::is_strong(void) const
 int GW_Projector::update_parameters(const VariationalParms& vparms)
 {
   if (!is_present_) return 0;
+  if (nickelate_2B_) {
+    for (int n=0; n<3; ++n) {
+      gw_factor_[n] = vparms[gfactor_names_[n]].value();
+    }
+    gfactor_ud_(0,0) = gw_factor_[0];
+    gfactor_ud_(1,1) = gw_factor_[1];
+    gfactor_ud_(0,1) = gw_factor_[2];
+    gfactor_ud_(1,0) = gw_factor_[2];
+    //gfactor_uu_(0,1) = gw_factor_[3];
+    //gfactor_uu_(1,0) = gw_factor_[3];
+    // ratio_table not used in this case
+    return 0;
+  }
+
   if (uniform_projection_) {
     if (basis_projection_[0] != pjn_t::NONE) {
       gw_factor_[0] = vparms["gw_factor"].value();
@@ -235,9 +294,88 @@ int GW_Projector::update_parameters(const VariationalParms& vparms)
 }
 
 double GW_Projector::gw_ratio(const vmc::BasisState& state, 
-  const int& fr_site, const int& to_site) const
+  const int& fr_site, const int& to_site, const vmc::move_t& move) const
 {
   double gw_ratio = 1.0;
+  if (!is_present_) return gw_ratio;
+  if (fr_site == to_site) return gw_ratio;
+
+  if (nickelate_2B_) {
+    // upspin hop
+    if (move == vmc::move_t::upspin_hop) {
+      auto orbitals = state.parent_atom(fr_site);
+      int m = site_typeid_[fr_site];
+      for (const auto& s: orbitals) {
+        int n = site_typeid_[s];
+        if (state.op_ni_dn(s)) {
+          gw_ratio /= gfactor_ud_(m,n);
+          //std::cout << "g("<<m<<","<<n<<") = "<< gfactor_ud_(m,n) << "\n";
+          //getchar();
+        }
+        if ((s!=fr_site) && state.op_ni_up(s)) {
+          //gw_ratio /= gfactor_uu_(m,n); 
+          gw_ratio /= gfactor_ud_(m,n); 
+          //std::cout << "g("<<m<<","<<n<<") = "<< gfactor_ud_(m,n) << "\n";
+          //getchar();
+        }
+      }
+
+      // effect at the to_site
+      orbitals = state.parent_atom(to_site);
+      m = site_typeid_[to_site];
+      for (const auto& s: orbitals) {
+        int n = site_typeid_[s];
+        if (state.op_ni_dn(s)) {
+          gw_ratio *= gfactor_ud_(m,n);
+        }
+        if ((s!=fr_site) && state.op_ni_up(s)) {
+          // if s==fr_site, the spin would have moved
+          //gw_ratio *= gfactor_uu_(m,n); 
+          gw_ratio *= gfactor_ud_(m,n); 
+        }
+        n++;
+      }
+    }
+
+    // dnspin-hop
+    else if (move == vmc::move_t::dnspin_hop) {
+      auto orbitals = state.parent_atom(fr_site);
+      int m = site_typeid_[fr_site];
+      for (const auto& s: orbitals) {
+        int n = site_typeid_[s];
+        if (state.op_ni_up(s)) {
+          gw_ratio /= gfactor_ud_(m,n);
+        }
+        if ((s!=fr_site) && state.op_ni_dn(s)) {
+          //gw_ratio /= gfactor_uu_(m,n); 
+          gw_ratio /= gfactor_ud_(m,n); 
+        }
+        n++;
+      }
+
+      // effect at the to_site
+      orbitals = state.parent_atom(to_site);
+      m = site_typeid_[to_site];
+      for (const auto& s: orbitals) {
+        int n = site_typeid_[s];
+        if (state.op_ni_up(s)) {
+          gw_ratio *= gfactor_ud_(m,n);
+        }
+        if ((s!=fr_site) && state.op_ni_dn(s)) {
+          // if s==fr_site, the spin would have moved
+          //gw_ratio *= gfactor_uu_(m,n); 
+          gw_ratio *= gfactor_ud_(m,n); 
+        }
+        n++;
+      }
+    }
+    else {
+      throw std::range_error("GW_Projector::gw_ratio: undefined hopping move");
+    }
+    return gw_ratio;
+  }
+
+
   if (default_case_) {
     if (state.op_ni_dblon(fr_site)) {
       // one doublon to be annihilated (change = -1)
@@ -249,8 +387,58 @@ double GW_Projector::gw_ratio(const vmc::BasisState& state,
     }
     return gw_ratio;
   }
+
+  // fr_site
+  pjn_t pjn = site_projection_[fr_site];
+  if (pjn == pjn_t::DOUBLON) {
+    if (state.op_ni_dblon(fr_site)) {
+      // one doublon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(fr_site,1);
+    }
+  }
+  else if (pjn == pjn_t::HOLON) {
+    if (!state.op_ni_dblon(fr_site)) {
+      // one holon to be created (change = 1)
+      gw_ratio *= gw_ratio_(fr_site,3);
+    }
+  }
+
+  // to_site
+  pjn = site_projection_[to_site];
+  if (pjn == pjn_t::DOUBLON) {
+    if (!state.op_ni_holon(to_site)) {
+      // one doublon to be created (change = +1)
+      gw_ratio *= gw_ratio_(to_site,3);
+    }
+  }
+  else if (pjn == pjn_t::HOLON) {
+    if (state.op_ni_holon(to_site)) {
+      // one holon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(to_site,1);
+    }
+  }
+  return gw_ratio;
+
+}
+
+double GW_Projector::gw_ratio(const vmc::BasisState& state, 
+  const int& fr_site, const int& to_site) const
+{
+  double gw_ratio = 1.0;
   if (!is_present_) return gw_ratio;
   if (fr_site == to_site) return gw_ratio;
+
+  if (default_case_) {
+    if (state.op_ni_dblon(fr_site)) {
+      // one doublon to be annihilated (change = -1)
+      gw_ratio *= gw_ratio_(0,1);
+    }
+    if (!state.op_ni_holon(to_site)) {
+      // one doublon to be created (change = +1)
+      gw_ratio *= gw_ratio_(0,3);
+    }
+    return gw_ratio;
+  }
 
   // fr_site
   pjn_t pjn = site_projection_[fr_site];
@@ -291,6 +479,9 @@ double GW_Projector::gw_ratio_pairhop(const int& fr_site, const int& to_site) co
   if (!is_present_) return gw_ratio;
   if (uniform_projection_) return gw_ratio;
   if (fr_site == to_site) return gw_ratio;
+  if (nickelate_2B_) {
+    throw std::range_error("GW_Projector::gw_ratio_pairhop: case not implemented");
+  }
 
   // for non-uniform projection
   // fr_site
@@ -319,6 +510,7 @@ double GW_Projector::gw_ratio_pairhop(const int& fr_site, const int& to_site) co
 
 void GW_Projector::get_grad_logp(const vmc::BasisState& state, RealVector& grad) const
 {
+  if (!is_present_) return;
   if (default_case_) {
     int nd = 0;
     for (int n=0; n<num_sites_; ++n) {
@@ -327,7 +519,45 @@ void GW_Projector::get_grad_logp(const vmc::BasisState& state, RealVector& grad)
     grad(0) = static_cast<double>(nd)/gw_factor_[0];
     return;
   }
-  if (!is_present_) return;
+
+  if (nickelate_2B_) {
+    // total no of DOUBLON in each orbital
+    int nd_ss = 0;
+    int nd_dd = 0;
+    int nd_sd = 0;
+    //int nd_uu = 0;
+    for (int i=0; i<state.num_atoms(); ++i) {
+      auto orbitals = state.atom(i);
+      for (const auto& s : orbitals) {
+        int n = state.op_ni_dblon(s);
+        if (site_typeid_[s]==0) nd_ss += n;
+        if (site_typeid_[s]==1) nd_dd += n;
+      }
+      if (state.op_ni_up(orbitals[0]) && state.op_ni_dn(orbitals[1])) {
+        nd_sd += 1;  
+      }
+      if (state.op_ni_dn(orbitals[0]) && state.op_ni_up(orbitals[1])) {
+        nd_sd += 1;  
+      }
+      if (state.op_ni_up(orbitals[0]) && state.op_ni_up(orbitals[1])) {
+        //nd_uu += 1;  
+        nd_sd += 1;  
+      }
+      if (state.op_ni_dn(orbitals[0]) && state.op_ni_dn(orbitals[1])) {
+        //nd_uu += 1;  
+        nd_sd += 1;  
+      }
+    }
+    grad(0) = static_cast<double>(nd_ss)/gw_factor_[0];
+    grad(1) = static_cast<double>(nd_dd)/gw_factor_[1];
+    grad(2) = static_cast<double>(nd_sd)/gw_factor_[2];
+    //grad(3) = static_cast<double>(nd_uu)/gw_factor_[3];
+
+    return;
+  }
+
+
+
   if (uniform_projection_) {
     int nd = 0;
     pjn_t pjn = site_projection_[0]; 

@@ -352,8 +352,8 @@ private:
   std::vector<Atom> atoms_;
 
   // set of type values
-  std::set<unsigned> sitetype_set_;
-  std::set<unsigned> bondtype_set_;
+  //std::set<unsigned> sitetype_set_;
+  //std::set<unsigned> bondtype_set_;
 
   // for lattices with impurities
   std::vector<Site> impurity_sites_;

@@ -42,6 +42,29 @@ void BasisState::init(const lattice::Lattice& lattice, const model::Hamiltonian&
     }
   }
 
+  /*------------------------------------------------------- 
+   * Store the list of 'atom'-s. In single-orbital systems, 
+   * an 'atom' is same as a 'site'. In multi-orbital systems,
+   * an 'atom' store the id-s of sites (orbitals) that belongs
+   * to it. The information is needed in case of inter-orbital
+   * interaction.
+   *-------------------------------------------------------*/
+  atomid_list_.clear();
+  for (const auto& s : lattice.sites()) {
+    atomid_list_.push_back(s.atomid());
+  }
+  atom_list_ = lattice.atoms();
+  /*
+  for (int i=0; i<atom_list_.size(); ++i) {
+    std::cout << "atom: " << i << "\n";
+    for (const auto& id : atom_list_[i]) {
+      std::cout << " " << id << "\n";
+    }
+    std::cout << "\n";
+  }
+  getchar();
+  */
+
   // clear
   upspin_sites_.clear();
   dnspin_sites_.clear();

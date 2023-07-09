@@ -66,15 +66,18 @@ int Lattice::define_lattice(void)
     add_basis_site(type=0, coord=vec(0,0,0));
     add_basis_site(type=1, coord=vec(0.5*b,0.5*b,0));
 
+    // A-B bonds
     add_bond(type=0,src=0,tgt=1,offset=pos(0,0,0));
     add_bond(type=1,src=1,tgt=0,offset=pos(1,0,0));
     add_bond(type=1,src=1,tgt=0,offset=pos(0,1,0));
     add_bond(type=0,src=1,tgt=0,offset=pos(1,1,0));
 
+    // A-A bonds
     add_bond(type=2,src=0,tgt=0,offset=pos(1,0,0));
     add_bond(type=3,src=0,tgt=0,offset=pos(0,1,0));
-    add_bond(type=2,src=1,tgt=1,offset=pos(1,0,0));
-    add_bond(type=3,src=1,tgt=1,offset=pos(0,1,0));
+    // B-B bonds
+    add_bond(type=4,src=1,tgt=1,offset=pos(1,0,0));
+    add_bond(type=5,src=1,tgt=1,offset=pos(0,1,0));
   }
 
   else if (lname == "SQUARE_4SITE") {
@@ -760,11 +763,12 @@ int Lattice::construct_graph(void)
 
   // save the sites
   sites_.clear();
-  sitetype_set_.clear();
+  //sitetype_set_.clear(); // not used
   for (const auto& s : allsites) {
     sites_.push_back(s);
     sites_.back().clear_bonds(); // to be added later
-    sitetype_set_.insert(s.type());
+    //sitetype_set_.insert(s.type());
+
     //std::cout << "uc = " << s.bravindex().transpose() << "\n";
     //std::cout << "id = " << s.id() << "\n";
     //std::cout << "uid = " << s.uid() << "\n";
@@ -796,7 +800,7 @@ int Lattice::construct_graph(void)
 
   // Save the bonds.
   bonds_.clear();
-  bondtype_set_.clear();
+  //bondtype_set_.clear(); // not used
   int id = 0;
   for (auto& b : allbonds) {
     // Connect the bond, discard if can't be connected 
@@ -828,7 +832,7 @@ int Lattice::construct_graph(void)
     sites_[b.tgt_id()].add_in_bond(b.id());
 
     // save the bond
-    bondtype_set_.insert(b.type());
+    //bondtype_set_.insert(b.type());
     bonds_.push_back(b);
   }
   num_bonds_ = bonds_.size();

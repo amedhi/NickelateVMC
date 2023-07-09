@@ -396,6 +396,10 @@ int Optimizer::optimize(VMCRun& vmc)
    /*--------------------------------------------------------------
     * Stochastic Reconfiguration iteraions 
     *--------------------------------------------------------------*/
+    // counter for last data points around minimum for final average
+    bool conv_condition_reached = false;
+    int final_iter_count = 0;
+
     //exit_status status = exit_status::notconvgd;
     for (int sr_iter=1; sr_iter<=maxiter_; ++sr_iter) {
       iter_count++;
@@ -452,17 +456,34 @@ int Optimizer::optimize(VMCRun& vmc)
      /*--------------------------------------------------------------
       * Convergence criteria
       *--------------------------------------------------------------*/
+      if (conv_condition_reached) {
+        if (print_progress_) {
+          std::cout<<" final iter  =  "<<final_iter_count<<"/"<<mk_series_len_<<"\n";
+        } 
+        if (print_log_) {
+          logfile_<<" final iter  =  "<<final_iter_count<<"/"<<mk_series_len_<<"\n";
+        }
+        final_iter_count++;
+        if (final_iter_count >= mk_series_len_) {
+          mk_statistic_.get_series_avg(vparms);
+          status = exit_status::converged;
+          break;
+        }
+      }
+
       if (mk_statistic_.is_full() && en_trend<=0.1 && avg_gnorm<=grad_tol_) {
-        mk_statistic_.get_series_avg(vparms);
-        status = exit_status::converged;
-        break;
+        conv_condition_reached = true;
+        //mk_statistic_.get_series_avg(vparms);
+        //status = exit_status::converged;
+        //break;
       }
       else if (mk_statistic_.is_full() && mk_trend<=mk_thresold_ 
         && avg_gnorm<=grad_tol_) {
+        conv_condition_reached = true;
         // converged, add data point to store
-        mk_statistic_.get_series_avg(vparms);
-        status = exit_status::converged;
-        break;
+        //mk_statistic_.get_series_avg(vparms);
+        //status = exit_status::converged;
+        //break;
       }
       else if (sr_iter>=maxiter_ || iter_count>= maxiter_) {
         status = exit_status::maxiter;

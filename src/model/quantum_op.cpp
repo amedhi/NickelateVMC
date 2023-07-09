@@ -87,6 +87,8 @@ void ProjectionOp::finalize(const unsigned& num_site_types)
 	else {
 		// check if size match
 		if (super_type::size() != num_site_types) {
+		  std::cout << "super_type::size = " << super_type::size() << "\n";
+		  std::cout << "num_site_types = " << num_site_types << "\n";
     	throw std::range_error("model::ProjectionOp::finalize: size mismatch");
 		}
 		// check if all types are defined

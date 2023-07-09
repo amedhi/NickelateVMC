@@ -54,6 +54,8 @@ public:
   int update_parameters(const VariationalParms& vparms);
   double gw_ratio(const vmc::BasisState& state, 
     const int& fr_site, const int& to_site) const;
+  double gw_ratio(const vmc::BasisState& state, 
+    const int& fr_site, const int& to_site, const vmc::move_t& move) const;
   double gw_ratio_pairhop(const int& fr_site, const int& to_site) const;
   void get_grad_logp(const vmc::BasisState& state, RealVector& grad) const;
 private:
@@ -68,6 +70,12 @@ private:
   std::vector<int> site_typeid_;
   std::vector<double> gw_factor_;
   RealMatrix gw_ratio_;
+  // Inter-orbital cases
+  bool nickelate_2B_{false};
+  int num_orbitals_{1};
+  std::vector<std::string> gfactor_names_;
+  RealMatrix gfactor_ud_; // antiparellel spins
+  RealMatrix gfactor_uu_; // parallel spins
 
   void set_ratio_table(void); 
 };
@@ -86,8 +94,11 @@ public:
   void update(const var::parm_vector& pvector, const unsigned& start_pos=0);
   bool gw_projection(void) const { return gw_projector_.is_present(); }
   bool gw_projection_strong(void) const { return gw_projector_.is_strong(); }
-  double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
-    { return gw_projector_.gw_ratio(state, fr_site, to_site); }
+  //double gw_ratio(const vmc::BasisState& state, const int& fr_site, const int& to_site) const
+  //  { return gw_projector_.gw_ratio(state, fr_site, to_site); }
+  double gw_ratio(const vmc::BasisState& state, 
+    const int& fr_site, const int& to_site, const vmc::move_t& move) const 
+    { return gw_projector_.gw_ratio(state, fr_site, to_site, move); }
   double gw_ratio_pairhop(const int& fr_site, const int& to_site) const
     { return gw_projector_.gw_ratio_pairhop(fr_site, to_site); }
   const bool& have_dh_projector(void) const { return dh_projector_; }

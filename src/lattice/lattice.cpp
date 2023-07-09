@@ -291,7 +291,7 @@ void Unitcell::finalize(void)
   }
   // reassign the 'atomid' values
   for (auto& s : sites_) {
-    unsigned i = sitetypes_map_[s.atomid()];
+    unsigned i = atomid_map[s.atomid()];
     s.reset_atomid(i);
   }
   num_atoms_ = atomids.size();

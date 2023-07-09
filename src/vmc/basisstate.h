@@ -66,6 +66,10 @@ public:
   void init(const lattice::Lattice& lattice, const model::Hamiltonian& model);
   //void allow_double_occupancy(const bool& allow);
   void init_spins(const int& num_upspins, const int& num_dnspins);
+  int num_atoms(void) const { return atom_list_.size(); }
+  const lattice::Lattice::Atom& atom(const int& atomid) const { return atom_list_[atomid]; }
+  const int& atomid(const int& site) const { return atomid_list_[site]; }
+  const lattice::Lattice::Atom& parent_atom(const int& site) const { int aid = atomid_list_[site]; return atom_list_[aid]; }
   void set_random(void);
   void set_random_old(void);
   void set_custom(void);
@@ -119,6 +123,16 @@ private:
   std::vector<int> dnspin_sites_;
   std::vector<int> uphole_sites_;
   std::vector<int> dnhole_sites_;
+  /*------------------------------------------------------- 
+   * Store the list of 'atom'-s. In single-orbital systems, 
+   * an 'atom' is same as a 'site'. In multi-orbital systems,
+   * an 'atom' store the id-s of sites (orbitals) that belongs
+   * to it. The information is needed in case of inter-orbital
+   * interaction.
+   *-------------------------------------------------------*/
+  std::vector<int> atomid_list_; // of sites (orbitals)
+  std::vector<lattice::Lattice::Atom> atom_list_; 
+
   mutable move_t proposed_move_;
   //mutable int dblocc_increament_{0};
   mutable int mv_upspin_;

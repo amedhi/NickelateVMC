@@ -312,7 +312,7 @@ int SysConfig::do_upspin_hop(void)
   //std::cout << "det_ratio = " << det_ratio << "\n"; //getchar();
   if (std::abs(det_ratio) < dratio_cutoff()) return 0; // for safety
   //double proj_ratio = pj.gw_ratio(dblocc_increament());
-  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site);
+  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site, vmc::move_t::upspin_hop);
 
   amplitude_t weight_ratio = det_ratio * proj_ratio;
   double transition_proby = std::norm(weight_ratio);
@@ -348,7 +348,7 @@ int SysConfig::do_dnspin_hop(void)
   }
   if (std::abs(det_ratio) < dratio_cutoff()) return 0; // for safety
   //double proj_ratio = pj.gw_ratio(dblocc_increament());
-  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site);
+  double proj_ratio = pj.gw_ratio(*this, which_frsite(), to_site, vmc::move_t::dnspin_hop);
 
   amplitude_t weight_ratio = det_ratio * proj_ratio;
   double transition_proby = std::norm(weight_ratio);
@@ -553,11 +553,11 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
 
     if (bc_state < 0) { // it's a boundary bond
       //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
     }
     else {
       //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
     }
   }
   else if (op_cdagc_up(site_j,site_i)) {
@@ -574,11 +574,11 @@ amplitude_t SysConfig::apply_upspin_hop(const int& site_i, const int& site_j,
     amplitude_t det_ratio = psi_row.cwiseProduct(psiup_inv_.col(upspin)).sum();
     if (bc_state < 0) { // it's a boundary bond
       //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
     }
     else {
       //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
     }
   }
   else {
@@ -618,11 +618,11 @@ amplitude_t SysConfig::apply_cdagc_up(const int& fr_site, const int& to_site,
   //det_ratio = ampl_part(std::conj(det_ratio));
   if (bc_state < 0) { // it's a boundary bond
     //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
   }
   else {
     //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::upspin_hop);
   }
 }
 
@@ -646,11 +646,11 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
     }
     if (bc_state < 0) { // it's a boundary bond
       //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
     }
     else {
       //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
     }
   }
   else if (op_cdagc_dn(site_j,site_i)) {
@@ -669,11 +669,11 @@ amplitude_t SysConfig::apply_dnspin_hop(const int& site_i, const int& site_j,
     }
     if (bc_state < 0) { // it's a boundary bond
       //return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(bc_phase*det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
     }
     else {
       //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+      return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
     }
   }
   else {
@@ -714,11 +714,11 @@ amplitude_t SysConfig::apply_cdagc_dn(const int& fr_site, const int& to_site,
   //det_ratio = ampl_part(std::conj(det_ratio));
   if (bc_state < 0) { // it's a boundary bond
     //return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+    return ampl_part(bc_phase*std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
   }
   else {
     //return ampl_part(std::conj(det_ratio))*pj.gw_ratio(delta_nd);
-    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site);
+    return ampl_part(std::conj(det_ratio))*pj.gw_ratio(*this,which_frsite(),to_site,vmc::move_t::dnspin_hop);
   }
 }
 
@@ -882,7 +882,7 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& fr_site_i,
           det_ratio2 = psi_col.cwiseProduct(psidn_inv_.row(dnspin)).sum();
         }
         // term ratio
-        term_ratio = det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite);
+        term_ratio = det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite, vmc::move_t::dnspin_hop);
       }
     }
     else {
@@ -897,7 +897,7 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& fr_site_i,
       }
       det_ratio1 = psi_row.cwiseProduct(psiup_inv_.col(upspin)).sum();
       // term ratio
-      term_ratio = det_ratio1 * pj.gw_ratio(*this, up_frsite, up_tosite);
+      term_ratio = det_ratio1 * pj.gw_ratio(*this, up_frsite, up_tosite, vmc::move_t::upspin_hop);
 
       // same site for dnspin
       if (dn_frsite == dn_tosite) {
@@ -934,7 +934,7 @@ amplitude_t SysConfig::apply_bondsinglet_hop(const int& fr_site_i,
         }
 
         // term ratio (combined with the ratio for upspin hop)
-        term_ratio *= det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite);
+        term_ratio *= det_ratio2 * pj.gw_ratio(*this, dn_frsite, dn_tosite, vmc::move_t::dnspin_hop);
       }
     }
     // net ratio due to all non-zero terms
