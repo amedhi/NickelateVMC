@@ -150,7 +150,7 @@ void GroundState::set_ft_matrix(const lattice::Lattice& lattice)
   unsigned i = 0;
   for (unsigned n=0; n<num_kpoints_; ++n) {
     auto Ri = lattice.site(i).cell_coord();
-    //std::cout << Ri << "\n"; getchar();
+    //std::cout << Ri.transpose() << "\n"; getchar();
     for (unsigned k=0; k<num_kpoints_; ++k) {
       Vector3d kvec = blochbasis_.kvector(k);
       FTU_(n,k) = std::exp(ii()*kvec.dot(Ri)) * one_by_sqrt_nk;

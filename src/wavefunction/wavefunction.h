@@ -56,6 +56,7 @@ public:
   void get_vparm_vector(std::vector<double>& vparm_values, unsigned start_pos);
   void get_vparm_lbound(var::parm_vector& lbounds, unsigned start_pos) const; 
   void get_vparm_ubound(var::parm_vector& ubounds, unsigned start_pos) const; 
+  bool is_single_determinant(void) const { return single_determinant_; }
   void get_amplitudes(Matrix& psi, const std::vector<int>& row,  
     const std::vector<int>& col) const;
   void get_amplitudes(ColVector& psi_vec, const int& irow,  

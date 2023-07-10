@@ -86,6 +86,7 @@ void MF_Model::construct_kspace_block(const Vector3d& kvec)
     if (term.qn_operator().is_quadratic() && term.qn_operator().spin_up()) {
       for (int i=0; i<term.num_out_bonds(); ++i) {
         Vector3d delta = term.bond_vector(i);
+        //std::cout << "delta = " << delta << "\n"; getchar();
         work += term.coeff_matrix(i) * std::exp(ii()*kvec.dot(delta));
       }
     }

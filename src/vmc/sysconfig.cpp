@@ -147,7 +147,8 @@ int SysConfig::init_config(void)
   }*/
 
   // set up wf matrices 
-  single_determinant_ = (num_upspins_==num_dnspins_);
+  //single_determinant_ = (num_upspins_==num_dnspins_);
+  single_determinant_ = wf.is_single_determinant();
   if (single_determinant_) {
     psiup_mat_.resize(num_upspins_,num_upspins_);
     psiup_inv_.resize(num_upspins_,num_upspins_);

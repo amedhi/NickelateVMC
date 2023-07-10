@@ -1,0 +1,104 @@
+#------------iii---------------------------
+#    	      ~VMC Simulation~           
+#    	      Input Parameters           
+#---------------------------------------
+#---------------------------------------
+job = "VMC Simulation"
+optimizing_run = "NO"
+mode = "NEW"
+print_level = -2
+prefix = "out"
+#---------------------------------------
+lattice = "NICKELATE_2BAND"
+lsize1 = 4
+lsize2 = 4
+lsize3 = 4
+bc1 = "periodic"
+bc2 = "periodic"
+bc3 = "periodic"
+#---------------------------------------
+model = "HUBBARD"
+#--------------------------------------
+#es = 1.398
+#ed = 0.273
+es = 0.0
+ed = 0.0
+#--------------------------------------
+tss_001 = -0.171
+tss_100 = -0.029
+tss_101 = -0.218
+tss_110 = -0.093
+tss_111 = 0.066
+tss_002 = -0.209
+tss_102 = 0.042
+tss_200 = 0.022
+#--------------------------------------
+tdd_001 = -0.037
+tdd_100 = -0.368
+tdd_101 = -0.002
+tdd_110 = 0.082
+tdd_111 = 0.013
+tdd_002 = 0.003
+tdd_102 = 0.001
+tdd_200 = -0.042
+#--------------------------------------
+tsd_001 = 0.001
+tsd_100 = 0.071
+tsd_101 = 0.001
+tsd_110 = 0.001
+tsd_111 = 0.001
+tsd_002 = 0.000
+tsd_102 = 0.031
+tsd_200 = 0.008
+#--------------------------------------
+U_ss = 0.0 # 0.5 
+U_dd = 0.0 
+U_sd = 0.0
+#---------------------------------------
+hole_doping = 0.0
+#wavefunction = "FERMISEA"
+wavefunction = "CUSTOM_SC"
+interband_pairing = "YES"
+gw_projector = "NO"
+gfactor_ss = 1.0 # 0.16 # 0.16
+gfactor_dd = 1.0
+gfactor_sd = 1.0 #0.02
+
+Delta_d = 0.001
+Delta_s = 0.001
+Delta_z = 0.001
+mu_s = 0.0
+mu_d = 0.0
+mu_default = "NO"
+mu_variational = "YES"
+as_func_of = "Delta_d"
+#---------------------------------------
+Energy = "YES"
+EnergyGradient = "NO"
+SpinCorrelation = "NO"
+SC_Correlation = "NO"
+ParticleDensity = "NO"
+DoublonDensity = "NO"
+MomentumDist = "NO"
+#---------------------------------------
+rng_seed = 1
+measure_steps = 10000
+warmup_steps = 3000
+min_interval = 3
+max_interval = 10 
+#---------------------------------------
+opt_progress_stdout = "YES"
+opt_progress_log = "YES"
+opt_num_samples = 1
+opt_maxiter = 150
+opt_stabilizer = 0.02
+opt_cg_maxiter = 0
+opt_cg_algorithm = "PR"
+opt_pls_steps = 00
+opt_pls_alpha0 = 0.02
+opt_pls_target_df = 0.2
+opt_start_tstep = 0.01
+opt_refinement_cycle = 20
+opt_mkseries_len = 10
+opt_mkfluct_tol = 0.3
+opt_gradtol = 1.0E-3

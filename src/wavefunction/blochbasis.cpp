@@ -46,7 +46,7 @@ int BlochBasis::construct(const lattice::Lattice& lattice)
 
 void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
 {
-  Vector3d a1, a2, a3;
+  Vector3d a1, a2, a3, n1, n2, n3;
   double v;
   using bc = lattice::boundary_type;
 
@@ -75,10 +75,10 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
         b2 = two_pi() * a2 / a2.dot(a2); 
         break;
       case 1:
-        a3 = a1.cross(a2);
-        v = a1.dot(a2.cross(a3));
-        b1 = two_pi() * a2.cross(a3) / v;
-        b2 = two_pi() * a3.cross(a1) / v;
+        n3 = a1.cross(a2);
+        v = a1.dot(a2.cross(n3));
+        b1 = two_pi() * a2.cross(n3) / v;
+        b2 = two_pi() * n3.cross(a1) / v;
         break;
       default: break;
     }
@@ -91,16 +91,16 @@ void BlochBasis::make_kpoints(const lattice::Lattice& lattice)
         b3 = two_pi() * a3 / a3.dot(a3); 
         break;
       case 1:
-        a2 = a3.cross(a1);
-        v = a1.dot(a2.cross(a3));
-        b1 = two_pi() * a2.cross(a3) / v;
-        b3 = two_pi() * a1.cross(a2) / v;
+        n2 = a3.cross(a1);
+        v = a1.dot(n2.cross(a3));
+        b1 = two_pi() * n2.cross(a3) / v;
+        b3 = two_pi() * a1.cross(n2) / v;
         break;
       case 2:
-        a1 = a2.cross(a3);
-        v = a1.dot(a2.cross(a3));
-        b2 = two_pi() * a3.cross(a1) / v;
-        b3 = two_pi() * a1.cross(a2) / v;
+        n1 = a2.cross(a3);
+        v = n1.dot(a2.cross(a3));
+        b2 = two_pi() * a3.cross(n1) / v;
+        b3 = two_pi() * n1.cross(a2) / v;
         break;
       case 3:
         v = a1.dot(a2.cross(a3));

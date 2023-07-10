@@ -660,7 +660,6 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       cc.create(27);
       std::vector<int> pairing_bonds(27,0);
 
-
       // s-s pairing
       cc.add_type(0, "Delta_z");
       cc.add_type(1, "Delta_s");
@@ -684,7 +683,7 @@ int BCS_State::init(const input::Parameters& inputs, const lattice::Lattice& lat
       correlation_pairs().push_back({1,1});
       correlation_pairs().push_back({0,1});
       */
-      set_correlation_type(CorrelationPairs::corr_t::site_singlet);
+      set_correlation_type(CorrelationPairs::corr_t::bond_singlet);
       add_correlation_bonds(0, {0,0});
       add_correlation_bonds(1, {1,1});
       add_correlation_bonds(2, {2,2});
@@ -1223,10 +1222,10 @@ void BCS_State::get_pair_amplitudes_interband(std::vector<ComplexMatrix>& phi_k)
         //std::cout << vk_.row(i).real() << "\n";
         //std::cout << "s["<<i<<"] = " << dval << "\n";
 
-        //*
+        /*
         std::cout << ">> alert! BCS_State: uk matrix singular for k = (";
         std::cout << kvec[0]<<", "<<kvec[1]<<", "<<kvec[2]<<")\n";
-        //*/
+        */
 
         //getchar();
         singular = true;

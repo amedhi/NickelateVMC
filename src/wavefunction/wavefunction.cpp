@@ -156,7 +156,9 @@ int Wavefunction::compute_amplitudes(const bool& psi_gradient)
 {
   int num_upspins = groundstate_->num_upspins();
   int num_dnspins = groundstate_->num_dnspins();
-  single_determinant_ = (num_upspins==num_dnspins);
+  //single_determinant_ = (num_upspins==num_dnspins);
+  single_determinant_ = groundstate_->is_nonmagnetic();
+
 
   if (single_determinant_) {
     psiup_.resize(num_sites_,num_sites_);

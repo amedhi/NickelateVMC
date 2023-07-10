@@ -2,7 +2,7 @@
 * @Author: Amal Medhi, amedhi@mbpro
 * @Date:   2019-02-20 12:21:42
 * @Last Modified by:   Amal Medhi
-* @Last Modified time: 2023-07-08 15:07:49
+* @Last Modified time: 2023-07-10 15:01:23
 * Copyright (C) Amal Medhi, amedhi@iisertvm.ac.in
 *----------------------------------------------------------------------------*/
 #include <numeric>
@@ -351,6 +351,84 @@ int Fermisea::init(const input::Parameters& inputs, const lattice::Lattice& latt
     }
   }
 
+  else if (lattice.id()==lattice::lattice_id::NICKELATE_2B) {
+    if (model.id()==model::model_id::HUBBARD) {
+      // model parameters
+      bool mu_default = inputs.set_value("mu_default", false);
+      mf_model_.add_parameter(name="es", defval=0.0, inputs);
+      mf_model_.add_parameter(name="ed", defval=0.0, inputs);
+      mf_model_.add_parameter(name="mu_s", defval=0.0, inputs);
+      mf_model_.add_parameter(name="mu_d", defval=0.0, inputs);
+
+      std::vector<std::string> ts{"tss_", "tdd_", "tsd_"};
+      std::string tname;
+      for (int m=0; m<3; ++m) {
+        tname = ts[m] + "001";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "100";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "101";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "110";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "111";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "002";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "102";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+        tname = ts[m] + "200";
+        mf_model_.add_parameter(name=tname, defval=1.0, inputs);
+      }
+
+      //-------------------------------------------------
+      // Bond operators
+      cc.create(27);
+      int p = 0;
+      for (int m=0; m<3; ++m) {
+        // 1-NN 
+        cc.add_type(p, ts[m]+"001"); p++;
+        // 2-NN (100)
+        cc.add_type(p, ts[m]+"100"); p++;
+        // 2-NN (010)
+        cc.add_type(p, ts[m]+"100"); p++;
+        // 3-NN
+        cc.add_type(p, ts[m]+"101"); p++;
+        // 4-NN
+        cc.add_type(p, ts[m]+"110"); p++;
+        // 5-NN
+        cc.add_type(p, ts[m]+"111"); p++;
+        // 6-NN
+        cc.add_type(p, ts[m]+"002"); p++;
+        // 7-NN
+        cc.add_type(p, ts[m]+"102"); p++;
+        // 8-NN
+        cc.add_type(p, ts[m]+"200"); p++;
+      }
+      mf_model_.add_bondterm(name="hopping", cc, op::spin_hop());
+      //-------------------------------------------------
+
+      //-------------------------------------------------
+      // Site operators
+      cc.create(2);
+      cc.add_type(0, "es-mu_s");
+      cc.add_type(1, "ed-mu_d");
+      mf_model_.add_siteterm(name="ni_sigma", cc, op::ni_sigma());
+      //-------------------------------------------------
+
+      // chemical potential
+      mu_variational_ = mu_default; // for this model
+      if (mu_variational_) {
+        defval = mf_model_.get_parameter_value("mu_s");
+        varparms_.add("mu_s", defval,lb=-10.0,ub=+10.0,dh=0.1);
+        defval = mf_model_.get_parameter_value("mu_d");
+        varparms_.add("mu_d", defval,lb=-10.0,ub=+10.0,dh=0.1);
+      }
+    } 
+    else {
+      throw std::range_error("BCS_State::BCS_State: undefined for the model");
+    }
+  }
   else {
     throw std::range_error("Fermisea::Fermisea: state undefined for the lattice");
   }
@@ -435,15 +513,15 @@ void Fermisea::get_wf_amplitudes(Matrix& psi)
 
   //get pair amplitudes wrt 'sitebasis'
   ComplexMatrix psiup_sitebasis(num_sites(),num_upspins());
-  ComplexMatrix psidn_sitebasis(num_sites(),num_dnspins());
+  ComplexMatrix psidn_sitebasis(num_dnspins(),num_sites());
   get_amplitudes_sitebasis(psiup_sitebasis, psidn_sitebasis);
 
   // final matrix
 #ifdef REAL_WAVEFUNCTION
-  ComplexMatrix psi_cmpl = psiup_sitebasis * psidn_sitebasis.transpose();
+  ComplexMatrix psi_cmpl = psiup_sitebasis * psidn_sitebasis; //.transpose();
   psi = psi_cmpl.real();
 #else
-  psi = psiup_sitebasis * psidn_sitebasis.transpose();
+  psi = psiup_sitebasis * psidn_sitebasis; //.transpose();
 #endif
 
   // check
@@ -467,16 +545,16 @@ void Fermisea::get_wf_amplitudes(Matrix& psiup, Matrix& psidn)
 
   //get pair amplitudes wrt 'sitebasis'
   ComplexMatrix psiup_sitebasis(num_sites(),num_upspins());
-  ComplexMatrix psidn_sitebasis(num_sites(),num_dnspins());
+  ComplexMatrix psidn_sitebasis(num_dnspins(),num_sites());
   get_amplitudes_sitebasis(psiup_sitebasis, psidn_sitebasis);
 
   // final matrix
 #ifdef REAL_WAVEFUNCTION
   psiup = psiup_sitebasis.real();
-  psidn = psidn_sitebasis.real().transpose();
+  psidn = psidn_sitebasis.real(); //.transpose();
 #else
   psiup = psiup_sitebasis;
-  psidn = psidn_sitebasis.transpose();
+  psidn = psidn_sitebasis; //.transpose();
 #endif
 
   // check
@@ -519,22 +597,23 @@ void Fermisea::get_amplitudes_sitebasis(ComplexMatrix& psiup, ComplexMatrix& psi
   }
 
   // DNSPIN part
-  n = 0;
+  int m = 0;
   for (int p=0; p<kshells_dn_.size(); ++p) {
     int k = kshells_dn_[p].k;
     int nband = kshells_dn_[p].nmax+1;
     Vector3d kvec = blochbasis_.kvector(k);
     mf_model_.construct_kspace_block(kvec);
     es_minusk_dn.compute(mf_model_.quadratic_spindn_block());
-    int m = 0;
+    int n = 0;
     for (int I=0; I<num_kpoints_; ++I) {
-      psidn.block(m,n,kblock_dim_,nband) 
-        = es_minusk_dn.eigenvectors().block(0,0,kblock_dim_,nband)*FTU_(I,k);
-      m += kblock_dim_;
+      psidn.block(m,n,nband,kblock_dim_) 
+        = es_minusk_dn.eigenvectors().transpose().block(0,0,nband,kblock_dim_)*(FTU_(I,k));
+      n += kblock_dim_;
     }
-    n += nband;
+    m += nband;
   }
 }
+
 
 void Fermisea::get_wf_gradient(std::vector<Matrix>& psi_grad) 
 {
@@ -670,6 +749,7 @@ void Fermisea::construct_groundstate(void)
   std::ios state(NULL);
   state.copyfmt(std::cout);
   std::cout<<std::fixed<<std::setprecision(6)<<std::right;
+  using namespace std;
 
   std::vector<std::tuple<int,int,int>> qn_list; // list of (k,n,sigma)
   std::vector<double> ek;
@@ -687,6 +767,7 @@ void Fermisea::construct_groundstate(void)
     }
 
     // spin-DN block
+    mf_model_.construct_kspace_block(kvec);
     es_minusk_dn.compute(mf_model_.quadratic_spindn_block(), Eigen::EigenvaluesOnly);
     ek.insert(ek.end(),es_minusk_dn.eigenvalues().data(),
       es_minusk_dn.eigenvalues().data()+kblock_dim_);
@@ -731,7 +812,7 @@ void Fermisea::construct_groundstate(void)
     total_energy_ += ek[idx[i]];
   }
   total_energy_ = total_energy_/num_sites_;
-  //std::cout << "Total KE = " << total_energy_ << "\n";
+  std::cout << "Total KE = " << total_energy_ << "\n";
   //std::cout << "fermi energy = " << fermi_energy_ << "\n";
 
   /*
@@ -739,13 +820,13 @@ void Fermisea::construct_groundstate(void)
   for (int i=0; i<num_particle; ++i) {
     int k, n, s;
     std::tie(k,n,s) = qn_list[idx[i]];
-    std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
+    std::cout << "ek[idx["<<setw(3)<<i<<"]] = "<<setw(10)<<ek[idx[i]]<<setw(4)<<k<<setw(3)<<n<<setw(3)<<s<<"\n";
   }
-  std::cout << "Empty states\n";
+  std::cout << "\n\nEmpty states\n";
   for (int i=num_particle; i<ek.size(); ++i) {
     int k, n, s;
     std::tie(k,n,s) = qn_list[idx[i]];
-    std::cout << "ek[idx["<<i<<"]] = "<<ek[idx[i]]<<" "<<k<<" "<<n<<" "<<s<<"\n";
+    std::cout << "ek[idx["<<setw(3)<<i<<"]] = "<<setw(10)<<ek[idx[i]]<<setw(4)<<k<<setw(3)<<n<<setw(3)<<s<<"\n";
   }
   getchar();
   */
